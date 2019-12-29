@@ -1,0 +1,329 @@
+html, body {
+  height: 100%;
+  background-color: black;
+  overflow: hidden;
+}
+
+main {
+  width: 100%;
+  height: 100%;
+  transition: opacity 1s;
+}
+
+
+/* 地图选取框架开始 */
+
+/* 地图选取窗口状态A：初始选取 */
+
+.map-select {
+  position: absolute;
+  height: 80%;
+  width: 50%;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  background-color: grey;
+  border-radius: 5px;
+  font-family: "STXihei", "Source Han Sans", "Microsoft YaHei", "SimHei", sans-serif;
+  text-align: center;
+  transform: translateX(-50%) translateY(-50%);
+  transition: all 0.5s cubic-bezier(.17,.84,.44,1);
+  user-select: none;
+  z-index: 1;
+}
+
+.map-select #hide-title {
+  display: none;
+}
+
+.map-select > header {
+  margin: 1.5rem auto;
+  font-size: x-large;
+  letter-spacing: 1rem;
+}
+
+.chapter { /* 各章节标题 */
+  padding-bottom: 0.5rem;
+  letter-spacing: 0.1rem;
+  background-color: transparent;
+  transition: color 0.5s, background-color 0.5s;
+  border-top: thin solid currentColor;
+  cursor: pointer;
+}
+
+.chapter:hover { /* 当前章标题变色 */
+  background: linear-gradient(to right, transparent -25%, DimGray, transparent 125%);
+  color: WhiteSmoke;
+  transition: none;
+  border-bottom: thin solid currentColor;
+  border-image: linear-gradient(to right, DimGray -25%, currentColor, DimGray 125%) 1 1;
+}
+
+.chapter:hover + section { /* 下个章标题隐藏上边框 */
+  border-top: none;
+}
+
+.chapter:last-child { /* 末章标题下边框 */
+  border-bottom: thin solid currentColor;
+}
+
+.chapter header { /* 章标题名 */
+  cursor: pointer;
+  padding: 0.5rem;
+}
+
+.map-item { /* 章地图集 */
+  opacity: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  grid-gap: 0.5rem;
+  overflow: hidden;
+  padding: 0 1rem;
+  max-height: 0;
+  cursor: default;
+  transition: max-height 0.5s, opacity 0.5s;
+}
+
+.map-item.map-item-clicked { /* 点击章节标题切换显示 */
+  opacity: 1;
+  max-height: 27rem;
+  transition: max-height 0.5s, opacity 0.5s;
+}
+
+.map-item figure {
+  margin: 0;
+  padding: 4%;
+  border: thin solid transparent;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.5s;
+}
+
+.map-item figure:hover {
+  border-color: currentColor;
+  transition: none;
+}
+
+.map-item img {
+  width: 100%;
+}
+
+.map-item figcaption {
+  letter-spacing: 0;
+  font-size: smaller;
+}
+
+/* 地图选取窗口状态B：左侧边栏 */
+
+.map-select.side-bar {
+  height: 100%;
+  width: 20%;
+  min-width: 15rem;
+  top: 0;
+  left: 0;
+  transform: translateX(-90%);
+  border-radius: 0 5px 5px 0;
+}
+
+.map-select.side-bar:hover {
+  transform: translateX(0);
+}
+
+.map-select.side-bar #hide-title {
+  position: absolute;
+  display: block;
+  right: 0;
+  top: 15%;
+  width: 10%;
+  opacity: 1;
+  transition: opacity 0.4s, top 0.4s;
+}
+
+.map-select.side-bar:hover #hide-title {
+  top: 10%;
+  opacity: 0;
+}
+
+.map-select.side-bar #hide-title div {
+  display: inline-block;
+  writing-mode: vertical-lr;
+  letter-spacing: 1.5rem;
+  font-size: large;
+}
+
+.map-select.side-bar .chapter {
+  transform: translateX(-50%);
+  transition: transform 0.5s;
+}
+
+.map-select.side-bar:hover .chapter {
+  transform: translateX(0);
+  transition: transform 0.5s, color 0.5s, background-color 0.5s;
+}
+
+.map-select.side-bar:hover .chapter:hover {
+  transition: none;
+}
+
+.map-select.side-bar .map-item {
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* 地图选取框架结束 */
+
+
+/* 主游戏框架开始 */
+
+.game-frame {
+  width: 100%;
+  height: 100%;
+  display: none;
+  opacity: 0;
+  transition: opacity 1s;
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+}
+
+/* 上方的时间轴UI */
+.ui-top {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  width: 60%;
+  transform: translateX(-50%);
+}
+
+.time-axis {
+  display: flex;
+  align-items: center;
+}
+
+#axis {
+  position: relative;
+  height: 1rem;
+  width: 75%;
+  background-color: white;
+  border-radius: 0.2rem;
+}
+
+.mark-icon {
+  position: absolute;
+  height: 100%;
+  width: 0.5%;
+}
+
+/* 动态添加的时间轴标记，为axis轴的子元素 */
+.mark {
+  height: 100%;
+  transform: translateX(-50%); /* 匹配图标居中 */
+}
+
+.mark-icon > .enemy { /* 橙色节点表示敌人 */
+  background-color: orange;
+}
+
+.mark-icon > .ally { /* 蓝色节点表示友方 */
+  background-color: dodgerblue;
+}
+
+.mark-icon > .enemy.drop { /* 红色节点表示漏怪 */
+  background-color: red;
+}
+
+.mark-icon > .dead { /* 灰度节点表示死亡 */
+  filter: grayscale(1);
+}
+
+.icon {
+  position: relative;
+  height: 1.5rem;
+  width: 1.5rem;
+  top: 0.3rem;
+  transform: translateX(-50%); /* 匹配标记刻线居中 */
+  background-size: contain;
+  background-repeat: no-repeat;
+}
+
+.mark-icon > .dead + .icon { /* 灰度节点表示死亡 */
+  filter: grayscale(1);
+}
+
+.detail {
+  position: relative;
+  top: -3.8rem;
+  width: 4rem;
+  text-align: center;
+  font-size: small;
+  transform: translateX(-50%);
+  border-radius: 0.3rem;
+  background-color: white;
+  display: none;
+  z-index: 1;
+}
+
+.detail-arrow {
+  position: relative;
+  background-color: white;
+  width: 0.5rem;
+  height: 0.5rem;
+  transform: translateX(-50%) rotate(45deg);
+  top: -4.2rem;
+  display: none;
+}
+
+#timer {
+  margin: 0 auto;
+  color: white;
+}
+
+.time-axis-controller {
+  padding: 0 0.3rem;
+  margin: 0 auto;
+  font-size: larger;
+}
+
+
+/* 加载画面 */
+#loading {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  display: none;
+  opacity: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  transition: opacity 1s;
+}
+
+#container {
+  width: 100%;
+  height: 3px;
+  margin-bottom: 10%;
+  background-color: yellow;
+  user-select: none;
+}
+
+#bar {
+  top: -1.5rem;
+  height: 1.7rem;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 0 auto;
+  background-color: black;
+  color: yellow;
+  transition: width 0.5s linear;
+}
+
+.percentage {
+  margin: 0 0.5rem;
+  position: relative;
+  text-align: center;
+}

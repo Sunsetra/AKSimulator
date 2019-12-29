@@ -1,0 +1,20 @@
+# idea
+.idea/
+
+# config files
+.eslintrc.json
+.stylelintrc.json
+.eslintignore
+*.config.js
+*config.json
+
+# Typescript
+*.js
+*.d.ts
+!modules/MapInfo.d.ts
+
+# npm
+node_modules/
+
+# Project
+/test/res/

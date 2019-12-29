@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <link href="normalize.css" rel="stylesheet">
+  <link href="main.css" rel="stylesheet">
+  <script type="module" src="main.js"></script>
+  <title>webgl试验部</title>
+</head>
+<body>
+
+<main>
+  <div class="map-select">
+    <div id="hide-title">
+      <div>区域选择</div>
+    </div>
+    <header>区域选择</header>
+    <section class="chapter">
+      <header>第零章 黑暗时代(上)</header>
+      <div class="map-item">
+        <figure data-url="res/maps/0-1.json">
+          <img src="res/img/0-1.png" alt="0-1地图">
+          <figcaption>0-1 坍塌</figcaption>
+        </figure>
+      </div>
+    </section>
+  </div>
+1
+  <div class="game-frame">
+    <div class="ui-top">
+      <div class="time-axis">
+        <div id="axis"></div>
+        <div id="timer">00:00.000</div>
+        <button class="time-axis-controller" id="starter">▶</button>
+        <button class="time-axis-controller" id="reset">↺</button>
+      </div>
+    </div>
+    <canvas>
+      完蛋，浏览器不支持canvas元素呢！换最新的<a href="https://www.google.cn/intl/zh-CN/chrome/" target="_blank">Chrome</a>
+      或者<a href="https://www.mozilla.org/zh-CN/firefox/new/" target="_blank">Firefox</a>试试呢？
+    </canvas>
+  </div>
+
+  <div id="loading">
+    <div id="container">
+      <div id="bar">
+        <div class="percentage" id="left">0%</div>
+        <div class="percentage" id="right">0%</div>
+      </div>
+    </div>
+    <div id="progress-tip">正在加载...</div>
+  </div>
+</main>
+
+</body>
+</html>

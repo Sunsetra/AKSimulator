@@ -1,0 +1,32 @@
+{
+  "name": "aksimulator",
+  "version": "0.0.1",
+  "description": "A simulator for Arknights (Chinese Tower Defense mobile game)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Rakujitsu/AKSimulator.git"
+  },
+  "keywords": [
+    "webgl"
+  ],
+  "author": "Rakujitsu",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Rakujitsu/AKSimulator/issues"
+  },
+  "homepage": "https://github.com/Rakujitsu/AKSimulator#readme",
+  "dependencies": {
+    "three": "^0.112.1"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^2.13.0",
+    "@typescript-eslint/parser": "^2.13.0",
+    "eslint": "^6.8.0",
+    "eslint-plugin-import": "^2.19.1",
+    "typescript": "^3.7.4"
+  }
+}
