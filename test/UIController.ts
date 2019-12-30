@@ -3,10 +3,22 @@ import MapLoader from 'modules/loaders/MapLoader.js';
 
 class LoadingUI {
   /** 折叠地图选择侧边栏 */
-  private static _collapseMapSelect(): void {
+  private static collapseMapSelect(): void {
     const expandMapItem: HTMLElement | null = document.querySelector('.map-item.map-item-clicked');
     if (expandMapItem) {
       expandMapItem.classList.remove('map-item-clicked');
+    }
+  }
+
+  /**
+   * 更新加载提示
+   * @param text - 要拼接在原文本后的加载提示信息
+   * @param append - 提示更新模式（可选），为true时表示新增信息，默认或false为替换原信息
+   */
+  static updateTip(text: string, append = false): void {
+    const tip: HTMLElement | null = document.querySelector('#progress-tip');
+    if (tip) {
+      tip.innerText = append ? tip.innerText + text : text;
     }
   }
 
@@ -44,6 +56,7 @@ class LoadingUI {
         });
       });
     }
+
     mapSelector();
   }
 
@@ -73,8 +86,13 @@ class LoadingUI {
     });
   }
 
-  /** 更新加载进度条 */
-  static updateLoadingBar(itemsLoaded: number, itemsTotal: number): void {
+  /**
+   * 更新加载进度条
+   * @param itemsLoaded: 已加载资源数
+   * @param itemsTotal: 总资源数
+   * @param callback: 加载完成回调函数
+   */
+  static updateLoadingBar(itemsLoaded: number, itemsTotal: number, callback?: Function): void {
     const bar: HTMLElement | null = document.querySelector('#bar');
     const left: HTMLElement | null = document.querySelector('#left');
     const right: HTMLElement | null = document.querySelector('#right');
@@ -87,44 +105,43 @@ class LoadingUI {
 
       const percent: number = (itemsLoaded / itemsTotal) * 100;
       bar.style.width = `${100 - percent}%`; // 设置中部挡块宽度
-      left.textContent = `${Math.round(percent)}%`; // 更新加载百分比
-      right.textContent = `${Math.round(percent)}%`;
-      if (percent >= 100) { right.style.display = 'none'; }
-    }
-  }
+      left.textContent = `${Math.round(percent)}%`;
+      right.textContent = `${Math.round(percent)}%`; // 更新加载百分比
 
-  /**
-   * 更新加载提示
-   * @param text - 要拼接在原文本后的加载提示信息
-   */
-  static updateTip(text: string): void {
-    const tip: HTMLElement | null = document.querySelector('#progress_tip');
-    if (tip) { tip.innerText += text; }
+      if (percent >= 100 && callback !== undefined) { // 运行加载完成回调函数
+        bar.addEventListener('transitionend', () => {
+          right.style.display = 'none';
+          this.updateTip('加载完成');
+          setTimeout(() => { this.loadingToGameFrame(callback); }, 200);
+        });
+      }
+    }
   }
 
   /** 隐藏加载进度条并显示画布 */
-  static loadingToGameFrame(): void { // TODO: 更改为进度条完成后渐隐渐显（传参回调）
-    const loadingBar: HTMLElement | null = document.querySelector('#loading');
+  static loadingToGameFrame(func: Function): void {
+    const loading: HTMLElement | null = document.querySelector('#loading');
     const gameFrame: HTMLElement | null = document.querySelector('.game-frame');
     const mapSelect: HTMLElement | null = document.querySelector('.map-select');
 
-    if (loadingBar && gameFrame && mapSelect) {
-      loadingBar.style.opacity = '0'; // 渐隐加载进度条
-      setTimeout(() => {
-        loadingBar.style.display = 'none';
-      }, 1000);
+    if (loading && gameFrame && mapSelect) {
+      loading.style.opacity = '0'; // 渐隐加载进度条
+      loading.addEventListener('transitionend', () => {
+        loading.style.display = 'none';
+        gameFrame.style.display = 'block'; // 渐显画布
+        func(); // 主回调在画布显示后运行
+        mapSelect.style.display = '';
 
-      gameFrame.style.display = 'block'; // 渐显画布
-      mapSelect.style.display = '';
-      setTimeout(() => {
-        gameFrame.style.opacity = '1';
-        mapSelect.style.opacity = ''; // 显示地图选择左侧边栏
-      }, 1000);
+        setTimeout(() => {
+          gameFrame.style.opacity = '1';
+          mapSelect.style.opacity = ''; // 显示地图选择左侧边栏
+        }, 200);
+      }, { once: true });
     }
-
-    this._collapseMapSelect();
+    LoadingUI.collapseMapSelect();
   }
 }
+
 
 class TimeAxisUI {
   private readonly timeAxis: HTMLElement | null;
@@ -253,4 +270,8 @@ class TimeAxisUI {
   }
 }
 
-export { LoadingUI, TimeAxisUI };
+
+export {
+  LoadingUI,
+  TimeAxisUI,
+};

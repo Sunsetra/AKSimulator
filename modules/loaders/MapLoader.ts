@@ -16,7 +16,7 @@ class MapLoader {
   onError?: (path: string) => void;
 
   constructor(onLoad?: (mapData: MapInfo) => void,
-              onError?: (path: string) => void)  {
+              onError?: (path: string) => void) {
     this.onLoad = onLoad;
     this.onError = onError;
   }
@@ -29,22 +29,15 @@ class MapLoader {
     if (typeof data === 'string') {
       fetch(data)
         .then((dataResp) => dataResp.json())
-        .then((data: MapInfo) => {
-          if (this.onLoad !== undefined) {
-            this.onLoad(data);
-          }
+        .then((info: MapInfo) => {
+          if (this.onLoad !== undefined) { this.onLoad(info); }
         })
         .catch((reason) => {
-          if (this.onError !== undefined) {
-            this.onError(reason);
-          }
+          if (this.onError !== undefined) { this.onError(reason); }
         });
-    } else {
-      if (this.onLoad !== undefined) {
-        this.onLoad(data);
-      }
-    }
+    } else if (this.onLoad !== undefined) { this.onLoad(data); }
   }
 }
+
 
 export default MapLoader;

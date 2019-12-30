@@ -1,5 +1,6 @@
 import GameFrame from '../../modules/core/GameFrame.js';
 
+
 class StaticRenderer {
   private needRender: boolean;
 
@@ -26,7 +27,7 @@ class StaticRenderer {
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
     this.frame.renderer.render(this.frame.scene, this.frame.camera);
-  };
+  }
 
   /** 静态渲染入口点函数 */
   requestRender(): void {
@@ -36,5 +37,6 @@ class StaticRenderer {
     }
   }
 }
+
 
 export default StaticRenderer;

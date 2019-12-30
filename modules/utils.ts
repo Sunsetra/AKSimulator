@@ -3,7 +3,11 @@
  * @author: 落日羽音
  */
 
-import { WebGL2Available, WebGLAvailable, WebGLUnavailable } from '../modules/constant.js';
+import {
+  WebGL2Available,
+  WebGLAvailable,
+  WebGLUnavailable,
+} from '../modules/constant.js';
 import { WEBGL } from '../node_modules/three/examples/jsm/WebGL.js';
 import { BufferGeometry } from '../node_modules/three/src/core/BufferGeometry.js';
 
@@ -16,14 +20,13 @@ import { Texture } from '../node_modules/three/src/textures/Texture.js';
 
 /**
  * 检测webgl可用性
- * @return: 返回值表示当前环境中webgl的可用性及支持的版本
+ * @return - 返回值表示当前环境中webgl的可用性及支持的版本
  */
 function checkWebGLVersion(): number {
   if (WEBGL.isWebGLAvailable()) {
     return WEBGL.isWebGL2Available() ? WebGL2Available : WebGLAvailable;
-  } else {
-    return WebGLUnavailable;
   }
+  return WebGLUnavailable;
 }
 
 /**
@@ -64,4 +67,7 @@ function disposeResources<T>(resource: T): T {
   return resource;
 }
 
-export { checkWebGLVersion, disposeResources };
+export {
+  checkWebGLVersion,
+  disposeResources,
+};

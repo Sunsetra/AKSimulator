@@ -2,12 +2,13 @@
  * 地图信息声明文件
  * @author: 落日羽音
  */
-import Building from './buildings/Building.js';
 import { Vector3 } from '../node_modules/three/src/Three.js';
+import Building from './buildings/Building.js';
 
 
 export interface ResourceInfo {
   [resType: string]: string[];
+
   block: string[]; // 所需的砖块贴图
   enemy: string[]; // 所需的敌人贴图
   model: string[]; // 所需的模型
@@ -37,6 +38,7 @@ export interface BlockInfo { // 砖块信息
     bottom: string; // 砖块底部贴图
   };
 }
+
 
 export interface LightInfo { // 光源信息
   envIntensity: number; // 环境光强度

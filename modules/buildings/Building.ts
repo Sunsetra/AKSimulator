@@ -28,19 +28,19 @@ class Building {
    * @param info: 建筑信息对象
    */
   constructor(mesh: Mesh, info: BuildingInfo) {
-    const { rotation, sizeAlpha } = info;
-    this.colSpan = info.colSpan ? info.colSpan: 1;
-    this.rowSpan = info.rowSpan ? info.rowSpan: 1;
+    const { rotation, geometry } = mesh;
+    this.colSpan = info.colSpan ? info.colSpan : 1;
+    this.rowSpan = info.rowSpan ? info.rowSpan : 1;
 
-    mesh.rotation.y = _Math.degToRad(rotation);
-    mesh.geometry.center(); // 重置原点为几何中心
-    mesh.geometry.computeBoundingBox();
-    mesh.geometry.boundingBox.getCenter(mesh.position);
+    rotation.y = _Math.degToRad(info.rotation);
+    geometry.center(); // 重置原点为几何中心
+    geometry.computeBoundingBox();
+    geometry.boundingBox.getCenter(mesh.position);
     const wrapper = new Object3D(); // 使用外部对象包裹
     wrapper.add(mesh);
     const originBox = new Box3().setFromObject(wrapper);
     const originSize = originBox.getSize(new Vector3());
-    const mag = (BlockUnit * this.colSpan * sizeAlpha - 0.01) / originSize.x;
+    const mag = (BlockUnit * this.colSpan * info.sizeAlpha - 0.01) / originSize.x;
     wrapper.scale.set(mag, mag, mag); // 按X方向的比例缩放
 
     this.mesh = wrapper;
@@ -49,5 +49,6 @@ class Building {
     box.getSize(this.size);
   }
 }
+
 
 export default Building;

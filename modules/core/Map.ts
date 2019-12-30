@@ -6,7 +6,13 @@
 import GameFrame from '../../modules/core/GameFrame.js';
 import { ResourcesList } from '../../modules/loaders/ResourceLoader.js';
 
-import { BlockInfo, BuildingInfo, LightInfo, MapInfo, WaveInfo } from '../../modules/MapInfo.js';
+import {
+  BlockInfo,
+  BuildingInfo,
+  LightInfo,
+  MapInfo,
+  WaveInfo,
+} from '../../modules/MapInfo.js';
 import { disposeResources } from '../../modules/utils.js';
 
 import { BufferAttribute } from '../../node_modules/three/src/core/BufferAttribute.js';
@@ -178,11 +184,11 @@ class Map {
         const top = texture.top ? texture.top : 'topDefault';
         const side = texture.side ? texture.side : 'sideDefault';
         const bottom = texture.bottom ? texture.bottom : 'bottomDefault';
-        const [start, count] = sideGroup[ndx];
+        const [s, c] = sideGroup[ndx]; // 每组的开始索引和计数
 
-        mapGeometry.addGroup(start + count + 6, 6, materialMap[top]); // 顶面组
-        mapGeometry.addGroup(start + count, 6, materialMap[bottom]); // 底面组
-        if (count) { mapGeometry.addGroup(start, count, materialMap[side]); } // 侧面需要建面时添加侧面组
+        mapGeometry.addGroup(s + c + 6, 6, materialMap[top]); // 顶面组
+        mapGeometry.addGroup(s + c, 6, materialMap[bottom]); // 底面组
+        if (count) { mapGeometry.addGroup(s, c, materialMap[side]); } // 侧面需要建面时添加侧面组
       }
     });
 
@@ -216,30 +222,29 @@ class Map {
 
     /* 原砖块上有建筑信息，则废弃原建筑的inst实例再用新建筑信息覆盖 */
     if (block.buildingInfo && block.buildingInfo.inst) { // TODO 未考虑跨距建筑
-      disposeResources(block.buildingInfo.inst.mesh) // TODO: 在砖块不等高时不报错，而是以范围内最高砖块进行放置
+      disposeResources(block.buildingInfo.inst.mesh); // TODO: 在砖块不等高时不报错，而是以范围内最高砖块进行放置
     }
     block.buildingInfo = info;
 
     const { entity } = this.resList.model[info.desc];
     if (entity === undefined) {
       return null;
-    } else {
-      const building = new Building(entity.clone(), info);
-      Object.defineProperty(block.buildingInfo, 'inst', {
-        value: building,
-        configurable: true,
-        enumerable: true,
-      });
-
-      if (block.size !== undefined) {
-        const x = (column + building.colSpan / 2) * block.size.x;
-        const y = building.size.y / 2 + block.size.y - 0.01;
-        const z = (row + building.rowSpan / 2) * block.size.z;
-        building.mesh.position.set(x, y, z);
-      }
-
-      return building;
     }
+    const building = new Building(entity.clone(), info);
+    Object.defineProperty(block.buildingInfo, 'inst', {
+      value: building,
+      configurable: true,
+      enumerable: true,
+    });
+
+    if (block.size !== undefined) {
+      const x = (column + building.colSpan / 2) * block.size.x;
+      const y = building.size.y / 2 + block.size.y - 0.01;
+      const z = (row + building.rowSpan / 2) * block.size.z;
+      building.mesh.position.set(x, y, z);
+    }
+
+    return building;
   }
 
   /**
@@ -250,20 +255,26 @@ class Map {
     const maxSize = Math.max(this.width, this.height) * BlockUnit; // 地图最长尺寸
     const centerX = (this.width * BlockUnit) / 2; // 地图X向中心
     const centerZ = (this.height * BlockUnit) / 2; // 地图Z向中心
+    const {
+      scene,
+      camera,
+      controls,
+      lights,
+    } = frame;
 
     /* 场景设置 */
-    frame.scene.fog = new Fog(0x0, maxSize, maxSize * 2); // 不受雾气影响的范围为1倍最长尺寸，2倍最长尺寸外隐藏
-    frame.camera.far = maxSize * 2; // 2倍最长尺寸外不显示
-    frame.camera.position.set(centerX, centerZ * 3, centerZ * 3);
-    frame.camera.updateProjectionMatrix();
-    frame.controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
+    scene.fog = new Fog(0x0, maxSize, maxSize * 2); // 不受雾气影响的范围为1倍最长尺寸，2倍最长尺寸外隐藏
+    camera.far = maxSize * 2; // 2倍最长尺寸外不显示
+    camera.position.set(centerX, centerZ * 3, centerZ * 3);
+    camera.updateProjectionMatrix();
+    controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
 
     /* 绑定并添加建筑 */
     this.blockData.forEach((item) => {
       if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
         const { row, column, buildingInfo } = item;
         const building = this.bindBuilding(row, column, buildingInfo);
-        if (building !== null) { frame.scene.add(building.mesh); }
+        if (building !== null) { scene.add(building.mesh); }
       }
     });
 
@@ -276,21 +287,21 @@ class Map {
       hour,
       phi,
     } = this.light;
-    frame.lights.envLight.color = new Color(envColor);
-    frame.lights.envLight.intensity = envIntensity;
-    frame.lights.sunLight.color = new Color(color);
-    frame.lights.sunLight.intensity = intensity;
+    lights.envLight.color = new Color(envColor);
+    lights.envLight.intensity = envIntensity;
+    lights.sunLight.color = new Color(color);
+    lights.sunLight.intensity = intensity;
 
-    let mapHour = hour ? hour : new Date().getHours(); // 如果未指定地图时间，则获取本地时间
+    let mapHour = hour || new Date().getHours(); // 如果未指定地图时间，则获取本地时间
     if (mapHour < 6 || mapHour > 18) { // 时间为夜间时定义夜间光源
       mapHour = mapHour < 6 ? mapHour + 12 : mapHour % 12;
-      frame.lights.sunLight.intensity = 0.6;
-      frame.lights.sunLight.color.set(0xffffff);
-      frame.lights.envLight.color.set(0x5C6C7C);
+      lights.sunLight.intensity = 0.6;
+      lights.sunLight.color.set(0xffffff);
+      lights.envLight.color.set(0x5C6C7C);
     }
 
     const randomDeg = Math.floor(Math.random() * 360) + 1;
-    const mapPhi = phi ? phi : randomDeg; // 如果未指定方位角，则使用随机方位角
+    const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
     const lightRad = maxSize; // 光源半径为地图最大尺寸
     const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
     const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
@@ -300,26 +311,26 @@ class Map {
     const lightPosX = lightRad * sinTheta * cosPhi + centerX;
     const lightPosY = lightRad * cosTheta;
     const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
-    frame.lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
-    frame.lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
-    frame.lights.sunLight.target.updateWorldMatrix(false, true);
+    lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
+    lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
+    lights.sunLight.target.updateWorldMatrix(false, true);
 
-    frame.lights.sunLight.castShadow = true; // 设置光源阴影
-    frame.lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
-    frame.lights.sunLight.shadow.camera.right = maxSize / 2;
-    frame.lights.sunLight.shadow.camera.top = maxSize / 2;
-    frame.lights.sunLight.shadow.camera.bottom = -maxSize / 2;
-    frame.lights.sunLight.shadow.camera.near = maxSize / 2;
-    frame.lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
-    frame.lights.sunLight.shadow.bias = 0.0001;
-    frame.lights.sunLight.shadow.mapSize.set(4096, 4096);
-    frame.lights.sunLight.shadow.camera.updateProjectionMatrix();
+    lights.sunLight.castShadow = true; // 设置光源阴影
+    lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
+    lights.sunLight.shadow.camera.right = maxSize / 2;
+    lights.sunLight.shadow.camera.top = maxSize / 2;
+    lights.sunLight.shadow.camera.bottom = -maxSize / 2;
+    lights.sunLight.shadow.camera.near = maxSize / 2;
+    lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
+    lights.sunLight.shadow.bias = 0.0001;
+    lights.sunLight.shadow.mapSize.set(4096, 4096);
+    lights.sunLight.shadow.camera.updateProjectionMatrix();
 
     /* 添加子对象 */
-    frame.scene.add(this.mesh);
-    frame.scene.add(frame.lights.envLight);
-    frame.scene.add(frame.lights.sunLight);
-    frame.scene.add(frame.lights.sunLight.target);
+    scene.add(this.mesh);
+    scene.add(lights.envLight);
+    scene.add(lights.sunLight);
+    scene.add(lights.sunLight.target);
 
     // /** 创建辅助对象，包括灯光参数控制器等 */
     // const gui = new dat.GUI();
@@ -357,5 +368,6 @@ class Map {
     // frame.scene.add(helper);
   }
 }
+
 
 export default Map;
