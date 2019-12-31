@@ -9,7 +9,6 @@ import { ResourcesList } from '../../modules/loaders/ResourceLoader.js';
 import {
   BlockInfo,
   BuildingInfo,
-  LightInfo,
   MapInfo,
   WaveInfo,
 } from '../../modules/MapInfo.js';
@@ -24,6 +23,7 @@ import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
 import Building from '../buildings/Building.js';
+import Decoration from '../buildings/Decoration.js';
 import { BlockUnit } from '../constant.js';
 
 
@@ -42,22 +42,24 @@ class Map {
 
   private readonly resList: ResourcesList; // 全资源列表
 
-  private readonly light: LightInfo; // 光源信息
-
   private readonly mesh: Mesh; // 地图网格体
 
+  private readonly data: MapInfo; // 原始地图信息
+
   constructor(data: MapInfo, resList: ResourcesList) {
+    this.data = data;
     this.name = data.name;
     this.width = data.mapWidth;
     this.height = data.mapHeight;
     this.enemyNum = data.enemyNum;
-    this.light = data.light;
     this.waves = data.waves;
     this.resList = resList;
 
     this.blockData = new Array(this.width * this.height).fill(null);
-    data.blockInfo.forEach((info) => { // 建立砖块数据
+    const blockInfo: BlockInfo[] = JSON.parse(JSON.stringify(data.blockInfo));
+    blockInfo.forEach((info) => { // 建立无建筑信息的空白地图
       const { row, column, heightAlpha } = info;
+      delete info.buildingInfo;
       const index = row * this.width + column;
       const blockSize = new Vector3(BlockUnit, heightAlpha * BlockUnit, BlockUnit);
       this.blockData[index] = info;
@@ -137,7 +139,9 @@ class Map {
     for (let row = 0; row < this.height; row += 1) { // 遍历整个地图几何
       for (let column = 0; column < this.width; column += 1) {
         const thisBlock = this.getBlock(row, column);
-        if (thisBlock) { // 该处有方块（不为null）才构造几何
+        if (thisBlock === null) { // 该处无方块时加入空元组占位
+          sideGroup.push([0, 0]);
+        } else { // 该处有方块（不为null）才构造几何
           const thisHeight = thisBlock.heightAlpha;
 
           faces.forEach(({ corners, normal }) => {
@@ -211,40 +215,119 @@ class Map {
   }
 
   /**
-   * 创建建筑实例并向地图添加/替换建筑绑定，并返回绑定后的建筑实例
+   * 创建建筑实例并向地图添加建筑绑定，并返回绑定后的建筑实例
+   * 跨距建筑：范围中所有砖块均有buildingInfo信息，但只有主块有inst实例
+   * 绑定建筑后必须手动将建筑的mesh添加至scene
    * @param row: 绑定目标行数
    * @param column: 绑定目标列数
    * @param info: 绑定目标建筑信息
    */
   bindBuilding(row: number, column: number, info: BuildingInfo): Building | null {
-    const block = this.getBlock(row, column); // 目标位置原砖块
-    if (!block) { return null; } // 检查目标位置是否有砖块
+    /* 目标位置无砖块，则返回null放置失败 */
+    const block = this.getBlock(row, column);
+    if (block === null) { return null; }
 
-    /* 原砖块上有建筑信息，则废弃原建筑的inst实例再用新建筑信息覆盖 */
-    if (block.buildingInfo && block.buildingInfo.inst) { // TODO 未考虑跨距建筑
-      disposeResources(block.buildingInfo.inst.mesh); // TODO: 在砖块不等高时不报错，而是以范围内最高砖块进行放置
-    }
-    block.buildingInfo = info;
-
+    /* 目标建筑未创建实体则返回null放置失败 */
     const { entity } = this.resList.model[info.desc];
-    if (entity === undefined) {
-      return null;
-    }
-    const building = new Building(entity.clone(), info);
-    Object.defineProperty(block.buildingInfo, 'inst', {
-      value: building,
-      configurable: true,
-      enumerable: true,
-    });
+    if (entity === undefined) { return null; }
 
+    const rowSpan = info.rowSpan ? info.rowSpan : 1;
+    const colSpan = info.colSpan ? info.colSpan : 1;
+    /* 检查跨距建筑范围内的砖块是否有buildingInfo，有则返回null放置失败 */
+    for (let x = 0; x < rowSpan; x += 1) {
+      for (let y = 0; y < colSpan; y += 1) {
+        const thisBlock = this.getBlock(row + x, column + y);
+        if (thisBlock !== null && Object.prototype.hasOwnProperty.call(thisBlock, 'buildingInfo')) {
+          console.warn(`无法绑定建筑：(${row}, ${column})处已存在建筑导致冲突`);
+          return null; // 不能合并，否则新建的buildingInfo会污染该跨距区域
+        }
+      }
+    }
+    /* 查找跨距建筑范围内的最高砖块，并添加建筑信息 */
+    let highestAlpha = block.heightAlpha; // 砖块的最高Y轴尺寸系数
+    for (let x = 0; x < rowSpan; x += 1) {
+      for (let y = 0; y < colSpan; y += 1) {
+        const thisBlock = this.getBlock(row + x, column + y);
+        if (thisBlock !== null) {
+          const { heightAlpha } = thisBlock; // 寻找最高块的高度
+          highestAlpha = heightAlpha > highestAlpha ? heightAlpha : highestAlpha;
+          Object.defineProperty(thisBlock, 'buildingInfo', {
+            value: info,
+            configurable: true,
+            enumerable: true,
+          }); // 范围内砖块均定义建筑信息
+        }
+      }
+    }
+    /* 创建建筑实体并添加到当前位置的建筑信息实例，定义主建筑位置 */
+    let building: Building;
+    if (info.desc === 'destination' || info.desc === 'entry') {
+      building = new Building(entity.clone(), info);
+    } else {
+      building = new Decoration(entity.clone(), info);
+    }
+    Object.defineProperties(block.buildingInfo, {
+      inst: {
+        value: building,
+        configurable: true,
+        enumerable: true,
+      },
+      row: {
+        value: row,
+        configurable: true,
+        enumerable: true,
+      },
+      column: {
+        value: column,
+        configurable: true,
+        enumerable: true,
+      },
+    });
+    /* 放置建筑 */
     if (block.size !== undefined) {
       const x = (column + building.colSpan / 2) * block.size.x;
-      const y = building.size.y / 2 + block.size.y - 0.01;
+      const y = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
       const z = (row + building.rowSpan / 2) * block.size.z;
       building.mesh.position.set(x, y, z);
     }
-
     return building;
+  }
+
+  /**
+   * 从指定的行/列移除建筑，无需手动从scene中移除实例
+   * @param r: 要移除的建筑所在行
+   * @param c: 要移除的建筑所在列
+   */
+  removeBuilding(r: number, c: number): void {
+    /* 目标砖块不存在，或目标砖块上没有buildingInfo属性直接返回 */
+    const block = this.getBlock(r, c);
+    if (block === null || block.buildingInfo === undefined) {
+      return;
+    }
+
+    /* 取目标砖块上的建筑信息，遍历其跨距，废弃主块的实例并删除跨距内的buildingInfo */
+    const { buildingInfo } = block;
+    const {
+      row,
+      column,
+      rowSpan,
+      colSpan,
+    } = buildingInfo;
+    if (row !== undefined && column !== undefined) { // 废弃主块的建筑实例
+      const mainBlock = this.getBlock(row, column);
+      if (mainBlock !== null && mainBlock.buildingInfo !== undefined && mainBlock.buildingInfo.inst !== undefined) {
+        disposeResources(mainBlock.buildingInfo.inst.mesh);
+      }
+
+      if (rowSpan !== undefined && colSpan !== undefined) {
+        for (let x = 0; x < rowSpan; x += 1) { // 从主建筑开始，删除所在跨距中的buildingInfo
+          for (let z = 0; z < colSpan; z += 1) {
+            const thisBlock = this.getBlock(row + x, column + z);
+            if (thisBlock !== null) { delete thisBlock.buildingInfo; }
+          }
+        }
+      }
+    }
   }
 
   /**
@@ -269,11 +352,12 @@ class Map {
     camera.updateProjectionMatrix();
     controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
 
-    /* 绑定并添加建筑 */
-    this.blockData.forEach((item) => {
+    /* 从原始数据绑定并添加建筑 */
+    this.data.blockInfo.forEach((item) => {
       if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
-        const { row, column, buildingInfo } = item;
-        const building = this.bindBuilding(row, column, buildingInfo);
+        const { row, column } = item;
+        this.removeBuilding(row, column);
+        const building = this.bindBuilding(row, column, item.buildingInfo);
         if (building !== null) { scene.add(building.mesh); }
       }
     });
@@ -286,7 +370,7 @@ class Map {
       intensity,
       hour,
       phi,
-    } = this.light;
+    } = this.data.light;
     lights.envLight.color = new Color(envColor);
     lights.envLight.intensity = envIntensity;
     lights.sunLight.color = new Color(color);

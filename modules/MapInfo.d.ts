@@ -17,11 +17,13 @@ export interface ResourceInfo {
 
 export interface BuildingInfo { // 建筑信息
   desc: string; // 建筑描述（大类）
-  rotation: number; // 建筑旋转角度（deg）
-  sizeAlpha: number; // 建筑缩放比例
+  rotation?: number; // 建筑旋转角度（deg），默认为空表示0度
+  sizeAlpha?: number; // 建筑缩放比例，默认为空表示1倍
+  row?: number; // 主建筑行位置，绑定建筑时指定
+  column?: number; // 主建筑列位置，绑定建筑时指定
   rowSpan?: number; // 建筑行数跨距，需跨多行时指定
   colSpan?: number; // 建筑列数跨距，需跨多列时指定
-  inst?: Building; // 建筑物实例，在添加建筑时生成
+  inst?: Building; // 建筑物实例，绑定建筑时指定
 }
 
 

@@ -28,20 +28,23 @@ class Building {
    * @param info: 建筑信息对象
    */
   constructor(mesh: Mesh, info: BuildingInfo) {
-    const { rotation, geometry } = mesh;
     this.colSpan = info.colSpan ? info.colSpan : 1;
     this.rowSpan = info.rowSpan ? info.rowSpan : 1;
+    const rotation = info.rotation ? info.rotation : 0;
+    const sizeAlpha = info.sizeAlpha ? info.sizeAlpha : 1;
 
-    rotation.y = _Math.degToRad(info.rotation);
-    geometry.center(); // 重置原点为几何中心
-    geometry.computeBoundingBox();
-    geometry.boundingBox.getCenter(mesh.position);
+    mesh.rotation.y = _Math.degToRad(rotation);
+    mesh.geometry.center(); // 重置原点为几何中心
+    mesh.geometry.computeBoundingBox();
+    mesh.geometry.boundingBox.getCenter(mesh.position);
     const wrapper = new Object3D(); // 使用外部对象包裹
     wrapper.add(mesh);
     const originBox = new Box3().setFromObject(wrapper);
     const originSize = originBox.getSize(new Vector3());
-    const mag = (BlockUnit * this.colSpan * info.sizeAlpha - 0.01) / originSize.x;
-    wrapper.scale.set(mag, mag, mag); // 按X方向的比例缩放
+    const magX = (BlockUnit * this.colSpan * sizeAlpha - 0.02) / originSize.x;
+    const magZ = (BlockUnit * this.rowSpan * sizeAlpha - 0.02) / originSize.z;
+    const magY = Math.min(magX, magZ);
+    wrapper.scale.set(magX, magY, magZ);
 
     this.mesh = wrapper;
     const box = new Box3().setFromObject(this.mesh);
