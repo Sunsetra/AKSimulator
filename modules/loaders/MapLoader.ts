@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { MapInfo } from '../MapInfo.js';
+import { MapInfo } from '../MapInfo';
 
 
 /**

@@ -3,7 +3,6 @@
  * @author: 落日羽音
  */
 
-import { ResourceInfo } from '../../modules/MapInfo.js';
 import { GLTFLoader } from '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 import {
   DoubleSide,
@@ -22,6 +21,7 @@ import { MeshPhysicalMaterial } from '../../node_modules/three/src/materials/Mes
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../../node_modules/three/src/textures/Texture.js';
 import { BlockUnit } from '../constant.js';
+import { ResourceInfo } from '../MapInfo';
 
 
 interface Resource { // 资源对象
@@ -34,8 +34,6 @@ interface Resource { // 资源对象
 
 
 interface ResourcesList { // 总资源列表对象
-  [resType: string]: { [texType: string]: Resource };
-
   block: { [texType: string]: Resource }; // 砖块贴图
   EDPoint: { [texType: string]: Resource }; // 进出点贴图
   enemy: { [texType: string]: Resource }; // 敌人贴图
@@ -45,6 +43,8 @@ interface ResourcesList { // 总资源列表对象
     destination: Resource;
     entry: Resource;
   }; // 导入模型
+
+  [resType: string]: { [texType: string]: Resource };
 }
 
 
@@ -83,6 +83,34 @@ class ResourceLoader {
     this.texLoader = new TextureLoader(this.loadManager);
     this.gltfLoader = new GLTFLoader(this.loadManager);
     this.loadingFlag = false;
+  }
+
+  /**
+   * 从总资源字典中加载地图信息中需要的资源并创建实体
+   * @param mapRes: 地图信息中所需的资源列表
+   */
+  load(mapRes: ResourceInfo): void {
+    this.mapResList = mapRes;
+    /* 加载进出点贴图 */
+    Object.values(this.resListAll.EDPoint).forEach((texRes) => {
+      this.loadTexture(texRes);
+    });
+
+    /* 加载砖块及敌人贴图 */
+    ['block', 'enemy'].forEach((category) => {
+      mapRes[category].forEach((texType: string) => {
+        const thisRes = this.resListAll[category][texType];
+        this.loadTexture(thisRes);
+      });
+    });
+
+    /* 加载建筑模型 */
+    mapRes.model.forEach((modelType) => {
+      const thisRes = this.resListAll.model[modelType];
+      this.loadModel(thisRes);
+    });
+
+    if (!this.loadingFlag) { this.loadManager.onLoad(); } // 未实际加载时手动调用加载完成回调
   }
 
   /**
@@ -197,35 +225,11 @@ class ResourceLoader {
       });
     }
   }
-
-  /**
-   * 从总资源字典中加载地图信息中需要的资源并创建实体
-   * @param mapRes: 地图信息中所需的资源列表
-   */
-  load(mapRes: ResourceInfo): void {
-    this.mapResList = mapRes;
-    /* 加载进出点贴图 */
-    Object.values(this.resListAll.EDPoint).forEach((texRes) => {
-      this.loadTexture(texRes);
-    });
-
-    /* 加载砖块及敌人贴图 */
-    ['block', 'enemy'].forEach((category) => {
-      mapRes[category].forEach((texType: string) => {
-        const thisRes = this.resListAll[category][texType];
-        this.loadTexture(thisRes);
-      });
-    });
-
-    /* 加载建筑模型 */
-    mapRes.model.forEach((modelType) => {
-      const thisRes = this.resListAll.model[modelType];
-      this.loadModel(thisRes);
-    });
-
-    if (!this.loadingFlag) { this.loadManager.onLoad(); } // 未实际加载时手动调用加载完成回调
-  }
 }
 
 
-export { Resource, ResourcesList, ResourceLoader };
+export {
+  Resource,
+  ResourcesList,
+  ResourceLoader,
+};

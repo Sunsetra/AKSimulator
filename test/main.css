@@ -28,7 +28,7 @@ main {
   font-family: "STXihei", "Source Han Sans", "Microsoft YaHei", "SimHei", sans-serif;
   text-align: center;
   transform: translateX(-50%) translateY(-50%);
-  transition: all 0.5s cubic-bezier(.17,.84,.44,1);
+  transition: all 0.5s cubic-bezier(.17, .84, .44, 1);
   user-select: none;
   z-index: 1;
 }
@@ -324,6 +324,10 @@ canvas {
 
 .percentage {
   margin: 0 0.5rem;
-  position: relative;
+  position: absolute;
   text-align: center;
+}
+
+#right {
+  right: 0;
 }

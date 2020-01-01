@@ -1,6 +1,6 @@
 import { FrontSide } from '../../node_modules/three/src/constants.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { BuildingInfo } from '../MapInfo.js';
+import { BuildingInfo } from '../MapInfo';
 import Building from './Building.js';
 
 

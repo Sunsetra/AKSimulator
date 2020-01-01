@@ -1,15 +1,7 @@
-import MapLoader from 'modules/loaders/MapLoader.js';
+import MapLoader from '../modules/loaders/MapLoader.js';
 
 
 class LoadingUI {
-  /** 折叠地图选择侧边栏 */
-  private static collapseMapSelect(): void {
-    const expandMapItem: HTMLElement | null = document.querySelector('.map-item.map-item-clicked');
-    if (expandMapItem) {
-      expandMapItem.classList.remove('map-item-clicked');
-    }
-  }
-
   /**
    * 更新加载提示
    * @param text - 要拼接在原文本后的加载提示信息
@@ -139,6 +131,14 @@ class LoadingUI {
       }, { once: true });
     }
     LoadingUI.collapseMapSelect();
+  }
+
+  /** 折叠地图选择侧边栏 */
+  private static collapseMapSelect(): void {
+    const expandMapItem: HTMLElement | null = document.querySelector('.map-item.map-item-clicked');
+    if (expandMapItem) {
+      expandMapItem.classList.remove('map-item-clicked');
+    }
   }
 }
 

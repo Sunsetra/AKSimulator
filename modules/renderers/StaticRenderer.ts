@@ -1,4 +1,4 @@
-import GameFrame from '../../modules/core/GameFrame.js';
+import GameFrame from '../core/GameFrame.js';
 
 
 class StaticRenderer {
@@ -11,6 +11,13 @@ class StaticRenderer {
     this.needRender = false;
   }
 
+  /** 静态渲染入口点函数 */
+  requestRender(): void {
+    if (!this.needRender) {
+      this.needRender = true;
+      requestAnimationFrame(() => this.render());
+    }
+  }
 
   /** 静态动画循环 */
   private render(): void {
@@ -27,14 +34,6 @@ class StaticRenderer {
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
     this.frame.renderer.render(this.frame.scene, this.frame.camera);
-  }
-
-  /** 静态渲染入口点函数 */
-  requestRender(): void {
-    if (!this.needRender) {
-      this.needRender = true;
-      requestAnimationFrame(() => this.render());
-    }
   }
 }
 

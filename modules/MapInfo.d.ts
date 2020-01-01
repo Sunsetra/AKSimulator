@@ -7,11 +7,11 @@ import Building from './buildings/Building.js';
 
 
 export interface ResourceInfo {
-  [resType: string]: string[];
-
   block: string[]; // 所需的砖块贴图
   enemy: string[]; // 所需的敌人贴图
   model: string[]; // 所需的模型
+
+  [resType: string]: string[];
 }
 
 

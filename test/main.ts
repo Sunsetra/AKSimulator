@@ -5,8 +5,8 @@ import MapLoader from '../modules/loaders/MapLoader.js';
 import {
   ResourceLoader,
   ResourcesList,
-} from '../modules/loaders/ResourceLoader.js';
-import { MapInfo } from '../modules/MapInfo.js';
+} from '../modules/loaders/ResourceLoader';
+import { MapInfo } from '../modules/MapInfo';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
 import {
   checkWebGLVersion,

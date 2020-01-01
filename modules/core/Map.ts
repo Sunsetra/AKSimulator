@@ -3,17 +3,6 @@
  * @author: 落日羽音
  */
 
-import GameFrame from '../../modules/core/GameFrame.js';
-import { ResourcesList } from '../../modules/loaders/ResourceLoader.js';
-
-import {
-  BlockInfo,
-  BuildingInfo,
-  MapInfo,
-  WaveInfo,
-} from '../../modules/MapInfo.js';
-import { disposeResources } from '../../modules/utils.js';
-
 import { BufferAttribute } from '../../node_modules/three/src/core/BufferAttribute.js';
 import { BufferGeometry } from '../../node_modules/three/src/core/BufferGeometry.js';
 import { Material } from '../../node_modules/three/src/materials/Material.js';
@@ -25,6 +14,16 @@ import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
 import { BlockUnit } from '../constant.js';
+import { ResourcesList } from '../loaders/ResourceLoader';
+
+import {
+  BlockInfo,
+  BuildingInfo,
+  MapInfo,
+  WaveInfo,
+} from '../MapInfo';
+import { disposeResources } from '../utils.js';
+import GameFrame from './GameFrame.js';
 
 
 class Map {

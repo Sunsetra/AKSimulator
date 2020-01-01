@@ -3,11 +3,6 @@
  * @author: 落日羽音
  */
 
-import {
-  WebGL2Available,
-  WebGLAvailable,
-  WebGLUnavailable,
-} from '../modules/constant.js';
 import { WEBGL } from '../node_modules/three/examples/jsm/WebGL.js';
 import { BufferGeometry } from '../node_modules/three/src/core/BufferGeometry.js';
 
@@ -16,6 +11,11 @@ import { Object3D } from '../node_modules/three/src/core/Object3D.js';
 import { Material } from '../node_modules/three/src/materials/Material.js';
 import { Mesh } from '../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../node_modules/three/src/textures/Texture.js';
+import {
+  WebGL2Available,
+  WebGLAvailable,
+  WebGLUnavailable,
+} from './constant.js';
 
 
 /**
