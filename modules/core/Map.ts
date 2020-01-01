@@ -33,9 +33,9 @@ class Map {
 
   readonly height: number; // 地图高度格数
 
-  readonly enemyNum: number; // 敌人总数量
+  enemyNum: number; // 敌人总数量
 
-  readonly waves: WaveInfo[]; // 原始波次信息
+  waves: WaveInfo[]; // 波次信息
 
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
@@ -47,12 +47,12 @@ class Map {
 
   constructor(data: MapInfo, resList: ResourcesList) {
     this.data = data;
+    this.resList = resList;
     this.name = data.name;
     this.width = data.mapWidth;
     this.height = data.mapHeight;
     this.enemyNum = data.enemyNum;
-    this.waves = data.waves;
-    this.resList = resList;
+    this.waves = JSON.parse(JSON.stringify(data.waves));
 
     this.blockData = new Array(this.width * this.height).fill(null);
     const blockInfo: BlockInfo[] = JSON.parse(JSON.stringify(data.blockInfo));
@@ -70,134 +70,136 @@ class Map {
     });
 
     /* 创建地形网格几何体 */
-    const positions: number[] = []; // 存放顶点坐标
-    const normals: number[] = []; // 存放面法向量
-    const indices: number[] = []; // 存放顶点序列索引
-    const uvs: number[] = []; // 存放顶点UV信息
-    const sideGroup: [number, number][] = []; // 侧面贴图顶点组信息，每个元组是一个组的[start, count]
-    const faces = [
-      { // 左侧
-        normal: [-1, 0, 0],
-        corners: [
-          { pos: [0, 1, 0], uv: [0, 1] },
-          { pos: [0, 0, 0], uv: [0, 0] },
-          { pos: [0, 1, 1], uv: [1, 1] },
-          { pos: [0, 0, 1], uv: [1, 0] },
-        ],
-      },
-      { // 右侧
-        normal: [1, 0, 0],
-        corners: [
-          { pos: [1, 1, 1], uv: [0, 1] },
-          { pos: [1, 0, 1], uv: [0, 0] },
-          { pos: [1, 1, 0], uv: [1, 1] },
-          { pos: [1, 0, 0], uv: [1, 0] },
-        ],
-      },
-      { // 上侧
-        normal: [0, 0, -1],
-        corners: [
-          { pos: [1, 0, 0], uv: [0, 0] },
-          { pos: [0, 0, 0], uv: [1, 0] },
-          { pos: [1, 1, 0], uv: [0, 1] },
-          { pos: [0, 1, 0], uv: [1, 1] },
-        ],
-      },
-      { // 下侧
-        normal: [0, 0, 1],
-        corners: [
-          { pos: [0, 0, 1], uv: [0, 0] },
-          { pos: [1, 0, 1], uv: [1, 0] },
-          { pos: [0, 1, 1], uv: [0, 1] },
-          { pos: [1, 1, 1], uv: [1, 1] },
-        ],
-      },
-      { // 底侧
-        normal: [0, -1, 0],
-        corners: [
-          { pos: [1, 0, 1], uv: [1, 0] },
-          { pos: [0, 0, 1], uv: [0, 0] },
-          { pos: [1, 0, 0], uv: [1, 1] },
-          { pos: [0, 0, 0], uv: [0, 1] },
-        ],
-      },
-      { // 顶侧
-        normal: [0, 1, 0],
-        corners: [
-          { pos: [0, 1, 1], uv: [1, 1] },
-          { pos: [1, 1, 1], uv: [0, 1] },
-          { pos: [0, 1, 0], uv: [1, 0] },
-          { pos: [1, 1, 0], uv: [0, 0] },
-        ],
-      },
-    ];
+    {
+      const positions: number[] = []; // 存放顶点坐标
+      const normals: number[] = []; // 存放面法向量
+      const indices: number[] = []; // 存放顶点序列索引
+      const uvs: number[] = []; // 存放顶点UV信息
+      const sideGroup: [number, number][] = []; // 侧面贴图顶点组信息，每个元组是一个组的[start, count]
+      const faces = [
+        { // 左侧
+          normal: [-1, 0, 0],
+          corners: [
+            { pos: [0, 1, 0], uv: [0, 1] },
+            { pos: [0, 0, 0], uv: [0, 0] },
+            { pos: [0, 1, 1], uv: [1, 1] },
+            { pos: [0, 0, 1], uv: [1, 0] },
+          ],
+        },
+        { // 右侧
+          normal: [1, 0, 0],
+          corners: [
+            { pos: [1, 1, 1], uv: [0, 1] },
+            { pos: [1, 0, 1], uv: [0, 0] },
+            { pos: [1, 1, 0], uv: [1, 1] },
+            { pos: [1, 0, 0], uv: [1, 0] },
+          ],
+        },
+        { // 上侧
+          normal: [0, 0, -1],
+          corners: [
+            { pos: [1, 0, 0], uv: [0, 0] },
+            { pos: [0, 0, 0], uv: [1, 0] },
+            { pos: [1, 1, 0], uv: [0, 1] },
+            { pos: [0, 1, 0], uv: [1, 1] },
+          ],
+        },
+        { // 下侧
+          normal: [0, 0, 1],
+          corners: [
+            { pos: [0, 0, 1], uv: [0, 0] },
+            { pos: [1, 0, 1], uv: [1, 0] },
+            { pos: [0, 1, 1], uv: [0, 1] },
+            { pos: [1, 1, 1], uv: [1, 1] },
+          ],
+        },
+        { // 底侧
+          normal: [0, -1, 0],
+          corners: [
+            { pos: [1, 0, 1], uv: [1, 0] },
+            { pos: [0, 0, 1], uv: [0, 0] },
+            { pos: [1, 0, 0], uv: [1, 1] },
+            { pos: [0, 0, 0], uv: [0, 1] },
+          ],
+        },
+        { // 顶侧
+          normal: [0, 1, 0],
+          corners: [
+            { pos: [0, 1, 1], uv: [1, 1] },
+            { pos: [1, 1, 1], uv: [0, 1] },
+            { pos: [0, 1, 0], uv: [1, 0] },
+            { pos: [1, 1, 0], uv: [0, 0] },
+          ],
+        },
+      ];
 
-    let start = 0; // 贴图顶点组开始索引
-    let count = 0; // 贴图单顶点组计数
+      let start = 0; // 贴图顶点组开始索引
+      let count = 0; // 贴图单顶点组计数
 
-    for (let row = 0; row < this.height; row += 1) { // 遍历整个地图几何
-      for (let column = 0; column < this.width; column += 1) {
-        const thisBlock = this.getBlock(row, column);
-        if (thisBlock === null) { // 该处无方块时加入空元组占位
-          sideGroup.push([0, 0]);
-        } else { // 该处有方块（不为null）才构造几何
-          const thisHeight = thisBlock.heightAlpha;
+      for (let row = 0; row < this.height; row += 1) { // 遍历整个地图几何
+        for (let column = 0; column < this.width; column += 1) {
+          const thisBlock = this.getBlock(row, column);
+          if (thisBlock === null) { // 该处无方块时加入空元组占位
+            sideGroup.push([0, 0]);
+          } else { // 该处有方块（不为null）才构造几何
+            const thisHeight = thisBlock.heightAlpha;
 
-          faces.forEach(({ corners, normal }) => {
-            const sideBlock = this.getBlock(row + normal[2], column + normal[0]);
-            const sideHeight = sideBlock ? sideBlock.heightAlpha : 0; // 当前侧块的高度系数
-            if (thisHeight - sideHeight > 0 || normal[1]) { // 当前侧面高于侧块或是上下表面
-              const ndx = positions.length / 3; // 置于首次改变position数组之前
-              corners.forEach(({ pos, uv }) => {
-                const x = pos[0] * BlockUnit;
-                const y = pos[1] * thisHeight * BlockUnit;
-                const z = pos[2] * BlockUnit;
-                positions.push(x + column * BlockUnit, y, z + row * BlockUnit);
-                normals.push(...normal);
-                uvs.push(...uv);
-              });
-              indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
-            }
-          });
-          count = indices.length - 12 - start; // 侧面组顶点新增数量
-          sideGroup.push([start, count]); // 加入侧面顶点数据
-          start = indices.length; // 下一组顶点的开始索引
+            faces.forEach(({ corners, normal }) => {
+              const sideBlock = this.getBlock(row + normal[2], column + normal[0]);
+              const sideHeight = sideBlock ? sideBlock.heightAlpha : 0; // 当前侧块的高度系数
+              if (thisHeight - sideHeight > 0 || normal[1]) { // 当前侧面高于侧块或是上下表面
+                const ndx = positions.length / 3; // 置于首次改变position数组之前
+                corners.forEach(({ pos, uv }) => {
+                  const x = pos[0] * BlockUnit;
+                  const y = pos[1] * thisHeight * BlockUnit;
+                  const z = pos[2] * BlockUnit;
+                  positions.push(x + column * BlockUnit, y, z + row * BlockUnit);
+                  normals.push(...normal);
+                  uvs.push(...uv);
+                });
+                indices.push(ndx, ndx + 1, ndx + 2, ndx + 2, ndx + 1, ndx + 3);
+              }
+            });
+            count = indices.length - 12 - start; // 侧面组顶点新增数量
+            sideGroup.push([start, count]); // 加入侧面顶点数据
+            start = indices.length; // 下一组顶点的开始索引
+          }
         }
       }
+      const mapGeometry = new BufferGeometry();
+      mapGeometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
+      mapGeometry.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
+      mapGeometry.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
+      mapGeometry.setIndex(indices);
+
+      const materialList: Material[] = []; // 创建所需的所有砖块表面贴图材质
+      const materialMap: { [matType: string]: number } = {}; // 材质类型在材质列表中的索引
+      data.resources.block.forEach((type) => {
+        const res = resList.block[type];
+        if (res.mat && res.mat instanceof Material) {
+          materialList.push(res.mat);
+          materialMap[type] = materialList.length - 1;
+        }
+      });
+
+      this.blockData.forEach((item, ndx) => { // 添加贴图顶点组
+        if (item !== null) {
+          const { texture } = item;
+          const top = texture.top ? texture.top : 'topDefault';
+          const side = texture.side ? texture.side : 'sideDefault';
+          const bottom = texture.bottom ? texture.bottom : 'bottomDefault';
+          const [s, c] = sideGroup[ndx]; // 每组的开始索引和计数
+
+          mapGeometry.addGroup(s + c + 6, 6, materialMap[top]); // 顶面组
+          mapGeometry.addGroup(s + c, 6, materialMap[bottom]); // 底面组
+          if (count) { mapGeometry.addGroup(s, c, materialMap[side]); } // 侧面需要建面时添加侧面组
+        }
+      });
+
+      this.mesh = new Mesh(mapGeometry, materialList);
+      this.mesh.castShadow = true;
+      this.mesh.receiveShadow = true;
     }
-    const mapGeometry = new BufferGeometry();
-    mapGeometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
-    mapGeometry.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
-    mapGeometry.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
-    mapGeometry.setIndex(indices);
-
-    const materialList: Material[] = []; // 创建所需的所有砖块表面贴图材质
-    const materialMap: { [matType: string]: number } = {}; // 材质类型在材质列表中的索引
-    data.resources.block.forEach((type) => {
-      const res = resList.block[type];
-      if (res.mat && res.mat instanceof Material) {
-        materialList.push(res.mat);
-        materialMap[type] = materialList.length - 1;
-      }
-    });
-
-    this.blockData.forEach((item, ndx) => { // 添加贴图顶点组
-      if (item !== null) {
-        const { texture } = item;
-        const top = texture.top ? texture.top : 'topDefault';
-        const side = texture.side ? texture.side : 'sideDefault';
-        const bottom = texture.bottom ? texture.bottom : 'bottomDefault';
-        const [s, c] = sideGroup[ndx]; // 每组的开始索引和计数
-
-        mapGeometry.addGroup(s + c + 6, 6, materialMap[top]); // 顶面组
-        mapGeometry.addGroup(s + c, 6, materialMap[bottom]); // 底面组
-        if (count) { mapGeometry.addGroup(s, c, materialMap[side]); } // 侧面需要建面时添加侧面组
-      }
-    });
-
-    this.mesh = new Mesh(mapGeometry, materialList);
-    this.mesh.castShadow = true;
-    this.mesh.receiveShadow = true;
   }
 
   /**
@@ -282,6 +284,7 @@ class Map {
         enumerable: true,
       },
     });
+
     /* 放置建筑 */
     if (block.size !== undefined) {
       const x = (column + building.colSpan / 2) * block.size.x;
@@ -300,9 +303,7 @@ class Map {
   removeBuilding(r: number, c: number): void {
     /* 目标砖块不存在，或目标砖块上没有buildingInfo属性直接返回 */
     const block = this.getBlock(r, c);
-    if (block === null || block.buildingInfo === undefined) {
-      return;
-    }
+    if (block === null || block.buildingInfo === undefined) { return; }
 
     /* 取目标砖块上的建筑信息，遍历其跨距，废弃主块的实例并删除跨距内的buildingInfo */
     const { buildingInfo } = block;
@@ -361,53 +362,55 @@ class Map {
       }
     });
 
-    /* 设置灯光 */
-    const {
-      envIntensity,
-      envColor,
-      color,
-      intensity,
-      hour,
-      phi,
-    } = this.data.light;
-    lights.envLight.color = new Color(envColor);
-    lights.envLight.intensity = envIntensity;
-    lights.sunLight.color = new Color(color);
-    lights.sunLight.intensity = intensity;
+    /* 设置场景灯光 */
+    {
+      const {
+        envIntensity,
+        envColor,
+        color,
+        intensity,
+        hour,
+        phi,
+      } = this.data.light;
+      lights.envLight.color = new Color(envColor);
+      lights.envLight.intensity = envIntensity;
+      lights.sunLight.color = new Color(color);
+      lights.sunLight.intensity = intensity;
 
-    let mapHour = hour || new Date().getHours(); // 如果未指定地图时间，则获取本地时间
-    if (mapHour < 6 || mapHour > 18) { // 时间为夜间时定义夜间光源
-      mapHour = mapHour < 6 ? mapHour + 12 : mapHour % 12;
-      lights.sunLight.intensity = 0.6;
-      lights.sunLight.color.set(0xffffff);
-      lights.envLight.color.set(0x5C6C7C);
+      let mapHour = hour || new Date().getHours(); // 如果未指定地图时间，则获取本地时间
+      if (mapHour < 6 || mapHour > 18) { // 时间为夜间时定义夜间光源
+        mapHour = mapHour < 6 ? mapHour + 12 : mapHour % 12;
+        lights.sunLight.intensity = 0.6;
+        lights.sunLight.color.set(0xffffff);
+        lights.envLight.color.set(0x5C6C7C);
+      }
+
+      const randomDeg = Math.floor(Math.random() * 360) + 1;
+      const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
+      const lightRad = maxSize; // 光源半径为地图最大尺寸
+      const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
+      const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
+      const sinTheta = Math.sin(_Math.degToRad(theta));
+      const cosPhi = Math.cos(_Math.degToRad(mapPhi));
+      const sinPhi = Math.sin(_Math.degToRad(mapPhi));
+      const lightPosX = lightRad * sinTheta * cosPhi + centerX;
+      const lightPosY = lightRad * cosTheta;
+      const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
+      lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
+      lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
+      lights.sunLight.target.updateWorldMatrix(false, true);
+
+      lights.sunLight.castShadow = true; // 设置光源阴影
+      lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
+      lights.sunLight.shadow.camera.right = maxSize / 2;
+      lights.sunLight.shadow.camera.top = maxSize / 2;
+      lights.sunLight.shadow.camera.bottom = -maxSize / 2;
+      lights.sunLight.shadow.camera.near = maxSize / 2;
+      lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
+      lights.sunLight.shadow.bias = 0.0001;
+      lights.sunLight.shadow.mapSize.set(4096, 4096);
+      lights.sunLight.shadow.camera.updateProjectionMatrix();
     }
-
-    const randomDeg = Math.floor(Math.random() * 360) + 1;
-    const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
-    const lightRad = maxSize; // 光源半径为地图最大尺寸
-    const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
-    const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
-    const sinTheta = Math.sin(_Math.degToRad(theta));
-    const cosPhi = Math.cos(_Math.degToRad(mapPhi));
-    const sinPhi = Math.sin(_Math.degToRad(mapPhi));
-    const lightPosX = lightRad * sinTheta * cosPhi + centerX;
-    const lightPosY = lightRad * cosTheta;
-    const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
-    lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
-    lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
-    lights.sunLight.target.updateWorldMatrix(false, true);
-
-    lights.sunLight.castShadow = true; // 设置光源阴影
-    lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
-    lights.sunLight.shadow.camera.right = maxSize / 2;
-    lights.sunLight.shadow.camera.top = maxSize / 2;
-    lights.sunLight.shadow.camera.bottom = -maxSize / 2;
-    lights.sunLight.shadow.camera.near = maxSize / 2;
-    lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
-    lights.sunLight.shadow.bias = 0.0001;
-    lights.sunLight.shadow.mapSize.set(4096, 4096);
-    lights.sunLight.shadow.camera.updateProjectionMatrix();
 
     /* 添加子对象 */
     scene.add(this.mesh);
@@ -449,6 +452,12 @@ class Map {
     // const helper = new THREE.DirectionalLightHelper(frame.lights.sunLight);
     // helper.update();
     // frame.scene.add(helper);
+  }
+
+  /** 重置地图 */
+  resetMap(): void {
+    this.enemyNum = this.data.enemyNum;
+    this.waves = JSON.parse(JSON.stringify(this.data.waves));
   }
 }
 

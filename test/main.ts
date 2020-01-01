@@ -1,18 +1,22 @@
 import { WebGLUnavailable } from '../modules/constant.js';
 import GameFrame from '../modules/core/GameFrame.js';
 import Map from '../modules/core/Map.js';
+import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
-import {
-  ResourceLoader,
-  ResourcesList,
-} from '../modules/loaders/ResourceLoader';
+import { ResourcesList } from '../modules/loaders/ResourceLoader';
+import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
 import { MapInfo } from '../modules/MapInfo';
+import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
 import {
   checkWebGLVersion,
   disposeResources,
 } from '../modules/utils.js';
-import { LoadingUI } from './UIController.js';
+import {
+  GameController,
+  LoadingUI,
+  TimeAxisUI,
+} from './UIController.js';
 
 
 const canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -25,8 +29,7 @@ const frame = new GameFrame(canvas);
  */
 function main(mapInfo: MapInfo, resList: ResourcesList): void {
   let map: Map; // 全局当前地图对象
-  const staticRenderer = new StaticRenderer(frame);
-  const staticRender = staticRenderer.requestRender.bind(staticRenderer);
+  const staticRenderer = new StaticRenderer(frame); // 静态渲染器
 
   /**
    * 根据地图数据创建地图及建筑
@@ -37,11 +40,20 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
     map.createMap(frame);
   }
 
-  createMap(JSON.parse(JSON.stringify(mapInfo))); // 创建地图
-  staticRenderer.requestRender(); // 发出渲染请求
+  function gameStart(): void {
+    const timeAxis = new TimeAxis();
+    const timeAxisUI = new TimeAxisUI();
+    const dynamicRenderer = new DynamicRenderer(frame, timeAxis, timeAxisUI, () => { console.log('动态'); });
+    const controller = new GameController(frame.controls, staticRenderer, dynamicRenderer);
 
-  frame.controls.addEventListener('change', staticRender);
-  window.addEventListener('resize', staticRender);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') { controller.pause(); }
+    }); // 切换标签页时暂停动画
+    controller.reset();
+  }
+
+  createMap(JSON.parse(JSON.stringify(mapInfo))); // 创建地图
+  gameStart();
 }
 
 

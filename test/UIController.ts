@@ -1,4 +1,7 @@
 import MapLoader from '../modules/loaders/MapLoader.js';
+import DynamicRenderer from '../modules/renderers/DynamicRender.js';
+import StaticRenderer from '../modules/renderers/StaticRenderer.js';
+import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
 
 
 class LoadingUI {
@@ -143,6 +146,90 @@ class LoadingUI {
 }
 
 
+class GameController {
+  private readonly startBtn: HTMLElement | null;
+
+  private readonly resetBtn: HTMLElement | null;
+
+  private readonly controls: OrbitControls; // 镜头控制器
+
+  private readonly sRenderer: StaticRenderer; // 静态渲染类
+
+  private readonly staticRender: OmitThisParameter<() => void>; // 静态渲染函数
+
+  private readonly dRenderer: DynamicRenderer; // 动态渲染类
+
+  constructor(controls: OrbitControls, sRenderer: StaticRenderer, dRenderer: DynamicRenderer) {
+    this.startBtn = document.querySelector('#starter') as HTMLElement;
+    this.resetBtn = document.querySelector('#reset') as HTMLElement;
+    this.resetBtn.addEventListener('click', this.reset);
+    this.controls = controls;
+
+    this.sRenderer = sRenderer;
+    this.dRenderer = dRenderer;
+    this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
+  }
+
+  /**
+   * 开始动态渲染动画后的状态
+   */
+  start: () => void = () => {
+    if (this.startBtn !== null) {
+      this.startBtn.textContent = '⏸';
+      this.startBtn.removeEventListener('click', this.start);
+      this.startBtn.addEventListener('click', this.pause);
+      this.controls.removeEventListener('change', this.staticRender);
+      window.removeEventListener('resize', this.staticRender);
+    }
+    this.dRenderer.requestRender();
+  };
+
+  /**
+   * 暂停动态动画渲染的状态（切换为静态渲染）
+   */
+  pause: () => void = () => {
+    if (this.startBtn !== null) {
+      this.startBtn.textContent = '▶';
+      this.startBtn.removeEventListener('click', this.pause);
+      this.startBtn.addEventListener('click', this.continue);
+      this.controls.addEventListener('change', this.staticRender);
+      window.addEventListener('resize', this.staticRender);
+    }
+    this.dRenderer.pauseRender();
+  };
+
+  /**
+   * 继续渲染已暂停动画的状态
+   */
+  continue: () => void = () => {
+    if (this.startBtn !== null) {
+      this.startBtn.textContent = '⏸';
+      this.startBtn.removeEventListener('click', this.continue);
+      this.startBtn.addEventListener('click', this.pause);
+      this.controls.removeEventListener('change', this.staticRender);
+      window.removeEventListener('resize', this.staticRender);
+    }
+    this.dRenderer.continueRender();
+  };
+
+  /**
+   * 重置地图和动画后的状态（等待动画开始）
+   */
+  reset: () => void = () => {
+    this.dRenderer.resetRender();
+    if (this.startBtn !== null) {
+      this.startBtn.textContent = '▶';
+      this.startBtn.removeEventListener('click', this.pause);
+      this.startBtn.removeEventListener('click', this.continue);
+      this.startBtn.addEventListener('click', this.start);
+      this.controls.addEventListener('change', this.staticRender);
+      window.addEventListener('resize', this.staticRender);
+    }
+    this.sRenderer.requestRender();
+  };
+}
+
+
 class TimeAxisUI {
   private readonly timeAxis: HTMLElement | null;
 
@@ -274,4 +361,5 @@ class TimeAxisUI {
 export {
   LoadingUI,
   TimeAxisUI,
+  GameController,
 };

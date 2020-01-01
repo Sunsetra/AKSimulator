@@ -1,13 +1,17 @@
+/**
+ * 静态渲染器，用于静态场景
+ * @author: 落日羽音
+ */
+
 import GameFrame from '../core/GameFrame.js';
+import Render from './Render.js';
 
 
-class StaticRenderer {
+class StaticRenderer extends Render {
   private needRender: boolean;
 
-  private frame: GameFrame;
-
   constructor(frame: GameFrame) {
-    this.frame = frame;
+    super(frame);
     this.needRender = false;
   }
 
@@ -21,16 +25,7 @@ class StaticRenderer {
 
   /** 静态动画循环 */
   private render(): void {
-    const container = this.frame.renderer.domElement;
-    const width = container.clientWidth;
-    const height = container.clientHeight;
-    const needResize = container.width !== width || container.height !== height;
-    if (needResize) {
-      this.frame.renderer.setSize(width, height, false);
-      this.frame.camera.aspect = width / height; // 每帧更新相机宽高比
-      this.frame.camera.updateProjectionMatrix();
-    }
-
+    this.checkResize();
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
     this.frame.renderer.render(this.frame.scene, this.frame.camera);
