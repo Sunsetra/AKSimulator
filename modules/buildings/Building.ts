@@ -9,7 +9,7 @@ import { Box3 } from '../../node_modules/three/src/math/Box3.js';
 import { _Math } from '../../node_modules/three/src/math/Math.js';
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { BlockUnit } from '../constant.js';
+import { BlockUnit } from '../constants.js';
 import { BuildingInfo } from '../MapInfo';
 
 
@@ -43,7 +43,7 @@ class Building {
     const originSize = originBox.getSize(new Vector3());
     const magX = (BlockUnit * this.colSpan * sizeAlpha - 0.02) / originSize.x;
     const magZ = (BlockUnit * this.rowSpan * sizeAlpha - 0.02) / originSize.z;
-    const magY = Math.min(magX, magZ);
+    const magY = Math.min(magX, magZ); // Y轴方向缩放取跨距较小的方向的缩放比例
     wrapper.scale.set(magX, magY, magZ);
 
     this.mesh = wrapper;

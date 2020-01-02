@@ -13,12 +13,13 @@ import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
-import { BlockUnit } from '../constant.js';
+import { BlockUnit } from '../constants.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
 
 import {
   BlockInfo,
   BuildingInfo,
+  Fragment,
   MapInfo,
   WaveInfo,
 } from '../MapInfo';
@@ -34,6 +35,8 @@ class Map {
   readonly height: number; // 地图高度格数
 
   enemyNum: number; // 敌人总数量
+
+  activeEnemy: Set<Fragment>; // 在场存活敌人集合
 
   waves: WaveInfo[]; // 波次信息
 
@@ -52,6 +55,7 @@ class Map {
     this.width = data.mapWidth;
     this.height = data.mapHeight;
     this.enemyNum = data.enemyNum;
+    this.activeEnemy = new Set();
     this.waves = JSON.parse(JSON.stringify(data.waves));
 
     this.blockData = new Array(this.width * this.height).fill(null);

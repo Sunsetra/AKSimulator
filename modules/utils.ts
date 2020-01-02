@@ -9,13 +9,15 @@ import { BufferGeometry } from '../node_modules/three/src/core/BufferGeometry.js
 import { Geometry } from '../node_modules/three/src/core/Geometry.js';
 import { Object3D } from '../node_modules/three/src/core/Object3D.js';
 import { Material } from '../node_modules/three/src/materials/Material.js';
+import { Vector2 } from '../node_modules/three/src/math/Vector2.js';
 import { Mesh } from '../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../node_modules/three/src/textures/Texture.js';
 import {
+  BlockUnit,
   WebGL2Available,
   WebGLAvailable,
   WebGLUnavailable,
-} from './constant.js';
+} from './constants.js';
 
 
 /**
@@ -67,7 +69,31 @@ function disposeResources<T>(resource: T): T {
   return resource;
 }
 
+/**
+ * 将抽象坐标转换为世界坐标（二维）
+ * @param absPos: 二维抽象坐标
+ * @returns: 返回转换后的世界坐标
+ */
+function absPosToRealPos(absPos: Vector2): Vector2 {
+  const realPosX = (absPos.x + 0.5) * BlockUnit;
+  const realPoxZ = (absPos.y + 0.5) * BlockUnit;
+  return new Vector2(realPosX, realPoxZ);
+}
+
+/**
+ * 将世界坐标转换为抽象坐标（二维）
+ * @param realPos: 二维世界坐标
+ * @returns: 返回转换后的抽象坐标
+ */
+function realPosToAbsPos(realPos: Vector2): Vector2 {
+  const absPosX = realPos.x / BlockUnit - 0.5;
+  const absPosZ = realPos.y / BlockUnit - 0.5;
+  return new Vector2(absPosX, absPosZ);
+}
+
 export {
+  absPosToRealPos,
+  realPosToAbsPos,
   checkWebGLVersion,
   disposeResources,
 };

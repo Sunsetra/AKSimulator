@@ -1,4 +1,4 @@
-import { WebGLUnavailable } from '../modules/constant.js';
+import { WebGLUnavailable } from '../modules/constants.js';
 import GameFrame from '../modules/core/GameFrame.js';
 import Map from '../modules/core/Map.js';
 import TimeAxis from '../modules/core/TimeAxis.js';

@@ -20,7 +20,7 @@ import { MeshBasicMaterial } from '../../node_modules/three/src/materials/MeshBa
 import { MeshPhysicalMaterial } from '../../node_modules/three/src/materials/MeshPhysicalMaterial.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../../node_modules/three/src/textures/Texture.js';
-import { BlockUnit } from '../constant.js';
+import { BlockUnit } from '../constants.js';
 import { ResourceInfo } from '../MapInfo';
 
 

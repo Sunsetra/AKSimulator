@@ -13,7 +13,7 @@ class LoadingUI {
    */
   static updateTip(text: string, append = false): void {
     const tip: HTMLElement | null = document.querySelector('#progress-tip');
-    if (tip) {
+    if (tip !== null) {
       tip.innerText = append ? tip.innerText + text : text;
     }
   }
@@ -148,9 +148,9 @@ class LoadingUI {
 
 
 class GameController {
-  private readonly startBtn: HTMLElement | null;
+  private readonly startBtn: HTMLElement;
 
-  private readonly resetBtn: HTMLElement | null;
+  private readonly resetBtn: HTMLElement;
 
   private readonly controls: OrbitControls; // 镜头控制器
 
@@ -184,13 +184,11 @@ class GameController {
    * 开始动态渲染动画后的状态
    */
   start: () => void = () => {
-    if (this.startBtn !== null) {
-      this.startBtn.textContent = '⏸';
-      this.startBtn.removeEventListener('click', this.start);
-      this.startBtn.addEventListener('click', this.pause);
-      this.controls.removeEventListener('change', this.staticRender);
-      window.removeEventListener('resize', this.staticRender);
-    }
+    this.startBtn.textContent = '⏸';
+    this.startBtn.removeEventListener('click', this.start);
+    this.startBtn.addEventListener('click', this.pause);
+    this.controls.removeEventListener('change', this.staticRender);
+    window.removeEventListener('resize', this.staticRender);
     this.timeAxis.start();
     this.dRenderer.requestRender();
   };
@@ -201,26 +199,22 @@ class GameController {
   pause: () => void = () => {
     this.timeAxis.stop();
     this.dRenderer.stopRender();
-    if (this.startBtn !== null) {
-      this.startBtn.textContent = '▶';
-      this.startBtn.removeEventListener('click', this.pause);
-      this.startBtn.addEventListener('click', this.continue);
-      this.controls.addEventListener('change', this.staticRender);
-      window.addEventListener('resize', this.staticRender);
-    }
+    this.startBtn.textContent = '▶';
+    this.startBtn.removeEventListener('click', this.pause);
+    this.startBtn.addEventListener('click', this.continue);
+    this.controls.addEventListener('change', this.staticRender);
+    window.addEventListener('resize', this.staticRender);
   };
 
   /**
    * 继续渲染已暂停动画的状态
    */
   continue: () => void = () => {
-    if (this.startBtn !== null) {
-      this.startBtn.textContent = '⏸';
-      this.startBtn.removeEventListener('click', this.continue);
-      this.startBtn.addEventListener('click', this.pause);
-      this.controls.removeEventListener('change', this.staticRender);
-      window.removeEventListener('resize', this.staticRender);
-    }
+    this.startBtn.textContent = '⏸';
+    this.startBtn.removeEventListener('click', this.continue);
+    this.startBtn.addEventListener('click', this.pause);
+    this.controls.removeEventListener('change', this.staticRender);
+    window.removeEventListener('resize', this.staticRender);
     this.timeAxis.continue();
     this.dRenderer.requestRender();
   };
@@ -230,14 +224,12 @@ class GameController {
    */
   reset: () => void = () => {
     this.dRenderer.stopRender();
-    if (this.startBtn !== null) {
-      this.startBtn.textContent = '▶';
-      this.startBtn.removeEventListener('click', this.pause);
-      this.startBtn.removeEventListener('click', this.continue);
-      this.startBtn.addEventListener('click', this.start);
-      this.controls.addEventListener('change', this.staticRender);
-      window.addEventListener('resize', this.staticRender);
-    }
+    this.startBtn.textContent = '▶';
+    this.startBtn.removeEventListener('click', this.pause);
+    this.startBtn.removeEventListener('click', this.continue);
+    this.startBtn.addEventListener('click', this.start);
+    this.controls.addEventListener('change', this.staticRender);
+    window.addEventListener('resize', this.staticRender);
     this.timeAxisUI.clearNodes();
     this.timeAxisUI.resetTimer();
     this.sRenderer.requestRender();
@@ -246,14 +238,14 @@ class GameController {
 
 
 class TimeAxisUI {
-  private readonly timeAxis: HTMLElement | null;
+  private readonly timeAxis: HTMLElement;
 
-  private readonly timer: HTMLElement | null;
+  private readonly timer: HTMLElement;
 
   /** 时间轴UI控制 */
   constructor() {
-    this.timeAxis = document.querySelector('#axis');
-    this.timer = document.querySelector('#timer'); // 计时器
+    this.timeAxis = document.querySelector('#axis') as HTMLElement;
+    this.timer = document.querySelector('#timer') as HTMLElement; // 计时器
   }
 
   /**
@@ -274,7 +266,7 @@ class TimeAxisUI {
     node.setAttribute('class', `mark-icon ${name}`);
 
     node.addEventListener('mouseover', () => {
-      const nodes = this.timeAxis ? this.timeAxis.querySelectorAll(`.${name}`) : [];
+      const nodes = this.timeAxis.querySelectorAll(`.${name}`);
       nodes.forEach((item: Element) => {
         const icon: HTMLElement | null = item.querySelector('.icon');
         const detail: HTMLElement | null = item.querySelector('.detail');
@@ -296,7 +288,7 @@ class TimeAxisUI {
     });
 
     node.addEventListener('mouseout', () => {
-      const nodes = this.timeAxis ? this.timeAxis.querySelectorAll(`.${name}`) : [];
+      const nodes = this.timeAxis.querySelectorAll(`.${name}`);
       nodes.forEach((item: Element) => {
         const icon: HTMLElement | null = item.querySelector('.icon');
         const detail: HTMLElement | null = item.querySelector('.detail');
@@ -331,13 +323,13 @@ class TimeAxisUI {
     node.appendChild(iconNode);
     node.appendChild(detailNode);
     node.appendChild(detailArrow);
-    if (this.timeAxis) { this.timeAxis.appendChild(node); }
+    this.timeAxis.appendChild(node);
     return node;
   }
 
   /** 清除时间轴上的所有节点 */
   clearNodes(): void {
-    while (this.timeAxis && this.timeAxis.firstChild) { // 清除时间轴的子节点
+    while (this.timeAxis.firstChild) { // 清除时间轴的子节点
       this.timeAxis.removeChild(this.timeAxis.firstChild);
     }
   }
@@ -347,14 +339,12 @@ class TimeAxisUI {
    * @param axisTime - 当前时刻
    */
   updateAxisNodes(axisTime: number): void {
-    if (this.timeAxis) {
-      this.timeAxis.childNodes.forEach((child: Node) => {
-        const { style, dataset } = child as HTMLElement;
-        const createTime = Number(dataset.createTime);
-        const pos = ((createTime / axisTime) * 100).toFixed(2);
-        style.left = `${pos}%`;
-      });
-    }
+    this.timeAxis.childNodes.forEach((child: Node) => {
+      const { style, dataset } = child as HTMLElement;
+      const createTime = Number(dataset.createTime);
+      const pos = ((createTime / axisTime) * 100).toFixed(2);
+      style.left = `${pos}%`;
+    });
   }
 
 

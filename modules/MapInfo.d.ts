@@ -4,6 +4,7 @@
  */
 import { Vector3 } from '../node_modules/three/src/Three.js';
 import Building from './buildings/Building.js';
+import Unit from './core/Unit.js';
 
 
 export interface ResourceInfo {
@@ -57,7 +58,7 @@ export interface Fragment {
   time: number; // 单位出场时刻
   name: string; // 单位名称
   path: Array<{ x: number; z: number } & { pause: number }>; // 行动路径点：普通 | 暂停
-  inst?: null; // TODO: 单位实例
+  inst?: Unit; // 单位实例
   pause?: number; // 当前单位暂停时间倒计时，在暂停时指定
 }
 
