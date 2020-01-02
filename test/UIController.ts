@@ -12,10 +12,8 @@ class LoadingUI {
    * @param append - 提示更新模式（可选），为true时表示新增信息，默认或false为替换原信息
    */
   static updateTip(text: string, append = false): void {
-    const tip: HTMLElement | null = document.querySelector('#progress-tip');
-    if (tip !== null) {
-      tip.innerText = append ? tip.innerText + text : text;
-    }
+    const tip: HTMLElement = document.querySelector('#progress-tip') as HTMLElement;
+    tip.innerText = append ? tip.innerText + text : text;
   }
 
   static initUI(): void {
@@ -62,22 +60,20 @@ class LoadingUI {
    */
   static mapSelectToLoading(loader: MapLoader): void {
     const currentMapNode = document.querySelectorAll('.map-item figure');
-    const mapSelect: HTMLElement | null = document.querySelector('.map-select');
-    const loadingBar: HTMLElement | null = document.querySelector('#loading');
+    const mapSelect: HTMLElement = document.querySelector('.map-select') as HTMLElement;
+    const loadingBar: HTMLElement = document.querySelector('#loading') as HTMLElement;
 
     currentMapNode.forEach((node: Element) => {
       node.addEventListener('click', () => {
-        if (mapSelect && loadingBar) {
-          mapSelect.style.opacity = '0';
-          mapSelect.addEventListener('transitionend', () => {
-            mapSelect.classList.add('side-bar'); // 将地图选择左侧边栏化
-            mapSelect.style.display = 'none'; // 彻底隐藏左侧边栏
+        mapSelect.style.opacity = '0';
+        mapSelect.addEventListener('transitionend', () => {
+          mapSelect.classList.add('side-bar'); // 将地图选择左侧边栏化
+          mapSelect.style.display = 'none'; // 彻底隐藏左侧边栏
 
-            loadingBar.style.display = 'flex';
-            const { dataset } = node as HTMLElement;
-            if (dataset.url) { loader.load(dataset.url); }
-          }, { once: true });
-        }
+          loadingBar.style.display = 'flex';
+          const { dataset } = node as HTMLElement;
+          if (dataset.url) { loader.load(dataset.url); }
+        }, { once: true });
       });
     });
   }
@@ -89,51 +85,47 @@ class LoadingUI {
    * @param callback: 加载完成回调函数
    */
   static updateLoadingBar(itemsLoaded: number, itemsTotal: number, callback?: Function): void {
-    const bar: HTMLElement | null = document.querySelector('#bar');
-    const left: HTMLElement | null = document.querySelector('#left');
-    const right: HTMLElement | null = document.querySelector('#right');
+    const bar: HTMLElement = document.querySelector('#bar') as HTMLElement;
+    const left: HTMLElement = document.querySelector('#left') as HTMLElement;
+    const right: HTMLElement = document.querySelector('#right') as HTMLElement;
 
-    if (bar && left && right) {
-      left.style.margin = '0';
-      left.style.transform = 'translateX(-50%)';
-      right.style.margin = '0';
-      right.style.transform = 'translateX(50%)';
+    left.style.margin = '0';
+    left.style.transform = 'translateX(-50%)';
+    right.style.margin = '0';
+    right.style.transform = 'translateX(50%)';
 
-      const percent: number = (itemsLoaded / itemsTotal) * 100;
-      bar.style.width = `${100 - percent}%`; // 设置中部挡块宽度
-      left.textContent = `${Math.round(percent)}%`;
-      right.textContent = `${Math.round(percent)}%`; // 更新加载百分比
+    const percent: number = (itemsLoaded / itemsTotal) * 100;
+    bar.style.width = `${100 - percent}%`; // 设置中部挡块宽度
+    left.textContent = `${Math.round(percent)}%`;
+    right.textContent = `${Math.round(percent)}%`; // 更新加载百分比
 
-      if (percent >= 100 && callback !== undefined) { // 运行加载完成回调函数
-        bar.addEventListener('transitionend', () => {
-          right.style.display = 'none';
-          this.updateTip('加载完成');
-          setTimeout(() => { this.loadingToGameFrame(callback); }, 200);
-        });
-      }
+    if (percent >= 100 && callback !== undefined) { // 运行加载完成回调函数
+      bar.addEventListener('transitionend', () => {
+        right.style.display = 'none';
+        this.updateTip('加载完成');
+        setTimeout(() => { this.loadingToGameFrame(callback); }, 200);
+      });
     }
   }
 
   /** 隐藏加载进度条并显示画布 */
   static loadingToGameFrame(func: Function): void {
-    const loading: HTMLElement | null = document.querySelector('#loading');
-    const gameFrame: HTMLElement | null = document.querySelector('.game-frame');
-    const mapSelect: HTMLElement | null = document.querySelector('.map-select');
+    const loading: HTMLElement = document.querySelector('#loading') as HTMLElement;
+    const gameFrame: HTMLElement = document.querySelector('.game-frame') as HTMLElement;
+    const mapSelect: HTMLElement = document.querySelector('.map-select') as HTMLElement;
 
-    if (loading && gameFrame && mapSelect) {
-      loading.style.opacity = '0'; // 渐隐加载进度条
-      loading.addEventListener('transitionend', () => {
-        loading.style.display = 'none';
-        gameFrame.style.display = 'block'; // 渐显画布
-        func(); // 主回调在画布显示后运行
-        mapSelect.style.display = '';
+    loading.style.opacity = '0'; // 渐隐加载进度条
+    loading.addEventListener('transitionend', () => {
+      loading.style.display = 'none';
+      gameFrame.style.display = 'block'; // 渐显画布
+      func(); // 主回调在画布显示后运行
+      mapSelect.style.display = '';
 
-        setTimeout(() => {
-          gameFrame.style.opacity = '1';
-          mapSelect.style.opacity = ''; // 显示地图选择左侧边栏
-        }, 200);
-      }, { once: true });
-    }
+      setTimeout(() => {
+        gameFrame.style.opacity = '1';
+        mapSelect.style.opacity = ''; // 显示地图选择左侧边栏
+      }, 200);
+    }, { once: true });
     LoadingUI.collapseMapSelect();
   }
 
@@ -197,13 +189,8 @@ class GameController {
    * 暂停动态动画渲染的状态（切换为静态渲染）
    */
   pause: () => void = () => {
-    this.timeAxis.stop();
-    this.dRenderer.stopRender();
-    this.startBtn.textContent = '▶';
-    this.startBtn.removeEventListener('click', this.pause);
+    this.stop();
     this.startBtn.addEventListener('click', this.continue);
-    this.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
   };
 
   /**
@@ -220,16 +207,32 @@ class GameController {
   };
 
   /**
+   * 停止动画渲染的状态（需要重置战场）
+   */
+  stop: () => void = () => {
+    this.timeAxis.stop();
+    this.dRenderer.stopRender();
+    this.startBtn.textContent = '▶';
+    this.startBtn.removeEventListener('click', this.pause);
+    this.controls.addEventListener('change', this.staticRender);
+    window.addEventListener('resize', this.staticRender);
+  };
+
+  /**
    * 重置地图和动画后的状态（等待动画开始）
+   * TODO: 增加重置时的主文件回调
    */
   reset: () => void = () => {
+    this.timeAxis.stop();
     this.dRenderer.stopRender();
+
     this.startBtn.textContent = '▶';
     this.startBtn.removeEventListener('click', this.pause);
     this.startBtn.removeEventListener('click', this.continue);
     this.startBtn.addEventListener('click', this.start);
     this.controls.addEventListener('change', this.staticRender);
     window.addEventListener('resize', this.staticRender);
+
     this.timeAxisUI.clearNodes();
     this.timeAxisUI.resetTimer();
     this.sRenderer.requestRender();

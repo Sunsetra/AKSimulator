@@ -7,15 +7,25 @@ import GameFrame from '../core/GameFrame.js';
 
 
 abstract class Render {
-  protected readonly frame: GameFrame;
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected callback?: ((arg0?: any, ...args: any[]) => void) | undefined;
+  callback?: ((arg0?: any, ...args: any[]) => void) | undefined;
+
+  protected readonly frame: GameFrame;
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   protected constructor(frame: GameFrame, callback?: (arg0?: any, ...args: any[]) => void) {
     this.frame = frame;
     this.callback = callback;
+  }
+
+  requestRender(): void {
+    requestAnimationFrame((time) => this.render(time));
+  }
+
+  protected render(rAFTime: number): void {
+    if (this.callback) { this.callback(rAFTime); }
+    this.checkResize();
+    this.frame.renderer.render(this.frame.scene, this.frame.camera);
   }
 
   protected checkResize(): void {

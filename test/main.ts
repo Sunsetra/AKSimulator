@@ -43,11 +43,23 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   function gameStart(): void {
     const timeAxis = new TimeAxis();
     const timeAxisUI = new TimeAxisUI();
-    const dynamicRenderer = new DynamicRenderer(frame, () => {
-      timeAxisUI.setTimer(timeAxis.getElapsedTimeS());
-    });
+    const dynamicRenderer = new DynamicRenderer(frame);
     const controller = new GameController(frame.controls, timeAxis, timeAxisUI, staticRenderer, dynamicRenderer);
+    const enemyId = 0; // 已出场敌人唯一ID
 
+    function frameCallback(rAFTime: number): void {
+      const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
+      if (map.enemyNum) {
+        timeAxisUI.setTimer(currentTime[0]); // 更新计时器
+        timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
+      } else {
+        dynamicRenderer.stopRender();
+        controller.stop();
+        console.log('游戏结束，需重置战场');
+      }
+    }
+
+    dynamicRenderer.callback = frameCallback;
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { controller.pause(); }
     }); // 切换标签页时暂停动画

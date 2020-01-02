@@ -25,11 +25,13 @@ class DynamicRenderer extends Render {
   }
 
   stopRender(): void {
-    if (this.rAF !== null) { cancelAnimationFrame(this.rAF); }
+    if (this.rAF) { cancelAnimationFrame(this.rAF); }
+    this.rAF = null;
   }
 
-  private render(rAFTime: number): void {
-    if (this.callback !== undefined) { this.callback(); } // 运行回调
+  protected render(rAFTime: number): void {
+    console.log('动态渲染');
+    if (this.callback !== undefined) { this.callback(rAFTime); } // 运行回调
     this.lastTime = rAFTime;
     this.checkResize();
     this.frame.controls.update();

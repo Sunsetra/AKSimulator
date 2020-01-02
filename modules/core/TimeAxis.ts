@@ -8,20 +8,14 @@ class TimeAxis extends Clock {
   }
 
   /**
-   * 格式化输出当前时间（字符串）
-   * @returns string - 格式化为字符串的当前时间
+   * 格式化输出当前时间（字符串和浮点秒）
    */
-  getElapsedTimeS(): string {
+  getCurrentTime(): [string, number] {
     const elapsed = super.getElapsedTime();
     const msecs = (Math.floor((elapsed * 1000) % 1000)).toString().padStart(3, '0');
     const secs = Math.floor(elapsed % 60).toString().padStart(2, '0');
     const min = Math.floor(elapsed / 60).toString().padStart(2, '0');
-    return `${min}:${secs}.${msecs}`;
-  }
-
-  /** 返回当前时间（浮点秒） */
-  getElapsedTimeN(): number {
-    return super.getElapsedTime();
+    return [`${min}:${secs}.${msecs}`, elapsed];
   }
 
   /** 继续已暂停的计时器（对正在计时的无效） */

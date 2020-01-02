@@ -20,13 +20,14 @@ class StaticRenderer extends Render {
   requestRender(): void {
     if (!this.needRender) {
       this.needRender = true;
-      requestAnimationFrame(() => this.render());
+      requestAnimationFrame((time) => this.render(time));
     }
   }
 
   /** 静态动画循环 */
-  private render(): void {
-    if (this.callback) { this.callback(); }
+  protected render(rAFTime: number): void {
+    console.log('静态渲染');
+    if (this.callback) { this.callback(rAFTime); }
     this.checkResize();
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
