@@ -43,8 +43,10 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   function gameStart(): void {
     const timeAxis = new TimeAxis();
     const timeAxisUI = new TimeAxisUI();
-    const dynamicRenderer = new DynamicRenderer(frame, timeAxis, timeAxisUI, () => { console.log('动态'); });
-    const controller = new GameController(frame.controls, staticRenderer, dynamicRenderer);
+    const dynamicRenderer = new DynamicRenderer(frame, () => {
+      timeAxisUI.setTimer(timeAxis.getElapsedTimeS());
+    });
+    const controller = new GameController(frame.controls, timeAxis, timeAxisUI, staticRenderer, dynamicRenderer);
 
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden') { controller.pause(); }

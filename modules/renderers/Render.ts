@@ -9,8 +9,13 @@ import GameFrame from '../core/GameFrame.js';
 abstract class Render {
   protected readonly frame: GameFrame;
 
-  protected constructor(frame: GameFrame) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected callback?: ((arg0?: any, ...args: any[]) => void) | undefined;
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected constructor(frame: GameFrame, callback?: (arg0?: any, ...args: any[]) => void) {
     this.frame = frame;
+    this.callback = callback;
   }
 
   protected checkResize(): void {

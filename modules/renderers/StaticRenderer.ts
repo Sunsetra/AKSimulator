@@ -10,8 +10,9 @@ import Render from './Render.js';
 class StaticRenderer extends Render {
   private needRender: boolean;
 
-  constructor(frame: GameFrame) {
-    super(frame);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  constructor(frame: GameFrame, callback?: (arg0?: any, ...args: any[]) => void) {
+    super(frame, callback);
     this.needRender = false;
   }
 
@@ -25,6 +26,7 @@ class StaticRenderer extends Render {
 
   /** 静态动画循环 */
   private render(): void {
+    if (this.callback) { this.callback(); }
     this.checkResize();
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
