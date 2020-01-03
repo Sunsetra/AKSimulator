@@ -12,11 +12,9 @@ import {
   checkWebGLVersion,
   disposeResources,
 } from '../modules/utils.js';
-import {
-  GameController,
-  LoadingUI,
-  TimeAxisUI,
-} from './UIController.js';
+import GameController from './Controllers/GameCtl.js';
+import LoadingUICtl from './Controllers/LoadingUICtl.js';
+import TimeAxisUICtl from './Controllers/TimeAxisUICtl.js';
 
 
 const canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -43,7 +41,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   function gameStart(): void {
     const enemyId = 0; // 已出场敌人唯一ID
     const timeAxis = new TimeAxis();
-    const timeAxisUI = new TimeAxisUI();
+    const timeAxisUI = new TimeAxisUICtl();
     const dynamicRenderer = new DynamicRenderer(frame);
 
     const controller = new GameController(frame, staticRenderer, dynamicRenderer);
@@ -55,6 +53,13 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
         timeAxis.stop();
         timeAxisUI.clearNodes();
         timeAxisUI.resetTimer();
+        map.activeEnemy.forEach((enemy) => {
+          if (enemy.inst !== undefined) {
+            frame.scene.remove(enemy.inst.mesh);
+            map.activeEnemy.delete(enemy);
+          }
+        });
+        map.resetMap();
       },
     };
 
@@ -69,6 +74,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
         console.log('游戏结束，需重置战场');
       }
     }
+
     dynamicRenderer.callback = frameCallback;
 
     document.addEventListener('visibilitychange', () => {
@@ -100,21 +106,21 @@ if (checkWebGLVersion() === WebGLUnavailable) {
         /** 加载进度监控及加载完成回调函数 */
         const loadingProgress = (_: string, itemsLoaded: number, itemsTotal: number): void => {
           if (!errorCounter) { // 仅在没有加载错误的加载过程中更新进度
-            if (itemsLoaded !== itemsTotal) { LoadingUI.updateLoadingBar(itemsLoaded, itemsTotal); }
+            if (itemsLoaded !== itemsTotal) { LoadingUICtl.updateLoadingBar(itemsLoaded, itemsTotal); }
           }
         };
 
         /** 加载错误处理函数 */
         const loadingError = (url: string): void => {
-          if (!errorCounter) { LoadingUI.updateTip(''); } // 出现第一个错误时清除原信息，后面追加信息
+          if (!errorCounter) { LoadingUICtl.updateTip(''); } // 出现第一个错误时清除原信息，后面追加信息
           errorCounter += 1;
-          LoadingUI.updateTip(`加载${url}时发生错误`, true);
+          LoadingUICtl.updateTip(`加载${url}时发生错误`, true);
         };
 
         /** 加载完成回调函数 */
         const loadingFinished = (list: ResourcesList): void => {
           if (!errorCounter) {
-            LoadingUI.updateLoadingBar(1, 1, () => main(mapData, list));
+            LoadingUICtl.updateLoadingBar(1, 1, () => main(mapData, list));
           }
         };
 
@@ -125,8 +131,8 @@ if (checkWebGLVersion() === WebGLUnavailable) {
       const mapLoader = new MapLoader(loadResources, (reason) => {
         console.error('加载地图文件失败\n', reason);
       }); // 地图信息加载器
-      LoadingUI.initUI();
-      LoadingUI.mapSelectToLoading(mapLoader);
+      LoadingUICtl.initUI();
+      LoadingUICtl.mapSelectToLoading(mapLoader);
     })
     .catch((reason) => console.error('加载总资源列表失败\n', reason));
 }
