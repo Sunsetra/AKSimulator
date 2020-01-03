@@ -1,8 +1,7 @@
-import TimeAxis from '../modules/core/TimeAxis.js';
+import GameFrame from '../modules/core/GameFrame.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
-import { OrbitControls } from '../node_modules/three/examples/jsm/controls/OrbitControls.js';
 
 
 class LoadingUI {
@@ -139,34 +138,40 @@ class LoadingUI {
 }
 
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+interface Callback {
+  start?: (arg0?: any, ...args: any[]) => void;
+  pause?: (arg0?: any, ...args: any[]) => void;
+  continue?: (arg0?: any, ...args: any[]) => void;
+  stop?: (arg0?: any, ...args: any[]) => void;
+  reset?: (arg0?: any, ...args: any[]) => void;
+}
+
+
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 class GameController {
+  callbacks?: Callback; // 每个控制状态中可指定一个回调函数
+
   private readonly startBtn: HTMLElement;
 
   private readonly resetBtn: HTMLElement;
 
-  private readonly controls: OrbitControls; // 镜头控制器
+  private readonly frame: GameFrame; // 地图框架类
 
-  private readonly timeAxis: TimeAxis; // 时间轴对象
-
-  private readonly timeAxisUI: TimeAxisUI; // 时间轴UI
+  private readonly dRenderer: DynamicRenderer; // 动态渲染类
 
   private readonly sRenderer: StaticRenderer; // 静态渲染类
 
   private readonly staticRender: OmitThisParameter<() => void>; // 静态渲染函数
 
-  private readonly dRenderer: DynamicRenderer; // 动态渲染类
-
-  constructor(controls: OrbitControls,
-              timeAxis: TimeAxis, timeAxisUI: TimeAxisUI,
-              sRenderer: StaticRenderer, dRenderer: DynamicRenderer) {
+  constructor(frame: GameFrame, sRenderer: StaticRenderer, dRenderer: DynamicRenderer, callbacks?: Callback) {
     this.startBtn = document.querySelector('#starter') as HTMLElement;
     this.resetBtn = document.querySelector('#reset') as HTMLElement;
     this.resetBtn.addEventListener('click', this.reset);
 
-    this.controls = controls;
-    this.timeAxis = timeAxis;
-    this.timeAxisUI = timeAxisUI;
-
+    this.frame = frame;
+    this.callbacks = callbacks;
     this.sRenderer = sRenderer;
     this.dRenderer = dRenderer;
     this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
@@ -179,9 +184,10 @@ class GameController {
     this.startBtn.textContent = '⏸';
     this.startBtn.removeEventListener('click', this.start);
     this.startBtn.addEventListener('click', this.pause);
-    this.controls.removeEventListener('change', this.staticRender);
+    this.frame.controls.removeEventListener('change', this.staticRender);
     window.removeEventListener('resize', this.staticRender);
-    this.timeAxis.start();
+
+    if (this.callbacks !== undefined && this.callbacks.start !== undefined) { this.callbacks.start(); }
     this.dRenderer.requestRender();
   };
 
@@ -189,8 +195,14 @@ class GameController {
    * 暂停动态动画渲染的状态（切换为静态渲染）
    */
   pause: () => void = () => {
-    this.stop();
+    this.dRenderer.stopRender();
+    if (this.callbacks !== undefined && this.callbacks.pause !== undefined) { this.callbacks.pause(); }
+
+    this.startBtn.textContent = '▶';
     this.startBtn.addEventListener('click', this.continue);
+    this.startBtn.removeEventListener('click', this.pause);
+    this.frame.controls.addEventListener('change', this.staticRender);
+    window.addEventListener('resize', this.staticRender);
   };
 
   /**
@@ -200,9 +212,10 @@ class GameController {
     this.startBtn.textContent = '⏸';
     this.startBtn.removeEventListener('click', this.continue);
     this.startBtn.addEventListener('click', this.pause);
-    this.controls.removeEventListener('change', this.staticRender);
+    this.frame.controls.removeEventListener('change', this.staticRender);
     window.removeEventListener('resize', this.staticRender);
-    this.timeAxis.continue();
+
+    if (this.callbacks !== undefined && this.callbacks.continue !== undefined) { this.callbacks.continue(); }
     this.dRenderer.requestRender();
   };
 
@@ -210,31 +223,29 @@ class GameController {
    * 停止动画渲染的状态（需要重置战场）
    */
   stop: () => void = () => {
-    this.timeAxis.stop();
     this.dRenderer.stopRender();
+    if (this.callbacks !== undefined && this.callbacks.stop !== undefined) { this.callbacks.stop(); }
+
     this.startBtn.textContent = '▶';
     this.startBtn.removeEventListener('click', this.pause);
-    this.controls.addEventListener('change', this.staticRender);
+    this.frame.controls.addEventListener('change', this.staticRender);
     window.addEventListener('resize', this.staticRender);
   };
 
   /**
    * 重置地图和动画后的状态（等待动画开始）
-   * TODO: 增加重置时的主文件回调
    */
   reset: () => void = () => {
-    this.timeAxis.stop();
     this.dRenderer.stopRender();
+    if (this.callbacks !== undefined && this.callbacks.reset !== undefined) { this.callbacks.reset(); }
 
     this.startBtn.textContent = '▶';
     this.startBtn.removeEventListener('click', this.pause);
     this.startBtn.removeEventListener('click', this.continue);
     this.startBtn.addEventListener('click', this.start);
-    this.controls.addEventListener('change', this.staticRender);
+    this.frame.controls.addEventListener('change', this.staticRender);
     window.addEventListener('resize', this.staticRender);
 
-    this.timeAxisUI.clearNodes();
-    this.timeAxisUI.resetTimer();
     this.sRenderer.requestRender();
   };
 }
