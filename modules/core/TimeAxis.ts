@@ -1,3 +1,8 @@
+/**
+ * 时间轴类，扩展自THREE的Clock类
+ * @author: 落日羽音
+ */
+
 import { Clock } from '../../node_modules/three/src/core/Clock.js';
 
 

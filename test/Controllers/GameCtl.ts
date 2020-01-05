@@ -1,123 +1,117 @@
-/**
- * 游戏控制类
- * @author: 落日羽音
- */
+import GameMap from '../../modules/core/GameMap.js';
+import {
+  Fragment,
+  WaveInfo,
+} from '../../modules/core/MapInfo';
+import Unit from '../../modules/core/Unit.js';
+import Enemies from '../../modules/enemies/EnemyClassList.js';
+import { ResourcesList } from '../../modules/loaders/ResourceLoader';
+import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
+import { Scene } from '../../node_modules/three/src/scenes/Scene.js';
+import TimeAxisUICtl from './TimeAxisUICtl';
 
-import GameFrame from '../../modules/core/GameFrame';
-import DynamicRenderer from '../../modules/renderers/DynamicRender';
-import StaticRenderer from '../../modules/renderers/StaticRenderer';
-
-
-/* eslint-disable @typescript-eslint/no-explicit-any */
-interface Callback {
-  start?: (arg0?: any, ...args: any[]) => void;
-  pause?: (arg0?: any, ...args: any[]) => void;
-  continue?: (arg0?: any, ...args: any[]) => void;
-  stop?: (arg0?: any, ...args: any[]) => void;
-  reset?: (arg0?: any, ...args: any[]) => void;
-}
-
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 class GameController {
-  callbacks?: Callback; // 每个控制状态中可指定一个回调函数
+  enemyCount: number; // 敌人总数量
 
-  private readonly startBtn: HTMLElement;
+  waves: WaveInfo[]; // 波次信息
 
-  private readonly resetBtn: HTMLElement;
+  activeEnemy: Set<Fragment>; // 在场存活敌人集合
 
-  private readonly frame: GameFrame; // 地图框架类
+  private readonly scene: Scene;
 
-  private readonly dRenderer: DynamicRenderer; // 动态渲染类
+  private readonly map: GameMap;
 
-  private readonly sRenderer: StaticRenderer; // 静态渲染类
+  private readonly resList: ResourcesList;
 
-  private readonly staticRender: OmitThisParameter<() => void>; // 静态渲染函数
+  private enemyId: number; // 已出场敌人唯一ID
 
-  constructor(frame: GameFrame, sRenderer: StaticRenderer, dRenderer: DynamicRenderer, callbacks?: Callback) {
-    this.startBtn = document.querySelector('#starter') as HTMLElement;
-    this.resetBtn = document.querySelector('#reset') as HTMLElement;
-    this.resetBtn.addEventListener('click', this.reset);
+  private timeAxisUI: TimeAxisUICtl; // 时间轴UI控制器
 
-    this.frame = frame;
-    this.callbacks = callbacks;
-    this.sRenderer = sRenderer;
-    this.dRenderer = dRenderer;
-    this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
+  constructor(map: GameMap, scene: Scene, resList: ResourcesList, timeAxisUI: TimeAxisUICtl) {
+    this.map = map;
+    this.scene = scene;
+    this.resList = resList;
+    this.timeAxisUI = timeAxisUI;
+    this.enemyCount = map.data.enemyNum;
+    this.waves = JSON.parse(JSON.stringify(map.data.waves));
+
+    this.activeEnemy = new Set();
+    this.enemyId = 0;
+  }
+
+  updateEnemyStatus(axisTime: [string, number]): void {
+    if (this.waves.length) {
+      const { fragments } = this.waves[0]; // 当前波次的敌人列表
+      const thisFrag = fragments[0];
+      const { time, name, path } = thisFrag; // 首只敌人信息
+
+      if (axisTime[1] >= time) { // 检查应出现的新敌人
+        const enemy = this.createEnemy(name, thisFrag);
+        if (enemy !== null) {
+          const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
+          const thisBlock = this.map.getBlock(z, x);
+          if (thisBlock !== null && thisBlock.size !== undefined) {
+            const y = thisBlock.size.y + enemy.height / 2;
+            enemy.setY(y);
+            enemy.position = new Vector2(x, z); // 敌人初始放置
+          }
+
+          const nodeType = 'enemy create';
+          const nodeId = `${name}-${thisFrag.id}`;
+          const resUrl = this.resList.enemy[name].url;
+          this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, axisTime);
+
+          path.shift(); // 删除首个路径点
+          fragments.shift(); // 从当前波次中删除该敌人
+          if (!fragments.length) { this.waves.shift(); } // 若当前波次中剩余敌人为0则删除当前波次
+        }
+      }
+    }
   }
 
   /**
-   * 开始动态渲染动画后的状态
+   * 重置游戏：清空场上所有敌人并重置计数变量
    */
-  start: () => void = () => {
-    this.startBtn.textContent = '⏸';
-    this.startBtn.removeEventListener('click', this.start);
-    this.startBtn.addEventListener('click', this.pause);
-    this.frame.controls.removeEventListener('change', this.staticRender);
-    window.removeEventListener('resize', this.staticRender);
+  resetGame(): void {
+    this.activeEnemy.forEach((enemy) => {
+      if (enemy.inst !== undefined) {
+        this.scene.remove(enemy.inst.mesh);
+        this.activeEnemy.delete(enemy);
+      }
+    });
+    this.enemyCount = this.map.data.enemyNum;
+    this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
+  }
 
-    if (this.callbacks !== undefined && this.callbacks.start !== undefined) { this.callbacks.start(); }
-    this.dRenderer.requestRender();
-  };
+  private createEnemy(name: string, enemyFrag: Fragment): Unit | null {
+    const mesh = this.resList.enemy[name].entity; // 读取敌人实例
+    if (mesh === undefined) { return null; } // TODO: 异常处理
+
+    const enemy = new Enemies[name](mesh);
+    Object.defineProperties(enemyFrag, {
+      id: { value: this.enemyId, enumerable: true },
+      inst: { value: enemy, enumerable: true },
+    }); // 定义敌人分片中需要的属性
+    this.enemyId += 1;
+
+    this.activeEnemy.add(enemyFrag); // 新增活跃敌人
+    this.scene.add(enemy.mesh); // 添加敌人到地图
+    return enemy;
+  }
 
   /**
-   * 暂停动态动画渲染的状态（切换为静态渲染）
+   * 将指定的单位实例放置至指定地点（二维）
+   * @param unitInst: 需放置的单位实例
+   * @param row: 放置到的行
+   * @param column: 放置到的列
    */
-  pause: () => void = () => {
-    this.dRenderer.stopRender();
-    if (this.callbacks !== undefined && this.callbacks.pause !== undefined) { this.callbacks.pause(); }
-
-    this.startBtn.textContent = '▶';
-    this.startBtn.addEventListener('click', this.continue);
-    this.startBtn.removeEventListener('click', this.pause);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
-  };
-
-  /**
-   * 继续渲染已暂停动画的状态
-   */
-  continue: () => void = () => {
-    this.startBtn.textContent = '⏸';
-    this.startBtn.removeEventListener('click', this.continue);
-    this.startBtn.addEventListener('click', this.pause);
-    this.frame.controls.removeEventListener('change', this.staticRender);
-    window.removeEventListener('resize', this.staticRender);
-
-    if (this.callbacks !== undefined && this.callbacks.continue !== undefined) { this.callbacks.continue(); }
-    this.dRenderer.requestRender();
-  };
-
-  /**
-   * 停止动画渲染的状态（需要重置战场）
-   */
-  stop: () => void = () => {
-    this.dRenderer.stopRender();
-    if (this.callbacks !== undefined && this.callbacks.stop !== undefined) { this.callbacks.stop(); }
-
-    this.startBtn.textContent = '▶';
-    this.startBtn.removeEventListener('click', this.pause);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
-  };
-
-  /**
-   * 重置地图和动画后的状态（等待动画开始）
-   */
-  reset: () => void = () => {
-    this.dRenderer.stopRender();
-    if (this.callbacks !== undefined && this.callbacks.reset !== undefined) { this.callbacks.reset(); }
-
-    this.startBtn.textContent = '▶';
-    this.startBtn.removeEventListener('click', this.pause);
-    this.startBtn.removeEventListener('click', this.continue);
-    this.startBtn.addEventListener('click', this.start);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
-
-    this.sRenderer.requestRender();
-  };
+  private placeEnemy(unitInst: Unit, row: number, column: number): void {
+    const thisBlock = this.map.getBlock(row, column);
+    if (thisBlock !== null && thisBlock.size !== undefined) {
+      unitInst.position = new Vector2(row, column); // 敌人初始定位（抽象）
+    }
+  }
 }
 
 

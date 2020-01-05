@@ -19,20 +19,19 @@ class TimeAxisUICtl {
    * @param type - 单位节点视觉行为，由单位类型与单位行为组成：
    *  类型：（标记）橙色表示敌方单位(enemy)，蓝色表示己方单位(ally)
    *  行为：（图标）正常色表示创建(create)，灰度表示死亡(dead)，漏怪(drop)以红色标记表示
-   * @param name - 单位名称：用于节点类名
+   * @param id - 单位名称：用于节点类名
    * @param iconUrl - 单位图标资源url
-   * @param createTime - 单位创建时间（浮点数）
-   * @param nodeTime - 节点时间（字符串）
+   * @param currentTime - 当前时间元组
    * @returns - 返回时间轴节点
    */
-  createAxisNode(type: string, name: string, iconUrl: string,
-                 createTime: number, nodeTime: string): HTMLDivElement {
+  createAxisNode(type: string, id: string, iconUrl: string, currentTime: [string, number]): HTMLDivElement {
+    const [nodeTime, createTime] = currentTime;
     const node = document.createElement('div'); // 创建容器节点
     node.dataset.createTime = createTime.toFixed(4); // 在节点的数据属性中记录出现时间
-    node.setAttribute('class', `mark-icon ${name}`);
+    node.setAttribute('class', `mark-icon ${id}`);
 
     node.addEventListener('mouseover', () => {
-      const nodes = this.timeAxis.querySelectorAll(`.${name}`);
+      const nodes = this.timeAxis.querySelectorAll(`.${id}`);
       nodes.forEach((item: Element) => {
         const icon: HTMLElement | null = item.querySelector('.icon');
         const detail: HTMLElement | null = item.querySelector('.detail');
@@ -54,7 +53,7 @@ class TimeAxisUICtl {
     });
 
     node.addEventListener('mouseout', () => {
-      const nodes = this.timeAxis.querySelectorAll(`.${name}`);
+      const nodes = this.timeAxis.querySelectorAll(`.${id}`);
       nodes.forEach((item: Element) => {
         const icon: HTMLElement | null = item.querySelector('.icon');
         const detail: HTMLElement | null = item.querySelector('.detail');

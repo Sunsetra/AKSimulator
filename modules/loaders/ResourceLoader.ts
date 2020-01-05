@@ -21,7 +21,7 @@ import { MeshPhysicalMaterial } from '../../node_modules/three/src/materials/Mes
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../../node_modules/three/src/textures/Texture.js';
 import { BlockUnit } from '../constants.js';
-import { ResourceInfo } from '../MapInfo';
+import { ResourceInfo } from '../core/MapInfo';
 
 
 interface Resource { // 资源对象

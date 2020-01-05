@@ -1,11 +1,11 @@
 import { WebGLUnavailable } from '../modules/constants.js';
 import GameFrame from '../modules/core/GameFrame.js';
-import Map from '../modules/core/Map.js';
+import GameMap from '../modules/core/GameMap.js';
+import { MapInfo } from '../modules/core/MapInfo';
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import { ResourcesList } from '../modules/loaders/ResourceLoader';
 import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
-import { MapInfo } from '../modules/MapInfo';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
 import {
@@ -14,6 +14,7 @@ import {
 } from '../modules/utils.js';
 import GameController from './Controllers/GameCtl.js';
 import LoadingUICtl from './Controllers/LoadingUICtl.js';
+import RenderController from './Controllers/RenderCtl.js';
 import TimeAxisUICtl from './Controllers/TimeAxisUICtl.js';
 
 
@@ -26,7 +27,7 @@ const frame = new GameFrame(canvas);
  * @param resList - 总资源列表
  */
 function main(mapInfo: MapInfo, resList: ResourcesList): void {
-  let map: Map; // 全局当前地图对象
+  let map: GameMap; // 全局当前地图对象
   const staticRenderer = new StaticRenderer(frame); // 静态渲染器
 
   /**
@@ -34,18 +35,19 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
    * @param mapData - json格式的地图数据
    */
   function createMap(mapData: MapInfo): void {
-    map = new Map(mapData, resList); // 初始化地图
+    map = new GameMap(mapData, resList); // 初始化地图
     map.createMap(frame);
   }
 
   function gameStart(): void {
-    const enemyId = 0; // 已出场敌人唯一ID
     const timeAxis = new TimeAxis();
     const timeAxisUI = new TimeAxisUICtl();
+    const gameCtl = new GameController(map, frame.scene, resList, timeAxisUI);
     const dynamicRenderer = new DynamicRenderer(frame);
 
-    const controller = new GameController(frame, staticRenderer, dynamicRenderer);
-    controller.callbacks = {
+    /* 指定渲染控制回调 */
+    const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
+    renderCtl.callbacks = {
       start: (): void => timeAxis.start(),
       continue: (): void => timeAxis.continue(),
       stop: (): void => timeAxis.stop(),
@@ -53,34 +55,32 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
         timeAxis.stop();
         timeAxisUI.clearNodes();
         timeAxisUI.resetTimer();
-        map.activeEnemy.forEach((enemy) => {
-          if (enemy.inst !== undefined) {
-            frame.scene.remove(enemy.inst.mesh);
-            map.activeEnemy.delete(enemy);
-          }
-        });
-        map.resetMap();
+        // map.resetMap();
+        gameCtl.resetGame();
       },
     };
 
+    /* 指定每帧渲染前需要执行的回调 */
     function frameCallback(rAFTime: number): void {
       const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
-      if (map.enemyNum) {
+      if (gameCtl.enemyCount) {
+        gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
         timeAxisUI.setTimer(currentTime[0]); // 更新计时器
         timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
       } else {
         dynamicRenderer.stopRender();
-        controller.stop();
+        renderCtl.stop();
         console.log('游戏结束，需重置战场');
       }
     }
 
     dynamicRenderer.callback = frameCallback;
 
+    /* 切换标签页时暂停动画 */
     document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') { controller.pause(); }
-    }); // 切换标签页时暂停动画
-    controller.reset();
+      if (document.visibilityState === 'hidden') { renderCtl.pause(); }
+    });
+    renderCtl.reset();
   }
 
   createMap(JSON.parse(JSON.stringify(mapInfo))); // 创建地图

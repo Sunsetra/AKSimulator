@@ -1,3 +1,8 @@
+/**
+ * 加载时的UI控制类
+ * @author: 落日羽音
+ */
+
 import MapLoader from '../../modules/loaders/MapLoader';
 
 

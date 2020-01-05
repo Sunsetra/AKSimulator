@@ -1,5 +1,5 @@
 /**
- * 地图管理类
+ * 地图构造管理类
  * @author: 落日羽音
  */
 
@@ -15,30 +15,22 @@ import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
 import { BlockUnit } from '../constants.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
+import { disposeResources } from '../utils.js';
+import GameFrame from './GameFrame.js';
 
 import {
   BlockInfo,
   BuildingInfo,
-  Fragment,
   MapInfo,
-  WaveInfo,
-} from '../MapInfo';
-import { disposeResources } from '../utils.js';
-import GameFrame from './GameFrame.js';
+} from './MapInfo';
 
 
-class Map {
+class GameMap {
   readonly name: string; // 地图名称
 
   readonly width: number; // 地图宽度格数
 
   readonly height: number; // 地图高度格数
-
-  enemyNum: number; // 敌人总数量
-
-  activeEnemy: Set<Fragment>; // 在场存活敌人集合
-
-  waves: WaveInfo[]; // 波次信息
 
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
@@ -46,7 +38,7 @@ class Map {
 
   private readonly mesh: Mesh; // 地图网格体
 
-  private readonly data: MapInfo; // 原始地图信息
+  readonly data: MapInfo; // 原始地图信息
 
   constructor(data: MapInfo, resList: ResourcesList) {
     this.data = data;
@@ -54,9 +46,6 @@ class Map {
     this.name = data.name;
     this.width = data.mapWidth;
     this.height = data.mapHeight;
-    this.enemyNum = data.enemyNum;
-    this.activeEnemy = new Set();
-    this.waves = JSON.parse(JSON.stringify(data.waves));
 
     this.blockData = new Array(this.width * this.height).fill(null);
     const blockInfo: BlockInfo[] = JSON.parse(JSON.stringify(data.blockInfo));
@@ -458,12 +447,12 @@ class Map {
     // frame.scene.add(helper);
   }
 
-  /** 重置地图 */
-  resetMap(): void {
-    this.enemyNum = this.data.enemyNum;
-    this.waves = JSON.parse(JSON.stringify(this.data.waves));
-  }
+  /**
+   * TODO: 重置地图（按需重置地图几何或其上的建筑信息）
+   */
+  // resetMap(): void {
+  // }
 }
 
 
-export default Map;
+export default GameMap;

@@ -50,13 +50,21 @@ abstract class Unit {
   }
 
   /**
-   * 设置模型的世界位置（二维）
+   * 用抽象位置设置模型的世界位置（二维）
    * @param pos - 包括三向坐标的对象（Y向为undefined表示Y向坐标不变）
    */
   set position(pos: Vector2) {
     const realPos = absPosToRealPos(pos);
     this.mesh.position.setX(realPos.x);
     this.mesh.position.setZ(realPos.y);
+  }
+
+  /**
+   * 设置单位实体的世界位置（Y向）
+   * @param y: Y向世界坐标
+   */
+  setY(y: number): void {
+    this.mesh.position.setY(y);
   }
 }
 

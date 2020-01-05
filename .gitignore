@@ -11,7 +11,7 @@
 # Typescript
 *.js
 *.d.ts
-!modules/MapInfo.d.ts
+!modules/core/MapInfo.d.ts
 
 # npm
 node_modules/
