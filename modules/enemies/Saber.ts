@@ -9,7 +9,7 @@ import Enemy from './Enemy.js';
 
 class Saber extends Enemy {
   constructor(mesh: Mesh) {
-    super(mesh, 0.7, 0.55, 1650);
+    super(mesh, 0.7, 1650, 0.55);
   }
 }
 

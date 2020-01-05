@@ -6,6 +6,7 @@ import {
 import Unit from '../../modules/core/Unit.js';
 import Enemies from '../../modules/enemies/EnemyClassList.js';
 import { ResourcesList } from '../../modules/loaders/ResourceLoader';
+import { disposeResources } from '../../modules/utils.js';
 import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
 import { Scene } from '../../node_modules/three/src/scenes/Scene.js';
 import TimeAxisUICtl from './TimeAxisUICtl';
@@ -40,6 +41,10 @@ class GameController {
     this.enemyId = 0;
   }
 
+  /**
+   * 管理及更新敌人状态，包括创建敌人实例/时间轴节点/管理波次数据
+   * @param axisTime: 时间轴当前时间元组
+   */
   updateEnemyStatus(axisTime: [string, number]): void {
     if (this.waves.length) {
       const { fragments } = this.waves[0]; // 当前波次的敌人列表
@@ -71,6 +76,65 @@ class GameController {
   }
 
   /**
+   * 更新维护所有在场敌人的位置变化
+   * @param interval: 本帧与前帧的时间间隔
+   * @param currentTime: 时间轴当前时间元组
+   */
+  updateEnemyPosition(interval: number, currentTime: [string, number]): void {
+    this.activeEnemy.forEach((frag) => {
+      const { path, name, inst } = frag;
+      if (inst !== undefined) {
+        if (path.length) { // 判定敌人是否到达终点
+          if ('pause' in path[0]) { // 当前节点是暂停节点时
+            if (typeof frag.pause === 'undefined') { // 当前敌人分片中没有暂停节点（新进入暂停）
+              frag.pause = path[0].pause - interval; // 减去本帧已暂停时长（渲染均位于帧回调之后）
+            } else {
+              frag.pause -= interval; // 更新敌人分片中的暂停时间计时
+              if (frag.pause <= 0) { // 取消停顿，从下一帧恢复移动
+                path.shift();
+                delete frag.pause;
+              }
+            }
+          } else {
+            const oldX = inst.position.x;
+            const oldZ = inst.position.y;
+            const newX = path[0].x;
+            const newZ = path[0].z;
+
+            let velocityX = inst.speed / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
+            velocityX = newX >= oldX ? velocityX : -velocityX;
+            let velocityZ = Math.abs(((newZ - oldZ) / (newX - oldX)) * velocityX);
+            velocityZ = newZ >= oldZ ? velocityZ : -velocityZ;
+
+            const stepX = interval * velocityX + oldX;
+            const stepZ = interval * velocityZ + oldZ;
+            inst.position = new Vector2(stepX, stepZ);
+            // this.placeEnemy(inst, stepX, stepZ);
+
+            const rotateDeg = Math.atan((newZ - oldZ) / (newX - oldX));
+            inst.mesh.rotation.y = Math.PI - rotateDeg; // 调整运动方向
+
+            const ifDeltaX = Math.abs(newX - stepX) <= Math.abs(interval * velocityX);
+            const ifDeltaZ = Math.abs(newZ - stepZ) <= Math.abs(interval * velocityZ);
+            if (ifDeltaX && ifDeltaZ) { path.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
+          }
+        } else {
+          this.scene.remove(inst.mesh);
+          disposeResources(inst.mesh); // 释放掉敌人实体
+
+          const nodeType = 'enemy drop';
+          const nodeId = `${name}-${frag.id}`;
+          const resUrl = this.resList.enemy[name].url;
+          this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, currentTime);
+
+          this.activeEnemy.delete(frag);
+          this.enemyCount -= 1;
+        }
+      }
+    });
+  }
+
+  /**
    * 重置游戏：清空场上所有敌人并重置计数变量
    */
   resetGame(): void {
@@ -88,7 +152,7 @@ class GameController {
     const mesh = this.resList.enemy[name].entity; // 读取敌人实例
     if (mesh === undefined) { return null; } // TODO: 异常处理
 
-    const enemy = new Enemies[name](mesh);
+    const enemy = new Enemies[name](mesh.clone());
     Object.defineProperties(enemyFrag, {
       id: { value: this.enemyId, enumerable: true },
       inst: { value: enemy, enumerable: true },
@@ -100,18 +164,18 @@ class GameController {
     return enemy;
   }
 
-  /**
-   * 将指定的单位实例放置至指定地点（二维）
-   * @param unitInst: 需放置的单位实例
-   * @param row: 放置到的行
-   * @param column: 放置到的列
-   */
-  private placeEnemy(unitInst: Unit, row: number, column: number): void {
-    const thisBlock = this.map.getBlock(row, column);
-    if (thisBlock !== null && thisBlock.size !== undefined) {
-      unitInst.position = new Vector2(row, column); // 敌人初始定位（抽象）
-    }
-  }
+  // /**
+  //  * 将指定的单位实例放置至指定地点（二维）
+  //  * @param unitInst: 需放置的单位实例
+  //  * @param row: 放置到的行
+  //  * @param column: 放置到的列
+  //  */
+  // private placeEnemy(unitInst: Unit, row: number, column: number): void {
+  //   const thisBlock = this.map.getBlock(row, column);
+  //   if (thisBlock !== null && thisBlock.size !== undefined) {
+  //     unitInst.position = absPosToRealPos(new Vector2(row, column));
+  //   }
+  // }
 }
 
 

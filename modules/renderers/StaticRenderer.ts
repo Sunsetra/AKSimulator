@@ -26,7 +26,7 @@ class StaticRenderer extends Render {
 
   /** 静态动画循环 */
   protected render(rAFTime: number): void {
-    console.log('静态渲染');
+    // console.log('静态渲染');
     if (this.callback) { this.callback(rAFTime); }
     this.checkResize();
     this.needRender = false;

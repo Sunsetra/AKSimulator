@@ -9,7 +9,10 @@ import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { BlockUnit } from '../constants.js';
-import { absPosToRealPos } from '../utils.js';
+import {
+  absPosToRealPos,
+  realPosToAbsPos,
+} from '../utils.js';
 
 
 abstract class Unit {
@@ -42,11 +45,11 @@ abstract class Unit {
   }
 
   /**
-   * 读取模型的世界位置（二维）
+   * 读取模型的抽象位置（二维）
    */
   get position(): Vector2 {
     const pos = this.mesh.getWorldPosition(new Vector3());
-    return new Vector2(pos.x, pos.z);
+    return realPosToAbsPos(new Vector2(pos.x, pos.z));
   }
 
   /**

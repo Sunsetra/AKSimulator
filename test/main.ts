@@ -64,7 +64,9 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
     function frameCallback(rAFTime: number): void {
       const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
       if (gameCtl.enemyCount) {
-        gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
+        gameCtl.updateEnemyStatus(currentTime);
+        const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
+        gameCtl.updateEnemyPosition(interval, currentTime);
         timeAxisUI.setTimer(currentTime[0]); // 更新计时器
         timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
       } else {

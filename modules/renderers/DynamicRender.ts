@@ -1,5 +1,6 @@
 /**
  * 动态渲染器，用于游戏中连续渲染要求
+ * 注: 渲染均位于帧回调之后
  * @author: 落日羽音
  */
 
@@ -30,7 +31,7 @@ class DynamicRenderer extends Render {
   }
 
   protected render(rAFTime: number): void {
-    console.log('动态渲染');
+    // console.log('动态渲染');
     if (this.callback !== undefined) { this.callback(rAFTime); } // 运行回调
     this.lastTime = rAFTime;
     this.checkResize();

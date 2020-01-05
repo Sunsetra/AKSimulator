@@ -9,7 +9,7 @@ import Enemy from './Enemy.js';
 
 class Slime extends Enemy {
   constructor(mesh: Mesh) {
-    super(mesh, 0.7, 0.5, 550);
+    super(mesh, 0.7, 550, 0.5);
   }
 }
 

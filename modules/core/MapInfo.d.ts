@@ -4,7 +4,7 @@
  */
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import Building from '../buildings/Building.js';
-import Unit from './Unit.js';
+import Enemy from '../enemies/Enemy.js';
 
 
 export interface ResourceInfo {
@@ -55,11 +55,11 @@ export interface LightInfo { // 光源信息
 
 export interface Fragment {
   id?: number; // 敌方单位唯一标识符，在出场时指定
-  time: number; // 单位出场时刻
-  name: string; // 单位名称
+  time: number; // 敌方单位出场时刻
+  name: string; // 敌方单位名称
   path: Array<{ x: number; z: number } | { pause: number }>; // 行动路径点：普通 | 暂停
-  inst?: Unit; // 单位实例
-  pause?: number; // 当前单位暂停时间倒计时，在暂停时指定
+  inst?: Enemy; // 敌方单位实例
+  pause?: number; // 当前敌方单位暂停时间倒计时，在暂停时指定
 }
 
 

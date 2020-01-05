@@ -1,12 +1,12 @@
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import Unit from '../core/Unit.js';
+import Enemy from './Enemy.js';
 import Saber from './Saber.js';
 import Slime from './Slime.js';
 
 
 /* 定义字典值的类的构造函数的接口 */
 interface ClassList {
-  new(type: Mesh): Unit;
+  new(type: Mesh): Enemy;
 }
 
 

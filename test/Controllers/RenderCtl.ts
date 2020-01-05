@@ -23,6 +23,8 @@ interface Callback {
 class RenderController {
   callbacks?: Callback; // 每个控制状态中可指定一个回调函数
 
+  lastTime: number; // 上次进行渲染时的rAF时刻
+
   private readonly startBtn: HTMLElement;
 
   private readonly resetBtn: HTMLElement;
@@ -42,6 +44,7 @@ class RenderController {
 
     this.frame = frame;
     this.callbacks = callbacks;
+    this.lastTime = dRenderer.lastTime;
     this.sRenderer = sRenderer;
     this.dRenderer = dRenderer;
     this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
