@@ -9,7 +9,6 @@ import { PerspectiveCamera } from '../../node_modules/three/src/cameras/Perspect
 import { GammaEncoding } from '../../node_modules/three/src/constants.js';
 import { AmbientLight } from '../../node_modules/three/src/lights/AmbientLight.js';
 import { DirectionalLight } from '../../node_modules/three/src/lights/DirectionalLight.js';
-
 import { Light } from '../../node_modules/three/src/lights/Light.js';
 import { Color } from '../../node_modules/three/src/math/Color.js';
 import { WebGLRenderer } from '../../node_modules/three/src/renderers/WebGLRenderer.js';

@@ -6,7 +6,7 @@ import {
 import Unit from '../../modules/core/Unit.js';
 import Enemies from '../../modules/enemies/EnemyClassList.js';
 import { ResourcesList } from '../../modules/loaders/ResourceLoader';
-import { disposeResources } from '../../modules/utils.js';
+import { disposeResources } from '../../modules/Others/utils.js';
 import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
 import { Scene } from '../../node_modules/three/src/scenes/Scene.js';
 import TimeAxisUICtl from './TimeAxisUICtl';
@@ -150,7 +150,7 @@ class GameController {
 
   private createEnemy(name: string, enemyFrag: Fragment): Unit | null {
     const mesh = this.resList.enemy[name].entity; // 读取敌人实例
-    if (mesh === undefined) { return null; } // TODO: 异常处理
+    if (mesh === undefined) { return null; }
 
     const enemy = new Enemies[name](mesh.clone());
     Object.defineProperties(enemyFrag, {
@@ -164,7 +164,7 @@ class GameController {
     return enemy;
   }
 
-  // /**
+  // /** TODO: 单位自动寻路
   //  * 将指定的单位实例放置至指定地点（二维）
   //  * @param unitInst: 需放置的单位实例
   //  * @param row: 放置到的行

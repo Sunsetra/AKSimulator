@@ -11,13 +11,18 @@ import { _Math } from '../../node_modules/three/src/math/Math.js';
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
+
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
-import { BlockUnit } from '../constants.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
-import { disposeResources } from '../utils.js';
+import { BlockUnit } from '../Others/constants.js';
+import {
+  BlockInfoError,
+  BuildingInfoError,
+  ResourcesUnavailableError,
+} from '../Others/exceptions.js';
+import { disposeResources } from '../Others/utils.js';
 import GameFrame from './GameFrame.js';
-
 import {
   BlockInfo,
   BuildingInfo,
@@ -32,13 +37,13 @@ class GameMap {
 
   readonly height: number; // 地图高度格数
 
+  readonly data: MapInfo; // 原始地图信息
+
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
   private readonly resList: ResourcesList; // 全资源列表
 
   private readonly mesh: Mesh; // 地图网格体
-
-  readonly data: MapInfo; // 原始地图信息
 
   constructor(data: MapInfo, resList: ResourcesList) {
     this.data = data;
@@ -172,6 +177,8 @@ class GameMap {
         if (res.mat && res.mat instanceof Material) {
           materialList.push(res.mat);
           materialMap[type] = materialList.length - 1;
+        } else {
+          throw new ResourcesUnavailableError('材质资源不存在', res);
         }
       });
 
@@ -221,9 +228,11 @@ class GameMap {
     const block = this.getBlock(row, column);
     if (block === null) { return null; }
 
-    /* 目标建筑未创建实体则返回null放置失败 */
+    /* 目标建筑未创建实体则抛出异常 */
     const { entity } = this.resList.model[info.desc];
-    if (entity === undefined) { return null; }
+    if (entity === undefined) {
+      throw new ResourcesUnavailableError('目标建筑实体未创建', this.resList.model[info.desc]);
+    }
 
     const rowSpan = info.rowSpan ? info.rowSpan : 1;
     const colSpan = info.colSpan ? info.colSpan : 1;
@@ -279,7 +288,9 @@ class GameMap {
     });
 
     /* 放置建筑 */
-    if (block.size !== undefined) {
+    if (block.size === undefined) {
+      throw new BlockInfoError('当前砖块尺寸未定义', block);
+    } else {
       const x = (column + building.colSpan / 2) * block.size.x;
       const y = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
       const z = (row + building.rowSpan / 2) * block.size.z;
@@ -306,10 +317,14 @@ class GameMap {
       rowSpan,
       colSpan,
     } = buildingInfo;
-    if (row !== undefined && column !== undefined) { // 废弃主块的建筑实例
-      const mainBlock = this.getBlock(row, column);
-      if (mainBlock !== null && mainBlock.buildingInfo !== undefined && mainBlock.buildingInfo.inst !== undefined) {
+    const mainBlock = this.getBlock(row, column);
+    if (mainBlock === null) {
+      throw new BuildingInfoError('指定的主建筑位置无效', buildingInfo);
+    } else {
+      if (mainBlock.buildingInfo !== undefined && mainBlock.buildingInfo.inst !== undefined) {
         disposeResources(mainBlock.buildingInfo.inst.mesh);
+      } else {
+        throw new BlockInfoError('主砖块不存在建筑信息或建筑信息错误', mainBlock);
       }
 
       if (rowSpan !== undefined && colSpan !== undefined) {

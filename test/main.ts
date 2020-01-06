@@ -1,4 +1,3 @@
-import { WebGLUnavailable } from '../modules/constants.js';
 import GameFrame from '../modules/core/GameFrame.js';
 import GameMap from '../modules/core/GameMap.js';
 import { MapInfo } from '../modules/core/MapInfo';
@@ -6,12 +5,14 @@ import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import { ResourcesList } from '../modules/loaders/ResourceLoader';
 import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
-import DynamicRenderer from '../modules/renderers/DynamicRender.js';
-import StaticRenderer from '../modules/renderers/StaticRenderer.js';
+import { WebGLUnavailable } from '../modules/Others/constants.js';
+import { LoadingError } from '../modules/Others/exceptions.js';
 import {
   checkWebGLVersion,
   disposeResources,
-} from '../modules/utils.js';
+} from '../modules/Others/utils.js';
+import DynamicRenderer from '../modules/renderers/DynamicRender.js';
+import StaticRenderer from '../modules/renderers/StaticRenderer.js';
 import GameController from './Controllers/GameCtl.js';
 import LoadingUICtl from './Controllers/LoadingUICtl.js';
 import RenderController from './Controllers/RenderCtl.js';
@@ -49,6 +50,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
     const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
     renderCtl.callbacks = {
       start: (): void => timeAxis.start(),
+      pause: (): void => timeAxis.stop(),
       continue: (): void => timeAxis.continue(),
       stop: (): void => timeAxis.stop(),
       reset: (): void => {
@@ -91,7 +93,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
 
 
 if (checkWebGLVersion() === WebGLUnavailable) {
-  console.error('不支持WebGL，请更新浏览器。');
+  throw new Error('不支持WebGL，请更新浏览器。');
 } else { // 检测webgl可用性，返回WebGLUnavailable时不支持webgl
   /* 加载总资源列表 */
   fetch('res/list.json')
@@ -117,6 +119,7 @@ if (checkWebGLVersion() === WebGLUnavailable) {
           if (!errorCounter) { LoadingUICtl.updateTip(''); } // 出现第一个错误时清除原信息，后面追加信息
           errorCounter += 1;
           LoadingUICtl.updateTip(`加载${url}时发生错误`, true);
+          throw new LoadingError(`加载${url}时发生错误`);
         };
 
         /** 加载完成回调函数 */

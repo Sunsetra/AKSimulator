@@ -2,7 +2,9 @@
  * 地图信息声明文件
  * @author: 落日羽音
  */
+
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
+
 import Building from '../buildings/Building.js';
 import Enemy from '../enemies/Enemy.js';
 
@@ -20,11 +22,11 @@ export interface BuildingInfo { // 建筑信息
   desc: string; // 建筑描述（大类）
   rotation?: number; // 建筑旋转角度（deg），默认为空表示0度
   sizeAlpha?: number; // 建筑缩放比例，默认为空表示1倍
-  row?: number; // 主建筑行位置，绑定建筑时指定
-  column?: number; // 主建筑列位置，绑定建筑时指定
+  row: number; // 主建筑行位置，绑定建筑时指定
+  column: number; // 主建筑列位置，绑定建筑时指定
   rowSpan?: number; // 建筑行数跨距，需跨多行时指定
   colSpan?: number; // 建筑列数跨距，需跨多列时指定
-  inst?: Building; // 建筑物实例，绑定建筑时指定
+  inst: Building; // 建筑物实例，绑定建筑时指定
 }
 
 

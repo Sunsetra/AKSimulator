@@ -5,12 +5,12 @@
 
 import { Object3D } from '../../node_modules/three/src/core/Object3D.js';
 import { Box3 } from '../../node_modules/three/src/math/Box3.js';
-
 import { _Math } from '../../node_modules/three/src/math/Math.js';
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { BlockUnit } from '../constants.js';
 import { BuildingInfo } from '../core/MapInfo';
+
+import { BlockUnit } from '../Others/constants.js';
 
 
 class Building {

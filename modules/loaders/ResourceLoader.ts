@@ -9,10 +9,8 @@ import {
   sRGBEncoding,
 } from '../../node_modules/three/src/constants.js';
 import { BufferGeometry } from '../../node_modules/three/src/core/BufferGeometry.js';
-
 import { BoxBufferGeometry } from '../../node_modules/three/src/geometries/BoxGeometry.js';
 import { PlaneBufferGeometry } from '../../node_modules/three/src/geometries/PlaneGeometry.js';
-
 import { LoadingManager } from '../../node_modules/three/src/loaders/LoadingManager.js';
 import { TextureLoader } from '../../node_modules/three/src/loaders/TextureLoader.js';
 import { Material } from '../../node_modules/three/src/materials/Material.js';
@@ -20,8 +18,10 @@ import { MeshBasicMaterial } from '../../node_modules/three/src/materials/MeshBa
 import { MeshPhysicalMaterial } from '../../node_modules/three/src/materials/MeshPhysicalMaterial.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../../node_modules/three/src/textures/Texture.js';
-import { BlockUnit } from '../constants.js';
+
 import { ResourceInfo } from '../core/MapInfo';
+import { BlockUnit } from '../Others/constants.js';
+import { LoadingError } from '../Others/exceptions.js';
 
 
 interface Resource { // 资源对象
@@ -77,7 +77,11 @@ class ResourceLoader {
     this.onError = onError;
 
     this.loadManager = new LoadingManager((): void => {
-      if (this.mapResList !== undefined) { this.createGeometry(this.mapResList); }
+      if (this.mapResList === undefined) {
+        throw new LoadingError('地图资源信息未加载或加载错误');
+      } else {
+        this.createGeometry(this.mapResList);
+      }
       if (this.onLoad !== undefined) { this.onLoad(this.resListAll); }
     }, onProgress, onError);
     this.texLoader = new TextureLoader(this.loadManager);
