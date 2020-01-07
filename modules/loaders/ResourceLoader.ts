@@ -126,7 +126,7 @@ class ResourceLoader {
     Object.values(this.resListAll.EDPoint).forEach((edRes) => {
       if (!Object.prototype.hasOwnProperty.call(edRes, 'mat')) {
         const material = new MeshBasicMaterial({
-          alphaTest: 0.6,
+          depthWrite: false,
           map: edRes.tex,
           side: DoubleSide,
           transparent: true,
@@ -183,7 +183,6 @@ class ResourceLoader {
       if (!Object.prototype.hasOwnProperty.call(texRes, 'mat') && texRes.tex) { // tex属性一定存在
         const material = new MeshBasicMaterial({
           alphaTest: 0.6,
-          depthWrite: false,
           map: texRes.tex,
           side: DoubleSide,
           transparent: true,
