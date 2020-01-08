@@ -10,7 +10,7 @@ import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { BuildingInfo } from '../core/MapInfo';
 
-import { BlockUnit } from '../Others/constants.js';
+import { BlockUnit } from '../others/constants.js';
 
 
 class Building {

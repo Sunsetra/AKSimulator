@@ -9,11 +9,11 @@ import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
 import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 
-import { BlockUnit } from '../Others/constants.js';
+import { BlockUnit } from '../others/constants.js';
 import {
   absPosToRealPos,
   realPosToAbsPos,
-} from '../Others/utils.js';
+} from '../others/utils.js';
 
 
 abstract class Unit {

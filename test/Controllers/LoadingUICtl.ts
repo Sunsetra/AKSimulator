@@ -17,6 +17,25 @@ class LoadingUICtl {
     tip.innerText = append ? tip.innerText + text : text;
   }
 
+  /**
+   * 重置加载进度条
+   */
+  static resetLoadingBar(): void {
+    const bar: HTMLElement = document.querySelector('#bar') as HTMLElement;
+    const left: HTMLElement = document.querySelector('#left') as HTMLElement;
+    const right: HTMLElement = document.querySelector('#right') as HTMLElement;
+
+    right.style.display = ''; // 右侧进度默认为block显示
+    bar.style.width = '100%'; // 设置中部挡块宽度
+    left.textContent = '0%';
+    right.textContent = '0%'; // 更新加载百分比
+
+    left.style.margin = '';
+    left.style.transform = '';
+    right.style.margin = '';
+    right.style.transform = '';
+  }
+
   static initUI(): void {
     /** 初始化地图选择窗口 */
     function mapSelector(): void {
@@ -61,19 +80,30 @@ class LoadingUICtl {
    */
   static mapSelectToLoading(loader: MapLoader): void {
     const currentMapNode = document.querySelectorAll('.map-item figure');
+    const gameFrame: HTMLElement = document.querySelector('.game-frame') as HTMLElement;
     const mapSelect: HTMLElement = document.querySelector('.map-select') as HTMLElement;
-    const loadingBar: HTMLElement = document.querySelector('#loading') as HTMLElement;
+    const loading: HTMLElement = document.querySelector('#loading') as HTMLElement;
 
     currentMapNode.forEach((node: Element) => {
       node.addEventListener('click', () => {
+        this.resetLoadingBar();
+        this.updateTip('正在加载...');
+
         mapSelect.style.opacity = '0';
+        gameFrame.style.opacity = ''; // 游戏主框架初始透明度为0
         mapSelect.addEventListener('transitionend', () => {
           mapSelect.classList.add('side-bar'); // 将地图选择左侧边栏化
           mapSelect.style.display = 'none'; // 彻底隐藏左侧边栏
+          gameFrame.style.display = ''; // 游戏主框架初始显示模式为none
 
-          loadingBar.style.display = 'flex';
-          const { dataset } = node as HTMLElement;
-          if (dataset.url) { loader.load(dataset.url); }
+          loading.style.display = 'flex';
+          setTimeout(() => {
+            loading.style.opacity = '1';
+          }, 300);
+          loading.addEventListener('transitionend', () => {
+            const { dataset } = node as HTMLElement;
+            if (dataset.url) { loader.load(dataset.url); }
+          }, { once: true });
         }, { once: true });
       });
     });
@@ -105,7 +135,7 @@ class LoadingUICtl {
         right.style.display = 'none';
         this.updateTip('加载完成');
         setTimeout(() => { this.loadingToGameFrame(callback); }, 200);
-      });
+      }, { once: true });
     }
   }
 

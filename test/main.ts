@@ -5,12 +5,12 @@ import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import { ResourcesList } from '../modules/loaders/ResourceLoader';
 import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
-import { WebGLUnavailable } from '../modules/Others/constants.js';
-import { LoadingError } from '../modules/Others/exceptions.js';
+import { WebGLUnavailable } from '../modules/others/constants.js';
+import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
   disposeResources,
-} from '../modules/Others/utils.js';
+} from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
 import GameController from './Controllers/GameCtl.js';

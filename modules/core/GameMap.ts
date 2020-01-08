@@ -15,13 +15,13 @@ import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
-import { BlockUnit } from '../Others/constants.js';
+import { BlockUnit } from '../others/constants.js';
 import {
   BlockInfoError,
   BuildingInfoError,
   ResourcesUnavailableError,
-} from '../Others/exceptions.js';
-import { disposeResources } from '../Others/utils.js';
+} from '../others/exceptions.js';
+import { disposeResources } from '../others/utils.js';
 import GameFrame from './GameFrame.js';
 import {
   BlockInfo,

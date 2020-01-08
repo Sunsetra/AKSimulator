@@ -20,8 +20,8 @@ import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import { Texture } from '../../node_modules/three/src/textures/Texture.js';
 
 import { ResourceInfo } from '../core/MapInfo';
-import { BlockUnit } from '../Others/constants.js';
-import { LoadingError } from '../Others/exceptions.js';
+import { BlockUnit } from '../others/constants.js';
+import { LoadingError } from '../others/exceptions.js';
 
 
 interface Resource { // 资源对象
@@ -136,31 +136,45 @@ class ResourceLoader {
     });
 
     /* 构建ED点的几何体 */
-    const {
-      destTop, destSide, entryTop, entrySide,
-    } = this.resListAll.EDPoint;
-    /* EDPoint中加载的材质一定不是数组 */
-    const destTopMat = (destTop.mat ? destTop.mat : new Material()) as Material;
-    const destSideMat = (destSide.mat ? destSide.mat : new Material()) as Material;
-    const entryTopMat = (entryTop.mat ? entryTop.mat : new Material()) as Material;
-    const entrySideMat = (entrySide.mat ? entrySide.mat : new Material()) as Material;
-    const destMat = [destSideMat, destSideMat, destTopMat, destSideMat, destSideMat, destSideMat];
-    const entryMat = [entrySideMat, entrySideMat, entryTopMat, entrySideMat, entrySideMat, entrySideMat];
+    /**
+     * 检查ED点资源对象的属性是否完备
+     */
 
-    const geometry = new BoxBufferGeometry(BlockUnit, BlockUnit, BlockUnit);
-    const destMesh = new Mesh(geometry, destMat);
-    const entryMesh = new Mesh(geometry, entryMat);
+    if (!((): boolean => {
+      let integrity = true;
+      ['destination', 'entry'].forEach((type) => {
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'geo');
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'mat');
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'entity');
+      });
+      return integrity;
+    })()) { // 若EDPoint无需重新定义则跳过
+      const {
+        destTop, destSide, entryTop, entrySide,
+      } = this.resListAll.EDPoint;
+      /* EDPoint中加载的材质一定不是数组 */
+      const destTopMat = (destTop.mat ? destTop.mat : new Material()) as Material;
+      const destSideMat = (destSide.mat ? destSide.mat : new Material()) as Material;
+      const entryTopMat = (entryTop.mat ? entryTop.mat : new Material()) as Material;
+      const entrySideMat = (entrySide.mat ? entrySide.mat : new Material()) as Material;
+      const destMat = [destSideMat, destSideMat, destTopMat, destSideMat, destSideMat, destSideMat];
+      const entryMat = [entrySideMat, entrySideMat, entryTopMat, entrySideMat, entrySideMat, entrySideMat];
 
-    Object.defineProperties(this.resListAll.model.destination, {
-      geo: { value: geometry },
-      mat: { value: destMat },
-      entity: { value: destMesh },
-    });
-    Object.defineProperties(this.resListAll.model.entry, {
-      geo: { value: geometry },
-      mat: { value: entryMat },
-      entity: { value: entryMesh },
-    });
+      const geometry = new BoxBufferGeometry(BlockUnit, BlockUnit, BlockUnit);
+      const destMesh = new Mesh(geometry, destMat);
+      const entryMesh = new Mesh(geometry, entryMat);
+
+      Object.defineProperties(this.resListAll.model.destination, {
+        geo: { value: geometry },
+        mat: { value: destMat },
+        entity: { value: destMesh },
+      });
+      Object.defineProperties(this.resListAll.model.entry, {
+        geo: { value: geometry },
+        mat: { value: entryMat },
+        entity: { value: entryMesh },
+      });
+    }
 
 
     /* 构建砖块材质 */

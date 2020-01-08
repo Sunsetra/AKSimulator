@@ -1,3 +1,8 @@
+/**
+ * 敌方单位类集合，从Enemies对象实例化敌方单位
+ * @author: 落日羽音
+ */
+
 import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
 import Enemy from './Enemy.js';
 import Saber from './Saber.js';
