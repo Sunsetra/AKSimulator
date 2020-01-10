@@ -1,5 +1,12 @@
-import { FrontSide } from '../../node_modules/three/src/constants.js';
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
+/**
+ * 装饰建筑类
+ * @author: 落日羽音
+ */
+
+import {
+  FrontSide,
+  Mesh,
+} from '../../node_modules/three/build/three.module.js';
 
 import { BuildingInfo } from '../core/MapInfo';
 import Building from './Building.js';

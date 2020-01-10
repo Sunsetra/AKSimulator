@@ -3,11 +3,13 @@
  * @author: 落日羽音
  */
 
-import { MeshBasicMaterial } from '../../node_modules/three/src/materials/MeshBasicMaterial.js';
-import { Box3 } from '../../node_modules/three/src/math/Box3.js';
-import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
-import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
+import {
+  Box3,
+  Mesh,
+  MeshBasicMaterial,
+  Vector2,
+  Vector3,
+} from '../../node_modules/three/build/three.module.js';
 
 import { BlockUnit } from '../others/constants.js';
 import {

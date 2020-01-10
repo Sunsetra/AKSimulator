@@ -3,13 +3,15 @@
  * @author: 落日羽音
  */
 
-import { Object3D } from '../../node_modules/three/src/core/Object3D.js';
-import { Box3 } from '../../node_modules/three/src/math/Box3.js';
-import { _Math } from '../../node_modules/three/src/math/Math.js';
-import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { BuildingInfo } from '../core/MapInfo';
+import {
+  Box3,
+  Math as _Math,
+  Mesh,
+  Object3D,
+  Vector3,
+} from '../../node_modules/three/build/three.module.js';
 
+import { BuildingInfo } from '../core/MapInfo';
 import { BlockUnit } from '../others/constants.js';
 
 

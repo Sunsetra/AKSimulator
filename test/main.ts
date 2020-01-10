@@ -91,6 +91,11 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   gameStart();
 }
 
+/** 重置游戏框架 */
+function resetGameFrame(): void {
+  disposeResources(frame.scene); // 废弃原地图中的资源
+}
+
 
 if (checkWebGLVersion() === WebGLUnavailable) {
   throw new Error('不支持WebGL，请更新浏览器。');
@@ -104,7 +109,6 @@ if (checkWebGLVersion() === WebGLUnavailable) {
        * @param mapData: 地图信息文件数据
        */
       function loadResources(mapData: MapInfo): void {
-        disposeResources(frame.scene); // 加载新资源前废弃原地图中的资源
         let errorCounter = 0;
 
         /** 加载进度监控及加载完成回调函数 */
@@ -129,6 +133,7 @@ if (checkWebGLVersion() === WebGLUnavailable) {
           }
         };
 
+        resetGameFrame();
         const resLoader = new ResourceLoader(resList, loadingFinished, loadingProgress, loadingError);
         resLoader.load(mapData.resources);
       }

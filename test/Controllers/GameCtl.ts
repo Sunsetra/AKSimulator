@@ -1,3 +1,8 @@
+/**
+ * 游戏控制类
+ * @author: 落日羽音
+ */
+
 import GameMap from '../../modules/core/GameMap.js';
 import {
   Fragment,
@@ -7,8 +12,11 @@ import Unit from '../../modules/core/Unit.js';
 import Enemies from '../../modules/enemies/EnemyClassList.js';
 import { ResourcesList } from '../../modules/loaders/ResourceLoader';
 import { disposeResources } from '../../modules/others/utils.js';
-import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
-import { Scene } from '../../node_modules/three/src/scenes/Scene.js';
+
+import {
+  Scene,
+  Vector2,
+} from '../../node_modules/three/build/three.module.js';
 import TimeAxisUICtl from './TimeAxisUICtl';
 
 

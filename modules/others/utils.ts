@@ -3,15 +3,17 @@
  * @author: 落日羽音
  */
 
+import {
+  BufferGeometry,
+  Geometry,
+  Material,
+  Mesh,
+  Object3D,
+  Texture,
+  Vector2,
+} from '../../node_modules/three/build/three.module.js';
 import { WEBGL } from '../../node_modules/three/examples/jsm/WebGL.js';
-import { BufferGeometry } from '../../node_modules/three/src/core/BufferGeometry.js';
 
-import { Geometry } from '../../node_modules/three/src/core/Geometry.js';
-import { Object3D } from '../../node_modules/three/src/core/Object3D.js';
-import { Material } from '../../node_modules/three/src/materials/Material.js';
-import { Vector2 } from '../../node_modules/three/src/math/Vector2.js';
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { Texture } from '../../node_modules/three/src/textures/Texture.js';
 import {
   BlockUnit,
   WebGL2Available,

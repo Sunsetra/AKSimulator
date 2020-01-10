@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
+import { Vector3 } from '../../node_modules/three/build/three.module.js';
 
 import Building from '../buildings/Building.js';
 import Enemy from '../enemies/Enemy.js';

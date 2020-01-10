@@ -3,14 +3,16 @@
  * @author: 落日羽音
  */
 
-import { BufferAttribute } from '../../node_modules/three/src/core/BufferAttribute.js';
-import { BufferGeometry } from '../../node_modules/three/src/core/BufferGeometry.js';
-import { Material } from '../../node_modules/three/src/materials/Material.js';
-import { Color } from '../../node_modules/three/src/math/Color.js';
-import { _Math } from '../../node_modules/three/src/math/Math.js';
-import { Vector3 } from '../../node_modules/three/src/math/Vector3.js';
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
-import { Fog } from '../../node_modules/three/src/scenes/Fog.js';
+import {
+  BufferAttribute,
+  BufferGeometry,
+  Color,
+  Fog,
+  Material,
+  Math as _Math,
+  Mesh,
+  Vector3,
+} from '../../node_modules/three/build/three.module.js';
 
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';

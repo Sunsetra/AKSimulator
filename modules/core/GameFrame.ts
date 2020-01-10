@@ -3,16 +3,19 @@
  * @author: 落日羽音
  */
 
+import {
+  AmbientLight,
+  Color,
+  DirectionalLight,
+  GammaEncoding,
+  Light,
+  PerspectiveCamera,
+  Scene,
+  WebGLRenderer,
+} from '../../node_modules/three/build/three.module.js';
+
 import { OrbitControls } from '../../node_modules/three/examples/jsm/controls/OrbitControls.js';
 import { WEBGL } from '../../node_modules/three/examples/jsm/WebGL.js';
-import { PerspectiveCamera } from '../../node_modules/three/src/cameras/PerspectiveCamera.js';
-import { GammaEncoding } from '../../node_modules/three/src/constants.js';
-import { AmbientLight } from '../../node_modules/three/src/lights/AmbientLight.js';
-import { DirectionalLight } from '../../node_modules/three/src/lights/DirectionalLight.js';
-import { Light } from '../../node_modules/three/src/lights/Light.js';
-import { Color } from '../../node_modules/three/src/math/Color.js';
-import { WebGLRenderer } from '../../node_modules/three/src/renderers/WebGLRenderer.js';
-import { Scene } from '../../node_modules/three/src/scenes/Scene.js';
 
 
 /**

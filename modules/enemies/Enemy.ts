@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
+import { Mesh } from '../../node_modules/three/build/three.module.js';
 import Unit from '../core/Unit.js';
 
 

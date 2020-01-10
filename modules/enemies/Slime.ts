@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { Mesh } from '../../node_modules/three/src/objects/Mesh.js';
+import { Mesh } from '../../node_modules/three/build/three.module.js';
 import Enemy from './Enemy.js';
 
 

@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { Clock } from '../../node_modules/three/src/core/Clock.js';
+import { Clock } from '../../node_modules/three/build/three.module.js';
 
 
 class TimeAxis extends Clock {
