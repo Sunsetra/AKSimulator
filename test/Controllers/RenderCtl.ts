@@ -8,17 +8,16 @@ import DynamicRenderer from '../../modules/renderers/DynamicRender';
 import StaticRenderer from '../../modules/renderers/StaticRenderer';
 
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 interface Callback {
-  start?: (arg0?: any, ...args: any[]) => void;
-  pause?: (arg0?: any, ...args: any[]) => void;
-  continue?: (arg0?: any, ...args: any[]) => void;
-  stop?: (arg0?: any, ...args: any[]) => void;
-  reset?: (arg0?: any, ...args: any[]) => void;
+  /* eslint-disable @typescript-eslint/no-explicit-any */
+  start?: (...args: any[]) => void;
+  pause?: (...args: any[]) => void;
+  continue?: (...args: any[]) => void;
+  stop?: (...args: any[]) => void;
+  reset?: (...args: any[]) => void;
+  /* eslint-enable @typescript-eslint/no-explicit-any */
 }
 
-
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 class RenderController {
   callbacks?: Callback; // 每个控制状态中可指定一个回调函数
@@ -38,16 +37,16 @@ class RenderController {
   private readonly staticRender: OmitThisParameter<() => void>; // 静态渲染函数
 
   constructor(frame: GameFrame, sRenderer: StaticRenderer, dRenderer: DynamicRenderer, callbacks?: Callback) {
-    this.startBtn = document.querySelector('#starter') as HTMLElement;
-    this.resetBtn = document.querySelector('#reset') as HTMLElement;
-    this.resetBtn.addEventListener('click', this.reset);
-
     this.frame = frame;
     this.callbacks = callbacks;
     this.lastTime = dRenderer.lastTime;
     this.sRenderer = sRenderer;
     this.dRenderer = dRenderer;
     this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
+
+    this.startBtn = document.querySelector('#starter') as HTMLElement;
+    this.resetBtn = document.querySelector('#reset') as HTMLElement;
+    this.frame.addEventListener(this.resetBtn, 'click', this.reset);
   }
 
   /**
@@ -55,10 +54,10 @@ class RenderController {
    */
   start: () => void = () => {
     this.startBtn.textContent = '⏸';
-    this.startBtn.removeEventListener('click', this.start);
-    this.startBtn.addEventListener('click', this.pause);
-    this.frame.controls.removeEventListener('change', this.staticRender);
-    window.removeEventListener('resize', this.staticRender);
+    this.frame.removeEventListener(this.startBtn, 'click', this.start);
+    this.frame.addEventListener(this.startBtn, 'click', this.pause);
+    this.frame.removeEventListener(this.frame.controls, 'change', this.staticRender);
+    this.frame.removeEventListener(window, 'resize', this.staticRender);
 
     if (this.callbacks !== undefined && this.callbacks.start !== undefined) { this.callbacks.start(); }
     this.dRenderer.requestRender();
@@ -72,10 +71,10 @@ class RenderController {
     if (this.callbacks !== undefined && this.callbacks.pause !== undefined) { this.callbacks.pause(); }
 
     this.startBtn.textContent = '▶';
-    this.startBtn.addEventListener('click', this.continue);
-    this.startBtn.removeEventListener('click', this.pause);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
+    this.frame.addEventListener(this.startBtn, 'click', this.continue);
+    this.frame.removeEventListener(this.startBtn, 'click', this.pause);
+    this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
+    this.frame.addEventListener(window, 'resize', this.staticRender);
   };
 
   /**
@@ -83,10 +82,10 @@ class RenderController {
    */
   continue: () => void = () => {
     this.startBtn.textContent = '⏸';
-    this.startBtn.removeEventListener('click', this.continue);
-    this.startBtn.addEventListener('click', this.pause);
-    this.frame.controls.removeEventListener('change', this.staticRender);
-    window.removeEventListener('resize', this.staticRender);
+    this.frame.removeEventListener(this.startBtn, 'click', this.continue);
+    this.frame.addEventListener(this.startBtn, 'click', this.pause);
+    this.frame.removeEventListener(this.frame.controls, 'change', this.staticRender);
+    this.frame.removeEventListener(window, 'resize', this.staticRender);
 
     if (this.callbacks !== undefined && this.callbacks.continue !== undefined) { this.callbacks.continue(); }
     this.dRenderer.requestRender();
@@ -100,9 +99,9 @@ class RenderController {
     if (this.callbacks !== undefined && this.callbacks.stop !== undefined) { this.callbacks.stop(); }
 
     this.startBtn.textContent = '▶';
-    this.startBtn.removeEventListener('click', this.pause);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
+    this.frame.removeEventListener(this.startBtn, 'click', this.pause);
+    this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
+    this.frame.addEventListener(window, 'resize', this.staticRender);
   };
 
   /**
@@ -113,11 +112,11 @@ class RenderController {
     if (this.callbacks !== undefined && this.callbacks.reset !== undefined) { this.callbacks.reset(); }
 
     this.startBtn.textContent = '▶';
-    this.startBtn.removeEventListener('click', this.pause);
-    this.startBtn.removeEventListener('click', this.continue);
-    this.startBtn.addEventListener('click', this.start);
-    this.frame.controls.addEventListener('change', this.staticRender);
-    window.addEventListener('resize', this.staticRender);
+    this.frame.removeEventListener(this.startBtn, 'click', this.pause);
+    this.frame.removeEventListener(this.startBtn, 'click', this.continue);
+    this.frame.addEventListener(this.startBtn, 'click', this.start);
+    this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
+    this.frame.addEventListener(window, 'resize', this.staticRender);
 
     this.sRenderer.requestRender();
   };

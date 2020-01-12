@@ -18,9 +18,11 @@ import { OrbitControls } from '../../node_modules/three/examples/jsm/controls/Or
 import { WEBGL } from '../../node_modules/three/examples/jsm/WebGL.js';
 
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 /**
  * 游戏基础框架类
- * 包含场景对象、地图光照、相机对象、控制器对象、渲染器对象
+ * 包含场景对象、地图光照、相机对象、控制器对象、渲染器对象以及事件监听器管理
  */
 class GameFrame {
   canvas: HTMLCanvasElement;
@@ -38,6 +40,8 @@ class GameFrame {
   scene: Scene;
 
   renderer: WebGLRenderer;
+
+  private listeners: Map<EventTarget, { [type: string]: Set<(...args: any[]) => void> }>; // 事件监听函数收集器
 
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
@@ -70,6 +74,9 @@ class GameFrame {
       context,
       antialias: true,
     });
+
+    this.listeners = new Map();
+
     this.enableShadow(true); // 默认开启阴影
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.outputEncoding = GammaEncoding; // 伽玛输出
@@ -100,6 +107,72 @@ class GameFrame {
    */
   enableShadow(flag: boolean): void {
     this.renderer.shadowMap.enabled = flag;
+  }
+
+  /**
+   * 向指定事件对象中添加事件监听器函数
+   * 对于具名函数可以避免重复添加，对于匿名函数无法避免重复添加
+   * @param obj: 事件对象
+   * @param type: 事件种类
+   * @param handler: 事件监听器函数
+   * @return: 添加成功返回true，添加失败返回false
+   */
+  addEventListener(obj: any, type: string, handler: (...args: any[]) => void): boolean {
+    const target = this.listeners.get(obj);
+    if (target === undefined) { // 首次为对象添加监听器函数
+      const handlerObj = Object.defineProperty({}, type, {
+        value: new Set([handler]),
+        configurable: true,
+        enumerable: true,
+      });
+      this.listeners.set(obj, handlerObj);
+    } else if (Object.prototype.hasOwnProperty.call(target, type)) { // 多次为对象添加指定事件
+      if (target[type].has(handler)) { return false; } // 重复添加事件监听器时返回false
+      target[type].add(handler);
+    } else { // 首次为对象添加指定事件
+      Object.defineProperty(target, type, {
+        value: new Set([handler]),
+        configurable: true,
+        enumerable: true,
+      });
+    }
+    obj.addEventListener(type, handler);
+    return true;
+  }
+
+  /**
+   * 清除指定事件对象上指定类型的监听器函数（缺省时清除所有监听器）
+   * @param obj: 事件对象
+   * @param type: 事件种类
+   * @param handler: 事件监听器函数
+   * @return: 移除成功返回true，移除失败返回false
+   */
+  removeEventListener(obj: any, type: string, handler?: (...args: any[]) => void): boolean {
+    const target = this.listeners.get(obj);
+    if (target === undefined || !Object.prototype.hasOwnProperty.call(target, type) || !target[type].size) {
+      return false; // 该对象未添加过事件监听，或该事件未注册，或事件注册函数的Set为空
+    }
+    if (handler === undefined) { // 清除指定事件的所有监听器
+      target[type].forEach((h) => { obj.removeEventListener(type, h); });
+      delete target[type];
+    } else {
+      if (!target[type].has(handler)) { return false; } // 该监听函数不在已有的函数列表内返回false
+      obj.removeEventListener(type, handler);
+      target[type].delete(handler);
+    }
+    return true;
+  }
+
+  /**
+   * 清除所有的监听器
+   */
+  clearEventListener(): void {
+    this.listeners.forEach((value, target) => {
+      Object.keys(value).forEach((type) => {
+        value[type].forEach((handler) => { target.removeEventListener(type, handler); });
+      });
+    });
+    this.listeners = new Map();
   }
 }
 

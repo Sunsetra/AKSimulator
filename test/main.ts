@@ -57,7 +57,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
         timeAxis.stop();
         timeAxisUI.clearNodes();
         timeAxisUI.resetTimer();
-        // map.resetMap();
+        // TODO: map.resetMap();
         gameCtl.resetGame();
       },
     };
@@ -73,15 +73,14 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
         timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
       } else {
         dynamicRenderer.stopRender();
-        renderCtl.stop();
-        console.log('游戏结束，需重置战场');
+        renderCtl.stop(); // 游戏结束，需重置战场
       }
     }
 
     dynamicRenderer.callback = frameCallback;
 
     /* 切换标签页时暂停动画 */
-    document.addEventListener('visibilitychange', () => {
+    frame.addEventListener(document, 'visibilitychange', () => {
       if (document.visibilityState === 'hidden') { renderCtl.pause(); }
     });
     renderCtl.reset();
@@ -94,6 +93,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
 /** 重置游戏框架 */
 function resetGameFrame(): void {
   disposeResources(frame.scene); // 废弃原地图中的资源
+  frame.clearEventListener();
 }
 
 
