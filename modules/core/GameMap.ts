@@ -463,12 +463,6 @@ class GameMap {
     // helper.update();
     // frame.scene.add(helper);
   }
-
-  /**
-   * TODO: 重置地图（按需重置地图几何或其上的建筑信息）
-   */
-  // resetMap(): void {
-  // }
 }
 
 
