@@ -59,7 +59,7 @@ class GameController {
       const thisFrag = fragments[0];
       const { time, name, path } = thisFrag; // 首只敌人信息
 
-      if (Math.abs(axisTime[1] - time) <= 0.01) { // 检查应出现的新敌人
+      if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
         const enemy = this.createEnemy(name, thisFrag);
         if (enemy !== null) {
           const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停

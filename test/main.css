@@ -214,6 +214,8 @@ canvas {
   position: absolute;
   height: 100%;
   width: 0.5%;
+  max-width: 4px;
+  min-width: 2px;
 }
 
 /* 动态添加的时间轴标记，为axis轴的子元素 */
