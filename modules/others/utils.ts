@@ -73,12 +73,20 @@ function disposeResources<T>(resource: T): T {
 
 /**
  * 将抽象坐标转换为世界坐标（二维）
- * @param x: X向抽象坐标
+ * @param x: X向抽象坐标或Vector2
  * @param z: Z向抽象坐标
  * @returns: 返回转换后的世界坐标
  */
-function absPosToRealPos(x: number, z: number): Vector2 {
-  return new Vector2(x * BlockUnit, z * BlockUnit);
+function absPosToRealPos(x: number, z: number): Vector2;
+function absPosToRealPos(x: Vector2): Vector2;
+function absPosToRealPos(x: Vector2 | number, z?: number): Vector2 {
+  if (x instanceof Vector2) {
+    return new Vector2(x.x * BlockUnit, x.y * BlockUnit);
+  }
+  if (typeof z === 'number') {
+    return new Vector2(x * BlockUnit, z * BlockUnit);
+  }
+  return new Vector2(x * BlockUnit, 0); // x为数字，z未定义则认为Z为0
 }
 
 /**
@@ -87,8 +95,16 @@ function absPosToRealPos(x: number, z: number): Vector2 {
  * @param z: Z向世界坐标
  * @returns: 返回转换后的抽象坐标
  */
-function realPosToAbsPos(x: number, z: number): Vector2 {
-  return new Vector2(x / BlockUnit, z / BlockUnit);
+function realPosToAbsPos(x: number, z: number): Vector2;
+function realPosToAbsPos(x: Vector2): Vector2;
+function realPosToAbsPos(x: Vector2 | number, z?: number): Vector2 {
+  if (x instanceof Vector2) {
+    return new Vector2(x.x / BlockUnit, x.y / BlockUnit);
+  }
+  if (typeof z === 'number') {
+    return new Vector2(x / BlockUnit, z / BlockUnit);
+  }
+  return new Vector2(x / BlockUnit, 0); // x为数字，z未定义则认为Z为0
 }
 
 export {

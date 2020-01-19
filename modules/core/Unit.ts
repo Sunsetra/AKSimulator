@@ -60,7 +60,7 @@ abstract class Unit {
    * @param pos - 包括三向坐标的对象（Y向为undefined表示Y向坐标不变）
    */
   set position(pos: Vector2) {
-    const realPos = absPosToRealPos(pos.x, pos.y);
+    const realPos = absPosToRealPos(pos);
     this.mesh.position.setX(realPos.x);
     this.mesh.position.setZ(realPos.y);
   }

@@ -115,9 +115,8 @@ class GameFrame {
    * @param obj: 事件对象
    * @param type: 事件种类
    * @param handler: 事件监听器函数
-   * @return: 添加成功返回true，添加失败返回false
    */
-  addEventListener(obj: any, type: string, handler: (...args: any[]) => void): boolean {
+  addEventListener(obj: any, type: string, handler: (...args: any[]) => void): void {
     const target = this.listeners.get(obj);
     if (target === undefined) { // 首次为对象添加监听器函数
       const handlerObj = Object.defineProperty({}, type, {
@@ -127,7 +126,7 @@ class GameFrame {
       });
       this.listeners.set(obj, handlerObj);
     } else if (Object.prototype.hasOwnProperty.call(target, type)) { // 多次为对象添加指定事件
-      if (target[type].has(handler)) { return false; } // 重复添加事件监听器时返回false
+      if (target[type].has(handler)) { return; } // 重复添加事件监听器时返回
       target[type].add(handler);
     } else { // 首次为对象添加指定事件
       Object.defineProperty(target, type, {
@@ -137,7 +136,6 @@ class GameFrame {
       });
     }
     obj.addEventListener(type, handler);
-    return true;
   }
 
   /**
@@ -145,22 +143,20 @@ class GameFrame {
    * @param obj: 事件对象
    * @param type: 事件种类
    * @param handler: 事件监听器函数
-   * @return: 移除成功返回true，移除失败返回false
    */
-  removeEventListener(obj: any, type: string, handler?: (...args: any[]) => void): boolean {
+  removeEventListener(obj: any, type: string, handler?: (...args: any[]) => void): void {
     const target = this.listeners.get(obj);
     if (target === undefined || !Object.prototype.hasOwnProperty.call(target, type) || !target[type].size) {
-      return false; // 该对象未添加过事件监听，或该事件未注册，或事件注册函数的Set为空
+      return; // 该对象未添加过事件监听，或该事件未注册，或事件注册函数的Set为空
     }
     if (handler === undefined) { // 清除指定事件的所有监听器
       target[type].forEach((h) => { obj.removeEventListener(type, h); });
       delete target[type];
     } else {
-      if (!target[type].has(handler)) { return false; } // 该监听函数不在已有的函数列表内返回false
+      if (!target[type].has(handler)) { return; } // 该监听函数不在已有的函数列表内返回
       obj.removeEventListener(type, handler);
       target[type].delete(handler);
     }
-    return true;
   }
 
   /**

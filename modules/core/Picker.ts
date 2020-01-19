@@ -6,13 +6,12 @@ import {
   Mesh,
   Raycaster,
   Vector2,
-  Vector3,
 } from '../../node_modules/three/build/three.module.js';
 import GameFrame from './GameFrame.js';
 
 
 class Picker {
-  pickPos: Vector2;
+  pickPos: Vector2 | null; // 光标在目标对象上的世界坐标（不含Y）
 
   private rayCaster: Raycaster;
 
@@ -25,15 +24,20 @@ class Picker {
     this.ground = ground;
     this.rayCaster = new Raycaster();
     this.pickPos = new Vector2();
-    this.frame.addEventListener(window, 'mousemove', this.getNormalizedPosition);
-    this.frame.addEventListener(window, 'mouseout', this.clearPickedPosition);
-    this.frame.addEventListener(window, 'mouseleave', this.clearPickedPosition);
   }
 
-  pick(): Vector3 | null {
-    this.rayCaster.setFromCamera(this.pickPos, this.frame.camera);
-    const intersectObj = this.rayCaster.intersectObject(this.ground);
-    return intersectObj.length ? intersectObj[0].point : null;
+  /**
+   * 拾取控制开关
+   * @param state: 拾取开启/关闭状态
+   */
+  set picking(state: boolean) {
+    if (state) {
+      this.frame.addEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+      this.frame.addEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    } else {
+      this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+      this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    }
   }
 
   /**
@@ -43,14 +47,22 @@ class Picker {
   private getNormalizedPosition = (event: MouseEvent): void => {
     const rect = this.frame.canvas.getBoundingClientRect();
     const pos = new Vector2(event.clientX - rect.left, event.clientY - rect.top);
-    this.pickPos.x = (pos.x / this.frame.canvas.clientWidth) * 2 - 1;
-    this.pickPos.y = (pos.y / this.frame.canvas.clientHeight) * -2 + 1;
+    const normalizedPos = new Vector2(
+      (pos.x / this.frame.canvas.clientWidth) * 2 - 1,
+      (pos.y / this.frame.canvas.clientHeight) * -2 + 1,
+    );
+    this.rayCaster.setFromCamera(normalizedPos, this.frame.camera);
+    const intersectObj = this.rayCaster.intersectObject(this.ground);
+    if (intersectObj.length === 0) {
+      this.pickPos = null;
+    } else {
+      this.pickPos = new Vector2(intersectObj[0].point.x, intersectObj[0].point.z);
+    }
   };
 
-  /** 清除标准光标位置到屏幕外的位置 */
+  /** 设置光标拾取为null */
   private clearPickedPosition = (): void => {
-    this.pickPos.x = -1000000;
-    this.pickPos.y = -1000000;
+    this.pickPos = null;
   };
 }
 
