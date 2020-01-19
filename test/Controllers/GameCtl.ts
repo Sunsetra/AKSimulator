@@ -67,7 +67,7 @@ class GameController {
           if (thisBlock !== null && thisBlock.size !== undefined) {
             const y = thisBlock.size.y + enemy.height / 2;
             enemy.setY(y);
-            enemy.position = new Vector2(x, z); // 敌人初始放置
+            enemy.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
           }
 
           const nodeType = 'enemy create';
@@ -106,8 +106,8 @@ class GameController {
           } else {
             const oldX = inst.position.x;
             const oldZ = inst.position.y;
-            const newX = path[0].x;
-            const newZ = path[0].z;
+            const newX = path[0].x + 0.5;
+            const newZ = path[0].z + 0.5;
 
             let velocityX = inst.speed / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
             velocityX = newX >= oldX ? velocityX : -velocityX;

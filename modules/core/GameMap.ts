@@ -41,11 +41,11 @@ class GameMap {
 
   readonly data: MapInfo; // 原始地图信息
 
+  readonly mesh: Mesh; // 地图网格体
+
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
   private readonly resList: ResourcesList; // 全资源列表
-
-  private readonly mesh: Mesh; // 地图网格体
 
   constructor(data: MapInfo, resList: ResourcesList) {
     this.data = data;
@@ -429,28 +429,29 @@ class GameMap {
     scene.add(lights.sunLight.target);
 
     // /** 创建辅助对象，包括灯光参数控制器等 */
+    // import dat from '../../node_modules/three/examples/jsm/libs/dat.gui.module.js';
+    // import {
+    //   DirectionalLightHelper,
+    //   GridHelper,
+    //   AxesHelper,
+    // } from '../../node_modules/three/build/three.module.js';
     // const gui = new dat.GUI();
     // const meshFolder = gui.addFolder('网格');
-    //
     // class AxisGridHelper {
     //   constructor(element, gridSize) {
-    //     const axes = new THREE.AxesHelper();
+    //     const axes = new AxesHelper();
     //     axes.material.depthTest = false;
     //     axes.renderOrder = 2;
     //     element.add(axes);
-    //
-    //     const grid = new THREE.GridHelper(gridSize, gridSize);
+    //     const grid = new GridHelper(gridSize, gridSize);
     //     grid.material.depthTest = false;
     //     grid.renderOrder = 1;
     //     element.add(grid);
-    //
     //     this.grid = grid;
     //     this.axes = axes;
     //     this.visible = false;
     //   }
-    //
     //   get visible() { return this._visible; }
-    //
     //   set visible(v) {
     //     this._visible = v;
     //     this.grid.visible = v;
@@ -459,7 +460,7 @@ class GameMap {
     // }
     // const sceneHelper = new AxisGridHelper(frame.scene, 300);
     // meshFolder.add(sceneHelper, 'visible').name('场景网格');
-    // const helper = new THREE.DirectionalLightHelper(frame.lights.sunLight);
+    // const helper = new DirectionalLightHelper(frame.lights.sunLight);
     // helper.update();
     // frame.scene.add(helper);
   }

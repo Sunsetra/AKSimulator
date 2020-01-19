@@ -1,6 +1,7 @@
 import GameFrame from '../modules/core/GameFrame.js';
 import GameMap from '../modules/core/GameMap.js';
 import { MapInfo } from '../modules/core/MapInfo';
+import Picker from '../modules/core/Picker.js';
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import { ResourcesList } from '../modules/loaders/ResourceLoader';
@@ -10,6 +11,7 @@ import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
   disposeResources,
+  realPosToAbsPos,
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
@@ -39,6 +41,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   map.createMap(frame);
 
   const gameCtl = new GameController(map, frame.scene, resList, timeAxisUI);
+  const picker = new Picker(frame, map.mesh);
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
@@ -57,6 +60,12 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
 
   /* 指定每帧渲染前需要执行的回调 */
   function frameCallback(rAFTime: number): void {
+    const mousePos = picker.pick();
+    if (mousePos !== null) {
+      const absPos = realPosToAbsPos(mousePos.x, mousePos.z);
+      console.log(Math.floor(absPos.x), Math.floor(absPos.y));
+    }
+
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.enemyCount) {
       gameCtl.updateEnemyStatus(currentTime);

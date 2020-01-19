@@ -73,24 +73,22 @@ function disposeResources<T>(resource: T): T {
 
 /**
  * 将抽象坐标转换为世界坐标（二维）
- * @param absPos: 二维抽象坐标
+ * @param x: X向抽象坐标
+ * @param z: Z向抽象坐标
  * @returns: 返回转换后的世界坐标
  */
-function absPosToRealPos(absPos: Vector2): Vector2 {
-  const realPosX = (absPos.x + 0.5) * BlockUnit;
-  const realPoxZ = (absPos.y + 0.5) * BlockUnit;
-  return new Vector2(realPosX, realPoxZ);
+function absPosToRealPos(x: number, z: number): Vector2 {
+  return new Vector2(x * BlockUnit, z * BlockUnit);
 }
 
 /**
  * 将世界坐标转换为抽象坐标（二维）
- * @param realPos: 二维世界坐标
+ * @param x: X向世界坐标
+ * @param z: Z向世界坐标
  * @returns: 返回转换后的抽象坐标
  */
-function realPosToAbsPos(realPos: Vector2): Vector2 {
-  const absPosX = realPos.x / BlockUnit - 0.5;
-  const absPosZ = realPos.y / BlockUnit - 0.5;
-  return new Vector2(absPosX, absPosZ);
+function realPosToAbsPos(x: number, z: number): Vector2 {
+  return new Vector2(x / BlockUnit, z / BlockUnit);
 }
 
 export {

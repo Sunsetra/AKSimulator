@@ -52,7 +52,7 @@ abstract class Unit {
    */
   get position(): Vector2 {
     const pos = this.mesh.getWorldPosition(new Vector3());
-    return realPosToAbsPos(new Vector2(pos.x, pos.z));
+    return realPosToAbsPos(pos.x, pos.z);
   }
 
   /**
@@ -60,7 +60,7 @@ abstract class Unit {
    * @param pos - 包括三向坐标的对象（Y向为undefined表示Y向坐标不变）
    */
   set position(pos: Vector2) {
-    const realPos = absPosToRealPos(pos);
+    const realPos = absPosToRealPos(pos.x, pos.y);
     this.mesh.position.setX(realPos.x);
     this.mesh.position.setZ(realPos.y);
   }

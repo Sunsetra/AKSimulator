@@ -85,7 +85,7 @@ class GameFrame {
 
   /**
    * 设置场景及雾气背景色（单参）
-   * @param r: 16进制色彩或字符串色彩
+   * @param r: 16进制颜色或颜色字符串
    */
   setColor(r: string | number): void;
   /**
@@ -95,10 +95,10 @@ class GameFrame {
    * @param b: 蓝色通道值，范围为0-1
    */
   setColor(r: number, g: number, b: number): void;
-  setColor(r: number, g?: number, b?: number): void {
-    const color = (g === undefined || b === undefined) ? new Color(r) : new Color(r, g, b);
+  setColor(r: string | number, g?: number, b?: number): void {
+    const color = (typeof r === 'number' && g !== undefined && b !== undefined) ? new Color(r, g, b) : new Color(r);
     this.scene.background = color;
-    if (this.scene.fog) { this.scene.fog.color = color; }
+    if (this.scene.fog !== null) { this.scene.fog.color = color; }
   }
 
   /**
