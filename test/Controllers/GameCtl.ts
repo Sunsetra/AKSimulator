@@ -37,9 +37,9 @@ class GameController {
 
   private timeAxisUI: TimeAxisUICtl; // 时间轴UI控制器
 
-  constructor(map: GameMap, scene: Scene, resList: ResourcesList, timeAxisUI: TimeAxisUICtl) {
-    this.map = map;
+  constructor(scene: Scene, map: GameMap, resList: ResourcesList, timeAxisUI: TimeAxisUICtl) {
     this.scene = scene;
+    this.map = map;
     this.resList = resList;
     this.timeAxisUI = timeAxisUI;
     this.enemyCount = map.data.enemyNum;
@@ -64,7 +64,7 @@ class GameController {
         if (enemy !== null) {
           const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
           const thisBlock = this.map.getBlock(z, x);
-          if (thisBlock !== null && thisBlock.size !== undefined) {
+          if (thisBlock !== null) {
             const y = thisBlock.size.y + enemy.height / 2;
             enemy.setY(y);
             enemy.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置

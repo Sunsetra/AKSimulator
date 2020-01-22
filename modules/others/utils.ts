@@ -16,9 +16,7 @@ import { WEBGL } from '../../node_modules/three/examples/jsm/WebGL.js';
 
 import {
   BlockUnit,
-  WebGL2Available,
-  WebGLAvailable,
-  WebGLUnavailable,
+  WebGLAvailability,
 } from './constants.js';
 
 
@@ -28,9 +26,9 @@ import {
  */
 function checkWebGLVersion(): number {
   if (WEBGL.isWebGLAvailable()) {
-    return WEBGL.isWebGL2Available() ? WebGL2Available : WebGLAvailable;
+    return WEBGL.isWebGL2Available() ? WebGLAvailability.WebGL2Available : WebGLAvailability.Available;
   }
-  return WebGLUnavailable;
+  return WebGLAvailability.Unavailable;
 }
 
 /**
@@ -91,20 +89,32 @@ function absPosToRealPos(x: Vector2 | number, z?: number): Vector2 {
 
 /**
  * 将世界坐标转换为抽象坐标（二维）
- * @param x: X向世界坐标
- * @param z: Z向世界坐标
+ * @param a: X向世界坐标或Vector2
+ * @param b: Z向世界坐标
+ * @param isRound: 是否截断抽象坐标为整数
  * @returns: 返回转换后的抽象坐标
  */
-function realPosToAbsPos(x: number, z: number): Vector2;
-function realPosToAbsPos(x: Vector2): Vector2;
-function realPosToAbsPos(x: Vector2 | number, z?: number): Vector2 {
-  if (x instanceof Vector2) {
-    return new Vector2(x.x / BlockUnit, x.y / BlockUnit);
+function realPosToAbsPos(a: number, b: number, isRound?: boolean): Vector2;
+function realPosToAbsPos(a: Vector2, b?: boolean): Vector2;
+function realPosToAbsPos(a: Vector2 | number, b?: number | boolean, isRound?: boolean): Vector2 {
+  let posX: number;
+  let posZ: number;
+  if (a instanceof Vector2) {
+    posX = a.x / BlockUnit;
+    posZ = a.y / BlockUnit;
+    if (b) { return new Vector2(Math.floor(posX), Math.floor(posZ)); }
+    return new Vector2(posX, posZ);
   }
-  if (typeof z === 'number') {
-    return new Vector2(x / BlockUnit, z / BlockUnit);
+
+  if (typeof b === 'number') {
+    posX = a / BlockUnit;
+    posZ = b / BlockUnit;
+    if (isRound) { return new Vector2(Math.floor(posX), Math.floor(posZ)); }
+    return new Vector2(posX, posZ);
   }
-  return new Vector2(x / BlockUnit, 0); // x为数字，z未定义则认为Z为0
+
+  if (isRound) { return new Vector2(Math.floor(a), 0); }
+  return new Vector2(a, 0);
 }
 
 export {

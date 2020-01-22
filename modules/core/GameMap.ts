@@ -11,13 +11,19 @@ import {
   Material,
   Math as _Math,
   Mesh,
+  MeshBasicMaterial,
+  PlaneBufferGeometry,
+  Texture,
   Vector3,
 } from '../../node_modules/three/build/three.module.js';
 
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
-import { BlockUnit } from '../others/constants.js';
+import {
+  BlockUnit,
+  Overlay,
+} from '../others/constants.js';
 import {
   BlockInfoError,
   BuildingInfoError,
@@ -47,7 +53,10 @@ class GameMap {
 
   private readonly resList: ResourcesList; // 全资源列表
 
-  constructor(data: MapInfo, resList: ResourcesList) {
+  private readonly frame: GameFrame; // 游戏框架
+
+  constructor(frame: GameFrame, data: MapInfo, resList: ResourcesList) {
+    this.frame = frame;
     this.data = data;
     this.resList = resList;
     this.name = data.name;
@@ -202,6 +211,8 @@ class GameMap {
       this.mesh.castShadow = true;
       this.mesh.receiveShadow = true;
     }
+
+    this.createMap();
   }
 
   /**
@@ -216,6 +227,9 @@ class GameMap {
     if (verifyRow || verifyColumn) { return null; }
     return this.blockData[row * this.width + column];
   }
+
+  /** 返回整个砖块信息数组 */
+  getBlocks(): Array<BlockInfo | null> { return this.blockData; }
 
   /**
    * 创建建筑实例并向地图添加建筑绑定，并返回绑定后的建筑实例
@@ -290,14 +304,10 @@ class GameMap {
     });
 
     /* 放置建筑 */
-    if (block.size === undefined) {
-      throw new BlockInfoError('当前砖块尺寸未定义', block);
-    } else {
-      const x = (column + building.colSpan / 2) * block.size.x;
-      const y = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
-      const z = (row + building.rowSpan / 2) * block.size.z;
-      building.mesh.position.set(x, y, z);
-    }
+    const x = (column + building.colSpan / 2) * block.size.x;
+    const y = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
+    const z = (row + building.rowSpan / 2) * block.size.z;
+    building.mesh.position.set(x, y, z);
     return building;
   }
 
@@ -341,10 +351,85 @@ class GameMap {
   }
 
   /**
-   * 构造地图几何数据及贴图映射数据
-   * @param frame: 框架对象
+   * 向地图中添加叠加层
+   * @param layer: 叠加层层次，从0开始为最底层
+   * @param map: 叠加层样式，默认为绿色纯色
+   * @param visible: 叠加层是否显示，默认为隐藏
    */
-  createMap(frame: GameFrame): void {
+  addOverlay(layer: Overlay, map: Texture | Color = new Color('green'), visible = false): void {
+    this.blockData.forEach((block) => {
+      if (block !== null) {
+        const geometry = new PlaneBufferGeometry(BlockUnit, BlockUnit);
+        const material = new MeshBasicMaterial({
+          transparent: true,
+          opacity: 0.4,
+        });
+        if (map instanceof Texture) {
+          material.map = map;
+        } else {
+          material.color = map;
+        }
+        const proto = new Mesh(geometry, material); // 创建叠加层原型
+
+        const posX = block.size.x * (block.column + 0.5);
+        const posY = block.size.y + (layer + 1) * 0.01;
+        const posZ = block.size.z * (block.row + 0.5);
+        proto.position.set(posX, posY, posZ);
+        proto.rotateX(-Math.PI / 2);
+        proto.visible = visible;
+
+        if (block.overlay === undefined) { block.overlay = new Map(); }
+        block.overlay.set(layer, proto);
+        this.frame.scene.add(proto);
+      }
+    });
+  }
+
+  /**
+   * 设置叠加层样式
+   * @param layer: 叠加层层次
+   * @param map: 提供叠加层贴图或纯色叠加层
+   */
+  setOverlayStyle(layer: Overlay, map: Texture | Color): void {
+    this.blockData.forEach((block) => {
+      if (block !== null && block.overlay !== undefined) {
+        const mesh = block.overlay.get(layer);
+        if (mesh !== undefined) {
+          if (map instanceof Texture) {
+            (mesh.material as MeshBasicMaterial).map = map;
+          } else {
+            (mesh.material as MeshBasicMaterial).color = map;
+          }
+        }
+      }
+    });
+  }
+
+  setOverlayVisibility(layer: Overlay, visible: boolean, block: BlockInfo): void;
+  /**
+   * 设定指定位置的叠加层的可见性
+   * @param row: 叠加层所在行
+   * @param column: 叠加层所在列
+   * @param layer: 叠加层的层次
+   * @param visible: 可见性
+   */
+  setOverlayVisibility(layer: Overlay, visible: boolean, row: number, column: number): void;
+  setOverlayVisibility(layer: Overlay, visible: boolean, row: BlockInfo | number, column?: number): void {
+    let block: BlockInfo | null;
+    if (typeof row === 'number') {
+      if (typeof column === 'number') {
+        block = this.getBlock(row, column);
+      } else { return; }
+    } else { block = row; }
+
+    if (block !== null && block.overlay !== undefined) {
+      const mesh = block.overlay.get(layer);
+      if (mesh !== undefined) { mesh.visible = visible; }
+    }
+  }
+
+  /** 构造地图几何数据及贴图映射数据 */
+  private createMap(): void {
     const maxSize = Math.max(this.width, this.height) * BlockUnit; // 地图最长尺寸
     const centerX = (this.width * BlockUnit) / 2; // 地图X向中心
     const centerZ = (this.height * BlockUnit) / 2; // 地图Z向中心
@@ -353,7 +438,7 @@ class GameMap {
       camera,
       controls,
       lights,
-    } = frame;
+    } = this.frame;
 
     /* 场景设置 */
     scene.fog = new Fog(0x0, maxSize, maxSize * 2); // 不受雾气影响的范围为1倍最长尺寸，2倍最长尺寸外隐藏
@@ -371,6 +456,10 @@ class GameMap {
         if (building !== null) { scene.add(building.mesh); }
       }
     });
+
+    /* 添加叠加层 */
+    this.addOverlay(Overlay.Placeable, new Color('green'));
+    this.addOverlay(Overlay.AttackArea, new Color('red'));
 
     /* 设置场景灯光 */
     {

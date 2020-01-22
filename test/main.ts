@@ -1,17 +1,19 @@
 import GameFrame from '../modules/core/GameFrame.js';
 import GameMap from '../modules/core/GameMap.js';
 import { MapInfo } from '../modules/core/MapInfo';
-import Picker from '../modules/core/Picker.js';
 import TimeAxis from '../modules/core/TimeAxis.js';
+import Tracker from '../modules/core/Tracker.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import { ResourcesList } from '../modules/loaders/ResourceLoader';
 import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
-import { WebGLUnavailable } from '../modules/others/constants.js';
+import {
+  Overlay,
+  WebGLAvailability,
+} from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
   disposeResources,
-  realPosToAbsPos,
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
@@ -37,11 +39,9 @@ const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
  * @param resList - 总资源列表
  */
 function main(mapInfo: MapInfo, resList: ResourcesList): void {
-  const map = new GameMap(JSON.parse(JSON.stringify(mapInfo)), resList); // 全局地图对象
-  map.createMap(frame);
-
-  const gameCtl = new GameController(map, frame.scene, resList, timeAxisUI);
-  const picker = new Picker(frame, map.mesh);
+  const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), resList); // 全局地图对象
+  const gameCtl = new GameController(frame.scene, map, resList, timeAxisUI); // 游戏控制器
+  const tracker = new Tracker(frame, map);
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
@@ -89,7 +89,7 @@ function resetGameFrame(): void {
 }
 
 
-if (checkWebGLVersion() === WebGLUnavailable) {
+if (checkWebGLVersion() === WebGLAvailability.Unavailable) {
   throw new Error('不支持WebGL，请更新浏览器。');
 } else { // 检测webgl可用性，返回WebGLUnavailable时不支持webgl
   /* 加载总资源列表 */
@@ -134,7 +134,7 @@ if (checkWebGLVersion() === WebGLUnavailable) {
         console.error('加载地图文件失败\n', reason);
       }); // 地图信息加载器
       LoadingUICtl.initUI();
-      LoadingUICtl.mapSelectToLoading(mapLoader);
+      LoadingUICtl.mapSelectToLoading(mapLoader); // UI加载完成后加载地图
     })
     .catch((reason) => console.error('加载总资源列表失败\n', reason));
 }

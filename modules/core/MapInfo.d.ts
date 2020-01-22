@@ -3,7 +3,10 @@
  * @author: 落日羽音
  */
 
-import { Vector3 } from '../../node_modules/three/build/three.module.js';
+import {
+  Mesh,
+  Vector3,
+} from '../../node_modules/three/build/three.module.js';
 
 import Building from '../buildings/Building.js';
 import Enemy from '../enemies/Enemy.js';
@@ -34,8 +37,10 @@ export interface BlockInfo { // 砖块信息
   row: number; // 砖块所在行数
   column: number; // 砖块所在列数
   blockType: string; // 砖块类型
+  placeable: boolean; // 是否可以放置干员
   heightAlpha: number; // 砖块高度系数
-  size?: Vector3; // 砖块三维世界尺寸，在创建地图时生成
+  size: Vector3; // 砖块三维世界尺寸，在创建地图时生成
+  overlay?: Map<number, Mesh>; // 砖块叠加层，数字表示层数，0层最低
   buildingInfo?: BuildingInfo; // 砖块上的建筑信息，无建筑的砖块无该属性
   texture: { // 砖块贴图
     top: string; // 砖块顶部贴图

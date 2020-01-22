@@ -1,5 +1,14 @@
-export const WebGLUnavailable = 0;
-export const WebGLAvailable = 1;
-export const WebGL2Available = 2;
+export enum WebGLAvailability {
+  Unavailable,
+  Available,
+  WebGL2Available,
+}
+
 
 export const BlockUnit = 10;
+
+
+export enum Overlay {
+  Placeable,
+  AttackArea,
+}
