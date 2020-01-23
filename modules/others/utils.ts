@@ -97,23 +97,17 @@ function absPosToRealPos(x: Vector2 | number, z?: number): Vector2 {
 function realPosToAbsPos(a: number, b: number, isRound?: boolean): Vector2;
 function realPosToAbsPos(a: Vector2, b?: boolean): Vector2;
 function realPosToAbsPos(a: Vector2 | number, b?: number | boolean, isRound?: boolean): Vector2 {
-  let posX: number;
-  let posZ: number;
   if (a instanceof Vector2) {
-    posX = a.x / BlockUnit;
-    posZ = a.y / BlockUnit;
-    if (b) { return new Vector2(Math.floor(posX), Math.floor(posZ)); }
-    return new Vector2(posX, posZ);
+    if (b) { return new Vector2(a.x / BlockUnit, a.y / BlockUnit).floor(); }
+    return new Vector2(a.x / BlockUnit, a.y / BlockUnit);
   }
 
   if (typeof b === 'number') {
-    posX = a / BlockUnit;
-    posZ = b / BlockUnit;
-    if (isRound) { return new Vector2(Math.floor(posX), Math.floor(posZ)); }
-    return new Vector2(posX, posZ);
+    if (isRound) { return new Vector2(a / BlockUnit, b / BlockUnit).floor(); }
+    return new Vector2(a / BlockUnit, b / BlockUnit);
   }
 
-  if (isRound) { return new Vector2(Math.floor(a), 0); }
+  if (isRound) { return new Vector2(a, 0).floor(); }
   return new Vector2(a, 0);
 }
 

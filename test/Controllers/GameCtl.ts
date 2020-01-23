@@ -63,7 +63,7 @@ class GameController {
         const enemy = this.createEnemy(name, thisFrag);
         if (enemy !== null) {
           const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
-          const thisBlock = this.map.getBlock(z, x);
+          const thisBlock = this.map.getBlock(x, z);
           if (thisBlock !== null) {
             const y = thisBlock.size.y + enemy.height / 2;
             enemy.setY(y);

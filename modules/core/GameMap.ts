@@ -14,6 +14,7 @@ import {
   MeshBasicMaterial,
   PlaneBufferGeometry,
   Texture,
+  Vector2,
   Vector3,
 } from '../../node_modules/three/build/three.module.js';
 
@@ -21,6 +22,7 @@ import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
 import { ResourcesList } from '../loaders/ResourceLoader';
 import {
+  BlockType,
   BlockUnit,
   Overlay,
 } from '../others/constants.js';
@@ -65,10 +67,11 @@ class GameMap {
 
     this.blockData = new Array(this.width * this.height).fill(null);
     const blockInfo: BlockInfo[] = JSON.parse(JSON.stringify(data.blockInfo));
-    blockInfo.forEach((info) => { // 建立无建筑信息的空白地图
-      const { row, column, heightAlpha } = info;
+    /* 建立无建筑信息的空白地图 */
+    blockInfo.forEach((info) => {
+      const { x, z, heightAlpha } = info;
       delete info.buildingInfo;
-      const index = row * this.width + column;
+      const index = z * this.width + x;
       const blockSize = new Vector3(BlockUnit, heightAlpha * BlockUnit, BlockUnit);
       this.blockData[index] = info;
       Object.defineProperty(this.blockData[index], 'size', { // 为砖块对象添加三维尺寸对象
@@ -145,16 +148,16 @@ class GameMap {
       let start = 0; // 贴图顶点组开始索引
       let count = 0; // 贴图单顶点组计数
 
-      for (let row = 0; row < this.height; row += 1) { // 遍历整个地图几何
-        for (let column = 0; column < this.width; column += 1) {
-          const thisBlock = this.getBlock(row, column);
+      for (let zNum = 0; zNum < this.height; zNum += 1) { // 遍历整个地图几何
+        for (let xNum = 0; xNum < this.width; xNum += 1) {
+          const thisBlock = this.getBlock(xNum, zNum);
           if (thisBlock === null) { // 该处无方块时加入空元组占位
             sideGroup.push([0, 0]);
           } else { // 该处有方块（不为null）才构造几何
             const thisHeight = thisBlock.heightAlpha;
 
             faces.forEach(({ corners, normal }) => {
-              const sideBlock = this.getBlock(row + normal[2], column + normal[0]);
+              const sideBlock = this.getBlock(xNum + normal[0], zNum + normal[2]);
               const sideHeight = sideBlock ? sideBlock.heightAlpha : 0; // 当前侧块的高度系数
               if (thisHeight - sideHeight > 0 || normal[1]) { // 当前侧面高于侧块或是上下表面
                 const ndx = positions.length / 3; // 置于首次改变position数组之前
@@ -162,7 +165,7 @@ class GameMap {
                   const x = pos[0] * BlockUnit;
                   const y = pos[1] * thisHeight * BlockUnit;
                   const z = pos[2] * BlockUnit;
-                  positions.push(x + column * BlockUnit, y, z + row * BlockUnit);
+                  positions.push(x + xNum * BlockUnit, y, z + zNum * BlockUnit);
                   normals.push(...normal);
                   uvs.push(...uv);
                 });
@@ -217,31 +220,58 @@ class GameMap {
 
   /**
    * 验证并获取指定位置的砖块对象
-   * @param row - 砖块所在行
-   * @param column - 砖块所在列
+   * @param x - 砖块所在X位置
+   * @param z - 砖块所在Z位置
    * @returns - 指定位置处存在砖块时返回砖块，不存在则返回null
    */
-  getBlock(row: number, column: number): BlockInfo | null {
-    const verifyRow = Math.floor(row / this.height);
-    const verifyColumn = Math.floor(column / this.width);
-    if (verifyRow || verifyColumn) { return null; }
-    return this.blockData[row * this.width + column];
+  getBlock(x: number, z: number): BlockInfo | null;
+  getBlock(x: Vector2): BlockInfo | null;
+  getBlock(x: number | Vector2, z?: number): BlockInfo | null {
+    if (x instanceof Vector2) {
+      const verifyRow = Math.floor(x.x / this.width);
+      const verifyColumn = Math.floor(x.y / this.height);
+      if (verifyRow || verifyColumn) { return null; }
+      return this.blockData[x.y * this.width + x.x];
+    }
+    if (typeof z === 'number') {
+      const verifyRow = Math.floor(x / this.width);
+      const verifyColumn = Math.floor(z / this.height);
+      if (verifyRow || verifyColumn) { return null; }
+      return this.blockData[z * this.width + x];
+    }
+    return null;
   }
 
   /** 返回整个砖块信息数组 */
   getBlocks(): Array<BlockInfo | null> { return this.blockData; }
 
   /**
+   * 获取指定可放置单位的砖块种类的位置列表
+   * @param type: 砖块种类，置空时获取所有可放置的砖块
+   */
+  getPlaceableArea(type?: BlockType): Vector2[] {
+    const area: Vector2[] = [];
+    this.blockData.forEach((block) => {
+      if (block !== null && block.placeable) {
+        if (block.blockType === type || type === undefined) {
+          area.push(new Vector2(block.x, block.z));
+        }
+      }
+    });
+    return area;
+  }
+
+  /**
    * 创建建筑实例并向地图添加建筑绑定，并返回绑定后的建筑实例
    * 跨距建筑：范围中所有砖块均有buildingInfo信息，但只有主块有inst实例
    * 绑定建筑后必须手动将建筑的mesh添加至scene
-   * @param row: 绑定目标行数
-   * @param column: 绑定目标列数
+   * @param x: 绑定目标X位置
+   * @param z: 绑定目标Z位置
    * @param info: 绑定目标建筑信息
    */
-  bindBuilding(row: number, column: number, info: BuildingInfo): Building | null {
+  bindBuilding(x: number, z: number, info: BuildingInfo): Building | null {
     /* 目标位置无砖块，则返回null放置失败 */
-    const block = this.getBlock(row, column);
+    const block = this.getBlock(x, z);
     if (block === null) { return null; }
 
     /* 目标建筑未创建实体则抛出异常 */
@@ -250,23 +280,23 @@ class GameMap {
       throw new ResourcesUnavailableError('目标建筑实体未创建', this.resList.model[info.desc]);
     }
 
-    const rowSpan = info.rowSpan ? info.rowSpan : 1;
-    const colSpan = info.colSpan ? info.colSpan : 1;
+    const xSpan = info.xSpan ? info.xSpan : 1;
+    const zSpan = info.zSpan ? info.zSpan : 1;
     /* 检查跨距建筑范围内的砖块是否有buildingInfo，有则返回null放置失败 */
-    for (let x = 0; x < rowSpan; x += 1) {
-      for (let y = 0; y < colSpan; y += 1) {
-        const thisBlock = this.getBlock(row + x, column + y);
+    for (let xNum = 0; xNum < xSpan; xNum += 1) {
+      for (let zNum = 0; zNum < zSpan; zNum += 1) {
+        const thisBlock = this.getBlock(xNum + x, zNum + z);
         if (thisBlock !== null && Object.prototype.hasOwnProperty.call(thisBlock, 'buildingInfo')) {
-          console.warn(`无法绑定建筑：(${row}, ${column})处已存在建筑导致冲突`);
+          console.warn(`无法绑定建筑：(${zNum}, ${xNum})处已存在建筑导致冲突`);
           return null; // 不能合并，否则新建的buildingInfo会污染该跨距区域
         }
       }
     }
     /* 查找跨距建筑范围内的最高砖块，并添加建筑信息 */
     let highestAlpha = block.heightAlpha; // 砖块的最高Y轴尺寸系数
-    for (let x = 0; x < rowSpan; x += 1) {
-      for (let y = 0; y < colSpan; y += 1) {
-        const thisBlock = this.getBlock(row + x, column + y);
+    for (let xNum = 0; xNum < xSpan; xNum += 1) {
+      for (let zNum = 0; zNum < zSpan; zNum += 1) {
+        const thisBlock = this.getBlock(xNum + x, zNum + z);
         if (thisBlock !== null) {
           const { heightAlpha } = thisBlock; // 寻找最高块的高度
           highestAlpha = heightAlpha > highestAlpha ? heightAlpha : highestAlpha;
@@ -291,45 +321,45 @@ class GameMap {
         configurable: true,
         enumerable: true,
       },
-      row: {
-        value: row,
+      x: {
+        value: x,
         configurable: true,
         enumerable: true,
       },
-      column: {
-        value: column,
+      z: {
+        value: z,
         configurable: true,
         enumerable: true,
       },
     });
 
     /* 放置建筑 */
-    const x = (column + building.colSpan / 2) * block.size.x;
-    const y = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
-    const z = (row + building.rowSpan / 2) * block.size.z;
-    building.mesh.position.set(x, y, z);
+    const posX = (x + building.xSpan / 2) * block.size.x;
+    const posY = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
+    const posZ = (z + building.zSpan / 2) * block.size.z;
+    building.mesh.position.set(posX, posY, posZ);
     return building;
   }
 
   /**
    * 从指定的行/列移除建筑，无需手动从scene中移除实例
-   * @param r: 要移除的建筑所在行
-   * @param c: 要移除的建筑所在列
+   * @param xPos: 要移除的建筑X位置
+   * @param zPos: 要移除的建筑Z位置
    */
-  removeBuilding(r: number, c: number): void {
+  removeBuilding(xPos: number, zPos: number): void {
     /* 目标砖块不存在，或目标砖块上没有buildingInfo属性直接返回 */
-    const block = this.getBlock(r, c);
+    const block = this.getBlock(xPos, zPos);
     if (block === null || block.buildingInfo === undefined) { return; }
 
     /* 取目标砖块上的建筑信息，遍历其跨距，废弃主块的实例并删除跨距内的buildingInfo */
     const { buildingInfo } = block;
     const {
-      row,
-      column,
-      rowSpan,
-      colSpan,
+      x,
+      z,
+      xSpan,
+      zSpan,
     } = buildingInfo;
-    const mainBlock = this.getBlock(row, column);
+    const mainBlock = this.getBlock(x, z);
     if (mainBlock === null) {
       throw new BuildingInfoError('指定的主建筑位置无效', buildingInfo);
     } else {
@@ -339,10 +369,10 @@ class GameMap {
         throw new BlockInfoError('主砖块不存在建筑信息或建筑信息错误', mainBlock);
       }
 
-      if (rowSpan !== undefined && colSpan !== undefined) {
-        for (let x = 0; x < rowSpan; x += 1) { // 从主建筑开始，删除所在跨距中的buildingInfo
-          for (let z = 0; z < colSpan; z += 1) {
-            const thisBlock = this.getBlock(row + x, column + z);
+      if (xSpan !== undefined && zSpan !== undefined) {
+        for (let xNum = 0; xNum < xSpan; xNum += 1) { // 从主建筑开始，删除所在跨距中的buildingInfo
+          for (let zNum = 0; zNum < zSpan; zNum += 1) {
+            const thisBlock = this.getBlock(x + xNum, z + zNum);
             if (thisBlock !== null) { delete thisBlock.buildingInfo; }
           }
         }
@@ -371,9 +401,9 @@ class GameMap {
         }
         const proto = new Mesh(geometry, material); // 创建叠加层原型
 
-        const posX = block.size.x * (block.column + 0.5);
+        const posX = block.size.x * (block.x + 0.5);
         const posY = block.size.y + (layer + 1) * 0.01;
-        const posZ = block.size.z * (block.row + 0.5);
+        const posZ = block.size.z * (block.z + 0.5);
         proto.position.set(posX, posY, posZ);
         proto.rotateX(-Math.PI / 2);
         proto.visible = visible;
@@ -405,22 +435,22 @@ class GameMap {
     });
   }
 
-  setOverlayVisibility(layer: Overlay, visible: boolean, block: BlockInfo): void;
   /**
    * 设定指定位置的叠加层的可见性
-   * @param row: 叠加层所在行
-   * @param column: 叠加层所在列
+   * @param x: 叠加层所在X位置
+   * @param z: 叠加层所在Z位置
    * @param layer: 叠加层的层次
    * @param visible: 可见性
    */
-  setOverlayVisibility(layer: Overlay, visible: boolean, row: number, column: number): void;
-  setOverlayVisibility(layer: Overlay, visible: boolean, row: BlockInfo | number, column?: number): void {
+  setOverlayVisibility(layer: Overlay, visible: boolean, x: number, z: number): void;
+  setOverlayVisibility(layer: Overlay, visible: boolean, block: BlockInfo): void;
+  setOverlayVisibility(layer: Overlay, visible: boolean, x: BlockInfo | number, z?: number): void {
     let block: BlockInfo | null;
-    if (typeof row === 'number') {
-      if (typeof column === 'number') {
-        block = this.getBlock(row, column);
+    if (typeof x === 'number') {
+      if (typeof z === 'number') {
+        block = this.getBlock(x, z);
       } else { return; }
-    } else { block = row; }
+    } else { block = x; }
 
     if (block !== null && block.overlay !== undefined) {
       const mesh = block.overlay.get(layer);
@@ -450,9 +480,9 @@ class GameMap {
     /* 从原始数据绑定并添加建筑 */
     this.data.blockInfo.forEach((item) => {
       if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
-        const { row, column } = item;
-        this.removeBuilding(row, column);
-        const building = this.bindBuilding(row, column, item.buildingInfo);
+        const { x, z } = item;
+        this.removeBuilding(x, z);
+        const building = this.bindBuilding(x, z, item.buildingInfo);
         if (building !== null) { scene.add(building.mesh); }
       }
     });
@@ -547,11 +577,11 @@ class GameMap {
     //     this.axes.visible = v;
     //   }
     // }
-    // const sceneHelper = new AxisGridHelper(frame.scene, 300);
+    // const sceneHelper = new AxisGridHelper(this.frame.scene, 300);
     // meshFolder.add(sceneHelper, 'visible').name('场景网格');
-    // const helper = new DirectionalLightHelper(frame.lights.sunLight);
+    // const helper = new DirectionalLightHelper(this.frame.lights.sunLight);
     // helper.update();
-    // frame.scene.add(helper);
+    // this.frame.scene.add(helper);
   }
 }
 

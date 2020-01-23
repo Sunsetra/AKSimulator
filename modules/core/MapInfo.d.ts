@@ -10,6 +10,7 @@ import {
 
 import Building from '../buildings/Building.js';
 import Enemy from '../enemies/Enemy.js';
+import { BlockType } from '../others/constants.js';
 
 
 export interface ResourceInfo {
@@ -25,18 +26,18 @@ export interface BuildingInfo { // 建筑信息
   desc: string; // 建筑描述（大类）
   rotation?: number; // 建筑旋转角度（deg），默认为空表示0度
   sizeAlpha?: number; // 建筑缩放比例，默认为空表示1倍
-  row: number; // 主建筑行位置，绑定建筑时指定
-  column: number; // 主建筑列位置，绑定建筑时指定
-  rowSpan?: number; // 建筑行数跨距，需跨多行时指定
-  colSpan?: number; // 建筑列数跨距，需跨多列时指定
+  x: number; // 主建筑X坐标，绑定建筑时指定
+  z: number; // 主建筑Z坐标，绑定建筑时指定
+  xSpan?: number; // 建筑列数跨距，需跨多列时指定
+  zSpan?: number; // 建筑行数跨距，需跨多行时指定
   inst: Building; // 建筑物实例，绑定建筑时指定
 }
 
 
 export interface BlockInfo { // 砖块信息
-  row: number; // 砖块所在行数
-  column: number; // 砖块所在列数
-  blockType: string; // 砖块类型
+  x: number; // 砖块所在X坐标
+  z: number; // 砖块所在Z坐标
+  blockType: BlockType; // 砖块类型
   placeable: boolean; // 是否可以放置干员
   heightAlpha: number; // 砖块高度系数
   size: Vector3; // 砖块三维世界尺寸，在创建地图时生成

@@ -49,23 +49,47 @@ class Tracker {
   /**
    * 显示指定范围内的叠加层
    * @param layer: 叠加层层次
-   * @param area: 相对于中心坐标的范围数组，如[[1, 0]]表示中心坐标正右侧一格
+   * @param area: 相对于中心坐标的Vector2偏移量数组
+   * @param parent: 指定父叠加层范围，仅追踪光标时生效
+   * @param isTrack: area是否相对于当前光标位置
    */
-  showOverlay(layer: Overlay, area: [number, number][]): void {
-    this.enable = true;
-    if (this.pickPos === null) {
-      this.hideOverlay(layer);
-    } else {
-      const absPos = realPosToAbsPos(this.pickPos, true); // 转换世界坐标为抽象坐标
-      if (absPos.x !== this.lastPos.x || absPos.y !== this.lastPos.y) {
-        this.hideOverlay(layer);
-        area.forEach((point) => {
-          const row = absPos.y + point[1];
-          const column = absPos.x + point[0];
-          this.map.setOverlayVisibility(layer, true, row, column);
-        });
-        this.lastPos = absPos;
+  showOverlay(layer: Overlay, area: Vector2[], isTrack = false, parent?: Vector2[]): void {
+    /**
+     * 检查当前位置坐标是否属于父叠加层
+     * @param child: 当前位置抽象坐标
+     */
+    const isChild = (child: Vector2): boolean => {
+      if (parent !== undefined) {
+        for (let i = 0; i < parent.length; i += 1) {
+          if (parent[i].equals(child)) { return true; }
+        }
+        return false;
       }
+      return true;
+    };
+
+    if (isTrack) {
+      this.enable = true;
+      if (this.pickPos === null) {
+        this.hideOverlay(layer);
+      } else {
+        const absPos = realPosToAbsPos(this.pickPos, true); // 当前位置的抽象坐标
+
+        if (!absPos.equals(this.lastPos)) { // 当前位置非前次记录位置
+          this.hideOverlay(layer);
+          if (isChild(absPos)) { // 在父范围内
+            area.forEach((point) => {
+              const newPos = new Vector2().addVectors(absPos, point);
+              this.map.setOverlayVisibility(layer, true, newPos.x, newPos.y);
+            });
+            this.lastPos = absPos;
+          }
+        }
+      }
+    } else { // 不追踪光标，仅显示叠加层区域
+      area.forEach((point) => {
+        this.map.setOverlayVisibility(layer, true, point.x, point.y);
+      });
     }
   }
 

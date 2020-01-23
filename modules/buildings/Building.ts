@@ -20,9 +20,9 @@ class Building {
 
   size: Vector3; // 建筑尺寸
 
-  rowSpan: number; // 建筑跨行
+  xSpan: number; // 建筑跨列
 
-  colSpan: number; // 建筑跨列
+  zSpan: number; // 建筑跨行
 
   /**
    * 创建标准化地图建筑对象
@@ -30,8 +30,8 @@ class Building {
    * @param info: 建筑信息对象
    */
   constructor(mesh: Mesh, info: BuildingInfo) {
-    this.colSpan = info.colSpan ? info.colSpan : 1;
-    this.rowSpan = info.rowSpan ? info.rowSpan : 1;
+    this.xSpan = info.xSpan ? info.xSpan : 1;
+    this.zSpan = info.zSpan ? info.zSpan : 1;
     const rotation = info.rotation ? info.rotation : 0;
     const sizeAlpha = info.sizeAlpha ? info.sizeAlpha : 1;
 
@@ -43,8 +43,8 @@ class Building {
     wrapper.add(mesh);
     const originBox = new Box3().setFromObject(wrapper);
     const originSize = originBox.getSize(new Vector3());
-    const magX = (BlockUnit * this.colSpan * sizeAlpha - 0.02) / originSize.x;
-    const magZ = (BlockUnit * this.rowSpan * sizeAlpha - 0.02) / originSize.z;
+    const magX = (BlockUnit * this.xSpan * sizeAlpha - 0.02) / originSize.x;
+    const magZ = (BlockUnit * this.zSpan * sizeAlpha - 0.02) / originSize.z;
     const magY = Math.min(magX, magZ); // Y轴方向缩放取跨距较小的方向的缩放比例
     wrapper.scale.set(magX, magY, magZ);
 

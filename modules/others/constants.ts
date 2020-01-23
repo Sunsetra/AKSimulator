@@ -12,3 +12,9 @@ export enum Overlay {
   Placeable,
   AttackArea,
 }
+
+
+export enum BlockType {
+  BasicBlock,
+  HighBlock,
+}
