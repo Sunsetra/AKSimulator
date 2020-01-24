@@ -4,7 +4,10 @@
  */
 
 import {
+  BufferGeometry,
+  Material,
   Mesh,
+  Texture,
   Vector3,
 } from '../../node_modules/three/build/three.module.js';
 
@@ -13,11 +16,33 @@ import Enemy from '../enemies/Enemy.js';
 import { BlockType } from '../others/constants.js';
 
 
+export interface Resource { // 资源对象
+  url: string; // 资源URL
+  tex?: Texture; // 贴图型资源
+  geo?: BufferGeometry; // 资源几何体
+  mat?: Material | Material[]; // 资源材质
+  entity?: Mesh; // 实体网格体
+}
+
+
+export interface ResourcesList { // 总资源列表对象
+  block: { [texType: string]: Resource }; // 砖块贴图
+  EDPoint: { [texType: string]: Resource }; // 进出点贴图
+  enemy: { [texType: string]: Resource }; // 敌人贴图
+  operator: { [texType: string]: Resource }; // 干员贴图
+  model: {
+    [texType: string]: Resource;
+    destination: Resource;
+    entry: Resource;
+  }; // 导入模型
+  [resType: string]: { [texType: string]: Resource };
+}
+
+
 export interface ResourceInfo {
   block: string[]; // 所需的砖块贴图
   enemy: string[]; // 所需的敌人贴图
   model: string[]; // 所需的模型
-
   [resType: string]: string[];
 }
 

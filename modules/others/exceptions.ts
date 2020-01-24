@@ -6,8 +6,8 @@
 import {
   BlockInfo,
   BuildingInfo,
+  Resource,
 } from '../core/MapInfo';
-import { Resource } from '../loaders/ResourceLoader';
 
 
 class ResourcesUnavailableError extends Error {

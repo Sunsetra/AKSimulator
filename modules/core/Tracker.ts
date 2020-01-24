@@ -1,5 +1,6 @@
 /**
  * 指示器类，用于追踪光标的世界坐标及生成地面指示器。
+ * @author: 落日羽音
  */
 
 import {
@@ -54,20 +55,6 @@ class Tracker {
    * @param isTrack: area是否相对于当前光标位置
    */
   showOverlay(layer: Overlay, area: Vector2[], isTrack = false, parent?: Vector2[]): void {
-    /**
-     * 检查当前位置坐标是否属于父叠加层
-     * @param child: 当前位置抽象坐标
-     */
-    const isChild = (child: Vector2): boolean => {
-      if (parent !== undefined) {
-        for (let i = 0; i < parent.length; i += 1) {
-          if (parent[i].equals(child)) { return true; }
-        }
-        return false;
-      }
-      return true;
-    };
-
     if (isTrack) {
       this.enable = true;
       if (this.pickPos === null) {
@@ -77,7 +64,13 @@ class Tracker {
 
         if (!absPos.equals(this.lastPos)) { // 当前位置非前次记录位置
           this.hideOverlay(layer);
-          if (isChild(absPos)) { // 在父范围内
+          if (((): boolean => {
+            if (parent !== undefined) {
+              for (let i = 0; i < parent.length; i += 1) { if (parent[i].equals(absPos)) { return true; } }
+              return false;
+            }
+            return true;
+          })()) { // 在父范围内
             area.forEach((point) => {
               const newPos = new Vector2().addVectors(absPos, point);
               this.map.setOverlayVisibility(layer, true, newPos.x, newPos.y);

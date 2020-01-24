@@ -6,11 +6,12 @@
 import GameMap from '../../modules/core/GameMap.js';
 import {
   Fragment,
+  ResourcesList,
   WaveInfo,
 } from '../../modules/core/MapInfo';
 import Unit from '../../modules/core/Unit.js';
-import Enemies from '../../modules/enemies/EnemyClassList.js';
-import { ResourcesList } from '../../modules/loaders/ResourceLoader';
+import Enemies from '../../modules/enemies/EnemyList.js';
+import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
 import { disposeResources } from '../../modules/others/utils.js';
 
 import {
@@ -61,24 +62,17 @@ class GameController {
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
         const enemy = this.createEnemy(name, thisFrag);
-        if (enemy !== null) {
-          const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
-          const thisBlock = this.map.getBlock(x, z);
-          if (thisBlock !== null) {
-            const y = thisBlock.size.y + enemy.height / 2;
-            enemy.setY(y);
-            enemy.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
-          }
+        const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
+        this.map.addUnit(x, z, enemy);
 
-          const nodeType = 'enemy create';
-          const nodeId = `${name}-${thisFrag.id}`;
-          const resUrl = this.resList.enemy[name].url;
-          this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, axisTime);
+        const nodeType = 'enemy create';
+        const nodeId = `${name}-${thisFrag.id}`;
+        const resUrl = this.resList.enemy[name].url;
+        this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, axisTime);
 
-          path.shift(); // 删除首个路径点
-          fragments.shift(); // 从当前波次中删除该敌人
-          if (!fragments.length) { this.waves.shift(); } // 若当前波次中剩余敌人为0则删除当前波次
-        }
+        path.shift(); // 删除首个路径点
+        fragments.shift(); // 从当前波次中删除该敌人
+        if (!fragments.length) { this.waves.shift(); } // 若当前波次中剩余敌人为0则删除当前波次
       }
     }
   }
@@ -156,9 +150,11 @@ class GameController {
     this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
   }
 
-  private createEnemy(name: string, enemyFrag: Fragment): Unit | null {
+  private createEnemy(name: string, enemyFrag: Fragment): Unit {
     const mesh = this.resList.enemy[name].entity; // 读取敌人实例
-    if (mesh === undefined) { return null; }
+    if (mesh === undefined) {
+      throw new ResourcesUnavailableError(`未找到${name}单位实例`, this.resList.enemy[name]);
+    }
 
     const enemy = new Enemies[name](mesh.clone());
     Object.defineProperties(enemyFrag, {

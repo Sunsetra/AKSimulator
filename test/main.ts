@@ -1,12 +1,15 @@
 import GameFrame from '../modules/core/GameFrame.js';
 import GameMap from '../modules/core/GameMap.js';
-import { MapInfo } from '../modules/core/MapInfo';
+import {
+  MapInfo,
+  ResourcesList,
+} from '../modules/core/MapInfo';
 import TimeAxis from '../modules/core/TimeAxis.js';
 import Tracker from '../modules/core/Tracker.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
-import { ResourcesList } from '../modules/loaders/ResourceLoader';
-import { ResourceLoader } from '../modules/loaders/ResourceLoader.js';
+import ResourceLoader from '../modules/loaders/ResourceLoader.js';
 import {
+  BlockType,
   Overlay,
   WebGLAvailability,
 } from '../modules/others/constants.js';
@@ -17,6 +20,10 @@ import {
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
+import {
+  Color,
+  Vector2,
+} from '../node_modules/three/build/three.module.js';
 import GameController from './Controllers/GameCtl.js';
 import LoadingUICtl from './Controllers/LoadingUICtl.js';
 import RenderController from './Controllers/RenderCtl.js';

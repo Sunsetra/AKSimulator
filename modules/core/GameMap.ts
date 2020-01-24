@@ -1,5 +1,5 @@
 /**
- * 地图构造管理类
+ * 地图管理类，包括地图构造、地图数据获取，叠加层设置及管理
  * @author: 落日羽音
  */
 
@@ -20,7 +20,6 @@ import {
 
 import Building from '../buildings/Building.js';
 import Decoration from '../buildings/Decoration.js';
-import { ResourcesList } from '../loaders/ResourceLoader';
 import {
   BlockType,
   BlockUnit,
@@ -37,7 +36,9 @@ import {
   BlockInfo,
   BuildingInfo,
   MapInfo,
+  ResourcesList,
 } from './MapInfo';
+import Unit from './Unit';
 
 
 class GameMap {
@@ -377,6 +378,21 @@ class GameMap {
           }
         }
       }
+    }
+  }
+
+  /**
+   * 在指定位置添加单位实例
+   * @param x: 单位需添加到的X位置
+   * @param z: 单位需添加到的Z位置
+   * @param unit: 单位实例
+   */
+  addUnit(x: number, z: number, unit: Unit): void {
+    const thisBlock = this.getBlock(x, z);
+    if (thisBlock !== null) {
+      const y = thisBlock.size.y + unit.height / 2;
+      unit.setY(y);
+      unit.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
     }
   }
 

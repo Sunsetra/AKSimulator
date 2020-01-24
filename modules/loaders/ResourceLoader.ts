@@ -5,7 +5,6 @@
 
 import {
   BoxBufferGeometry,
-  BufferGeometry,
   DoubleSide,
   LoadingManager,
   Material,
@@ -14,39 +13,18 @@ import {
   MeshPhysicalMaterial,
   PlaneBufferGeometry,
   sRGBEncoding,
-  Texture,
   TextureLoader,
 } from '../../node_modules/three/build/three.module.js';
 
 import { GLTFLoader } from '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 
-import { ResourceInfo } from '../core/MapInfo';
+import {
+  Resource,
+  ResourceInfo,
+  ResourcesList,
+} from '../core/MapInfo';
 import { BlockUnit } from '../others/constants.js';
 import { LoadingError } from '../others/exceptions.js';
-
-
-interface Resource { // 资源对象
-  url: string; // 资源URL
-  tex?: Texture; // 贴图型资源
-  geo?: BufferGeometry; // 资源几何体
-  mat?: Material | Material[]; // 资源材质
-  entity?: Mesh; // 实体网格体
-}
-
-
-interface ResourcesList { // 总资源列表对象
-  block: { [texType: string]: Resource }; // 砖块贴图
-  EDPoint: { [texType: string]: Resource }; // 进出点贴图
-  enemy: { [texType: string]: Resource }; // 敌人贴图
-  operator: { [texType: string]: Resource }; // 干员贴图
-  model: {
-    [texType: string]: Resource;
-    destination: Resource;
-    entry: Resource;
-  }; // 导入模型
-
-  [resType: string]: { [texType: string]: Resource };
-}
 
 
 class ResourceLoader {
@@ -96,9 +74,12 @@ class ResourceLoader {
    */
   load(mapRes: ResourceInfo): void {
     this.mapResList = mapRes;
-    /* 加载进出点贴图 */
-    Object.values(this.resListAll.EDPoint).forEach((texRes) => {
-      this.loadTexture(texRes);
+
+    /* 加载进出点及干员贴图 */
+    ['EDPoint', 'operator'].forEach((type) => {
+      Object.values(this.resListAll[type]).forEach((texRes) => {
+        this.loadTexture(texRes);
+      });
     });
 
     /* 加载砖块及敌人贴图 */
@@ -123,6 +104,38 @@ class ResourceLoader {
    * @param res: 地图中所需要的资源信息
    */
   private createGeometry(res: ResourceInfo): void {
+    /**
+     * 从资源对象创建敌人/干员模型，包含贴图、几何体、实体资源。
+     * @param unitRes: 需完善的资源对象
+     */
+    const createUnitRes = (unitRes: Resource): void => {
+      if (!Object.prototype.hasOwnProperty.call(unitRes, 'mat') && unitRes.tex) { // tex属性一定存在
+        const material = new MeshBasicMaterial({
+          alphaTest: 0.6,
+          map: unitRes.tex,
+          side: DoubleSide,
+          transparent: true,
+        });
+        Object.defineProperty(unitRes, 'mat', { value: material });
+
+        const { width, height } = unitRes.tex.image;
+        const geometry = new PlaneBufferGeometry(width, height);
+        Object.defineProperty(unitRes, 'geo', { value: geometry });
+
+        const mesh = new Mesh(geometry, material);
+        Object.defineProperty(unitRes, 'entity', { value: mesh });
+      }
+    };
+
+    /* 构建敌方单位材质及实体 */
+    res.enemy.forEach((name) => {
+      const texRes = this.resListAll.enemy[name];
+      createUnitRes(texRes);
+    });
+
+    /* 构建干员单位材质及实体 */
+    Object.values(this.resListAll.operator).forEach((opRes) => { createUnitRes(opRes); });
+
     /* 构建ED点的材质 */
     Object.values(this.resListAll.EDPoint).forEach((edRes) => {
       if (!Object.prototype.hasOwnProperty.call(edRes, 'mat')) {
@@ -137,17 +150,13 @@ class ResourceLoader {
     });
 
     /* 构建ED点的几何体 */
-    /**
-     * 检查ED点资源对象的属性是否完备
-     */
-
     if (!((): boolean => {
       let integrity = true;
       ['destination', 'entry'].forEach((type) => {
         integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'geo');
         integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'mat');
         integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'entity');
-      });
+      }); // 检查ED点资源对象的属性是否完备
       return integrity;
     })()) { // 若EDPoint无需重新定义则跳过
       const {
@@ -177,7 +186,6 @@ class ResourceLoader {
       });
     }
 
-
     /* 构建砖块材质 */
     res.block.forEach((texType) => {
       const texRes = this.resListAll.block[texType];
@@ -188,28 +196,6 @@ class ResourceLoader {
           map: texRes.tex,
         });
         Object.defineProperty(texRes, 'mat', { value: material });
-      }
-    });
-
-
-    /* 构建敌方单位材质及实体 */
-    res.enemy.forEach((name) => {
-      const texRes = this.resListAll.enemy[name];
-      if (!Object.prototype.hasOwnProperty.call(texRes, 'mat') && texRes.tex) { // tex属性一定存在
-        const material = new MeshBasicMaterial({
-          alphaTest: 0.6,
-          map: texRes.tex,
-          side: DoubleSide,
-          transparent: true,
-        });
-        Object.defineProperty(texRes, 'mat', { value: material });
-
-        const { width, height } = texRes.tex.image;
-        const enemyGeo = new PlaneBufferGeometry(width, height);
-        Object.defineProperty(texRes, 'geo', { value: enemyGeo });
-
-        const mesh = new Mesh(enemyGeo, material);
-        Object.defineProperty(texRes, 'entity', { value: mesh });
       }
     });
   }
@@ -246,8 +232,4 @@ class ResourceLoader {
 }
 
 
-export {
-  Resource,
-  ResourcesList,
-  ResourceLoader,
-};
+export default ResourceLoader;
