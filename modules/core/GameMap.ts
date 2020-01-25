@@ -30,7 +30,10 @@ import {
   BuildingInfoError,
   ResourcesUnavailableError,
 } from '../others/exceptions.js';
-import { disposeResources } from '../others/utils.js';
+import {
+  disposeResources,
+  realPosToAbsPos,
+} from '../others/utils.js';
 import GameFrame from './GameFrame.js';
 import {
   BlockInfo,
@@ -38,6 +41,7 @@ import {
   MapInfo,
   ResourcesList,
 } from './MapInfo';
+import Tracker from './Tracker.js';
 import Unit from './Unit';
 
 
@@ -52,9 +56,13 @@ class GameMap {
 
   readonly mesh: Mesh; // 地图网格体
 
+  private lastPos: Vector2; // 上次追踪的光标抽象坐标（标准化）
+
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
   private readonly resList: ResourcesList; // 全资源列表
+
+  private readonly tracker: Tracker; // 光标位置追踪器
 
   private readonly frame: GameFrame; // 游戏框架
 
@@ -66,9 +74,9 @@ class GameMap {
     this.width = data.mapWidth;
     this.height = data.mapHeight;
 
+    /* 建立无建筑信息的空白地图 */
     this.blockData = new Array(this.width * this.height).fill(null);
     const blockInfo: BlockInfo[] = JSON.parse(JSON.stringify(data.blockInfo));
-    /* 建立无建筑信息的空白地图 */
     blockInfo.forEach((info) => {
       const { x, z, heightAlpha } = info;
       delete info.buildingInfo;
@@ -216,7 +224,134 @@ class GameMap {
       this.mesh.receiveShadow = true;
     }
 
-    this.createMap();
+    /** 构造地图几何数据及贴图映射数据 */
+    {
+      const maxSize = Math.max(this.width, this.height) * BlockUnit; // 地图最长尺寸
+      const centerX = (this.width * BlockUnit) / 2; // 地图X向中心
+      const centerZ = (this.height * BlockUnit) / 2; // 地图Z向中心
+      const {
+        scene,
+        camera,
+        controls,
+        lights,
+      } = this.frame;
+
+      /* 场景设置 */
+      scene.fog = new Fog(0x0, maxSize, maxSize * 2); // 不受雾气影响的范围为1倍最长尺寸，2倍最长尺寸外隐藏
+      camera.far = maxSize * 2; // 2倍最长尺寸外不显示
+      camera.position.set(centerX, centerZ * 3, centerZ * 3);
+      camera.updateProjectionMatrix();
+      controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
+
+      /* 从原始数据绑定并添加建筑 */
+      this.data.blockInfo.forEach((item) => {
+        if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
+          const { x, z } = item;
+          this.removeBuilding(x, z);
+          const building = this.bindBuilding(x, z, item.buildingInfo);
+          if (building !== null) { scene.add(building.mesh); }
+        }
+      });
+
+      /* 添加叠加层 */
+      this.addOverlay(Overlay.Placeable, new Color('green'));
+      this.addOverlay(Overlay.AttackArea, new Color('red'));
+
+      /* 设置场景灯光 */
+      {
+        const {
+          envIntensity,
+          envColor,
+          color,
+          intensity,
+          hour,
+          phi,
+        } = this.data.light;
+        lights.envLight.color = new Color(envColor);
+        lights.envLight.intensity = envIntensity;
+        lights.sunLight.color = new Color(color);
+        lights.sunLight.intensity = intensity;
+
+        let mapHour = hour || new Date().getHours(); // 如果未指定地图时间，则获取本地时间
+        if (mapHour < 6 || mapHour > 18) { // 时间为夜间时定义夜间光源
+          mapHour = mapHour < 6 ? mapHour + 12 : mapHour % 12;
+          lights.sunLight.intensity = 0.6;
+          lights.sunLight.color.set(0xffffff);
+          lights.envLight.color.set(0x5C6C7C);
+        }
+
+        const randomDeg = Math.floor(Math.random() * 360) + 1;
+        const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
+        const lightRad = maxSize; // 光源半径为地图最大尺寸
+        const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
+        const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
+        const sinTheta = Math.sin(_Math.degToRad(theta));
+        const cosPhi = Math.cos(_Math.degToRad(mapPhi));
+        const sinPhi = Math.sin(_Math.degToRad(mapPhi));
+        const lightPosX = lightRad * sinTheta * cosPhi + centerX;
+        const lightPosY = lightRad * cosTheta;
+        const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
+        lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
+        lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
+        lights.sunLight.target.updateWorldMatrix(false, true);
+
+        lights.sunLight.castShadow = true; // 设置光源阴影
+        lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
+        lights.sunLight.shadow.camera.right = maxSize / 2;
+        lights.sunLight.shadow.camera.top = maxSize / 2;
+        lights.sunLight.shadow.camera.bottom = -maxSize / 2;
+        lights.sunLight.shadow.camera.near = maxSize / 2;
+        lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
+        lights.sunLight.shadow.bias = 0.0001;
+        lights.sunLight.shadow.mapSize.set(4096, 4096);
+        lights.sunLight.shadow.camera.updateProjectionMatrix();
+      }
+
+      /* 添加子对象 */
+      scene.add(this.mesh);
+      scene.add(lights.envLight);
+      scene.add(lights.sunLight);
+      scene.add(lights.sunLight.target);
+
+      // /** 创建辅助对象，包括灯光参数控制器等 */
+      // import dat from '../../node_modules/three/examples/jsm/libs/dat.gui.module.js';
+      // import {
+      //   DirectionalLightHelper,
+      //   GridHelper,
+      //   AxesHelper,
+      // } from '../../node_modules/three/build/three.module.js';
+      // const gui = new dat.GUI();
+      // const meshFolder = gui.addFolder('网格');
+      // class AxisGridHelper {
+      //   constructor(element, gridSize) {
+      //     const axes = new AxesHelper();
+      //     axes.material.depthTest = false;
+      //     axes.renderOrder = 2;
+      //     element.add(axes);
+      //     const grid = new GridHelper(gridSize, gridSize);
+      //     grid.material.depthTest = false;
+      //     grid.renderOrder = 1;
+      //     element.add(grid);
+      //     this.grid = grid;
+      //     this.axes = axes;
+      //     this.visible = false;
+      //   }
+      //   get visible() { return this._visible; }
+      //   set visible(v) {
+      //     this._visible = v;
+      //     this.grid.visible = v;
+      //     this.axes.visible = v;
+      //   }
+      // }
+      // const sceneHelper = new AxisGridHelper(this.frame.scene, 300);
+      // meshFolder.add(sceneHelper, 'visible').name('场景网格');
+      // const helper = new DirectionalLightHelper(this.frame.lights.sunLight);
+      // helper.update();
+      // this.frame.scene.add(helper);
+    }
+
+    this.tracker = new Tracker(frame, this.mesh);
+    this.lastPos = new Vector2(-100000, -100000);
   }
 
   /**
@@ -453,151 +588,100 @@ class GameMap {
 
   /**
    * 设定指定位置的叠加层的可见性
-   * @param x: 叠加层所在X位置
-   * @param z: 叠加层所在Z位置
-   * @param layer: 叠加层的层次
-   * @param visible: 可见性
+   * @param a: 目标叠加层所在的砖块
+   * @param b: 新可见性
+   * @param c: 叠加层的层次，置空时设置所有叠加层
    */
-  setOverlayVisibility(layer: Overlay, visible: boolean, x: number, z: number): void;
-  setOverlayVisibility(layer: Overlay, visible: boolean, block: BlockInfo): void;
-  setOverlayVisibility(layer: Overlay, visible: boolean, x: BlockInfo | number, z?: number): void {
+  setOverlayVisibility(a: BlockInfo, b: boolean, c?: Overlay): void;
+  /**
+   * 设定指定位置的叠加层的可见性
+   * @param a: 叠加层所在X位置
+   * @param b: 叠加层所在Z位置
+   * @param c: 新可见性
+   * @param layer: 叠加层的层次，置空时设置所有叠加层
+   */
+  setOverlayVisibility(a: number, b: number, c: boolean, layer?: Overlay): void;
+  setOverlayVisibility(a: BlockInfo | number, b: number | boolean, c?: boolean | Overlay, layer?: Overlay): void {
+    /* 获取砖块实例 */
     let block: BlockInfo | null;
-    if (typeof x === 'number') {
-      if (typeof z === 'number') {
-        block = this.getBlock(x, z);
-      } else { return; }
-    } else { block = x; }
+    if (typeof a === 'number') {
+      if (typeof b === 'number') {
+        block = this.getBlock(a, b);
+      } else { block = this.getBlock(a, 0); }
+    } else { block = a; }
 
     if (block !== null && block.overlay !== undefined) {
-      const mesh = block.overlay.get(layer);
-      if (mesh !== undefined) { mesh.visible = visible; }
+      /* 三参重载 */
+      if (typeof b === 'boolean') {
+        if (typeof c === 'number') {
+          const mesh = block.overlay.get(c);
+          if (mesh !== undefined) { mesh.visible = b; }
+        } else {
+          block.overlay.forEach((mesh) => { mesh.visible = b; });
+        }
+      }
+      /* 四参重载 */
+      if (typeof c === 'boolean') {
+        if (typeof layer === 'number') {
+          const mesh = block.overlay.get(layer);
+          if (mesh !== undefined) { mesh.visible = c; }
+        } else {
+          block.overlay.forEach((mesh) => { mesh.visible = c; });
+        }
+      }
     }
   }
 
-  /** 构造地图几何数据及贴图映射数据 */
-  private createMap(): void {
-    const maxSize = Math.max(this.width, this.height) * BlockUnit; // 地图最长尺寸
-    const centerX = (this.width * BlockUnit) / 2; // 地图X向中心
-    const centerZ = (this.height * BlockUnit) / 2; // 地图Z向中心
-    const {
-      scene,
-      camera,
-      controls,
-      lights,
-    } = this.frame;
+  /**
+   * 显示指定范围内的叠加层
+   * @param layer: 叠加层层次
+   * @param area: 相对于中心坐标的Vector2偏移量数组
+   * @param parent: 指定父叠加层范围，仅追踪光标时生效
+   * @param isTrack: area是否相对于当前光标位置
+   */
+  showOverlay(layer: Overlay, area: Vector2[], isTrack = false, parent?: Vector2[]): void {
+    if (isTrack) {
+      this.tracker.enable = true;
+      if (this.tracker.pickPos === null) {
+        this.hideOverlay(layer);
+      } else {
+        const absPos = realPosToAbsPos(this.tracker.pickPos, true); // 当前位置的抽象坐标
 
-    /* 场景设置 */
-    scene.fog = new Fog(0x0, maxSize, maxSize * 2); // 不受雾气影响的范围为1倍最长尺寸，2倍最长尺寸外隐藏
-    camera.far = maxSize * 2; // 2倍最长尺寸外不显示
-    camera.position.set(centerX, centerZ * 3, centerZ * 3);
-    camera.updateProjectionMatrix();
-    controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
-
-    /* 从原始数据绑定并添加建筑 */
-    this.data.blockInfo.forEach((item) => {
-      if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
-        const { x, z } = item;
-        this.removeBuilding(x, z);
-        const building = this.bindBuilding(x, z, item.buildingInfo);
-        if (building !== null) { scene.add(building.mesh); }
+        if (!absPos.equals(this.lastPos)) { // 当前位置非前次记录位置
+          this.hideOverlay(layer);
+          if (((): boolean => {
+            if (parent !== undefined) {
+              for (let i = 0; i < parent.length; i += 1) {
+                if (parent[i].equals(absPos)) { return true; }
+              }
+              return false;
+            }
+            return true;
+          })()) { // 在父范围内
+            area.forEach((point) => {
+              const newPos = new Vector2().addVectors(absPos, point);
+              this.setOverlayVisibility(newPos.x, newPos.y, true, layer);
+            });
+            this.lastPos = absPos;
+          }
+        }
       }
-    });
-
-    /* 添加叠加层 */
-    this.addOverlay(Overlay.Placeable, new Color('green'));
-    this.addOverlay(Overlay.AttackArea, new Color('red'));
-
-    /* 设置场景灯光 */
-    {
-      const {
-        envIntensity,
-        envColor,
-        color,
-        intensity,
-        hour,
-        phi,
-      } = this.data.light;
-      lights.envLight.color = new Color(envColor);
-      lights.envLight.intensity = envIntensity;
-      lights.sunLight.color = new Color(color);
-      lights.sunLight.intensity = intensity;
-
-      let mapHour = hour || new Date().getHours(); // 如果未指定地图时间，则获取本地时间
-      if (mapHour < 6 || mapHour > 18) { // 时间为夜间时定义夜间光源
-        mapHour = mapHour < 6 ? mapHour + 12 : mapHour % 12;
-        lights.sunLight.intensity = 0.6;
-        lights.sunLight.color.set(0xffffff);
-        lights.envLight.color.set(0x5C6C7C);
-      }
-
-      const randomDeg = Math.floor(Math.random() * 360) + 1;
-      const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
-      const lightRad = maxSize; // 光源半径为地图最大尺寸
-      const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
-      const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
-      const sinTheta = Math.sin(_Math.degToRad(theta));
-      const cosPhi = Math.cos(_Math.degToRad(mapPhi));
-      const sinPhi = Math.sin(_Math.degToRad(mapPhi));
-      const lightPosX = lightRad * sinTheta * cosPhi + centerX;
-      const lightPosY = lightRad * cosTheta;
-      const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
-      lights.sunLight.position.set(lightPosX, lightPosY, lightPosZ);
-      lights.sunLight.target.position.set(centerX, 0, centerZ); // 设置光源终点
-      lights.sunLight.target.updateWorldMatrix(false, true);
-
-      lights.sunLight.castShadow = true; // 设置光源阴影
-      lights.sunLight.shadow.camera.left = -maxSize / 2; // 按地图最大尺寸定义光源阴影
-      lights.sunLight.shadow.camera.right = maxSize / 2;
-      lights.sunLight.shadow.camera.top = maxSize / 2;
-      lights.sunLight.shadow.camera.bottom = -maxSize / 2;
-      lights.sunLight.shadow.camera.near = maxSize / 2;
-      lights.sunLight.shadow.camera.far = maxSize * 1.5; // 阴影覆盖光源半径的球体
-      lights.sunLight.shadow.bias = 0.0001;
-      lights.sunLight.shadow.mapSize.set(4096, 4096);
-      lights.sunLight.shadow.camera.updateProjectionMatrix();
+    } else { // 不追踪光标，仅显示叠加层区域
+      area.forEach((point) => {
+        this.setOverlayVisibility(point.x, point.y, true, layer);
+      });
     }
+  }
 
-    /* 添加子对象 */
-    scene.add(this.mesh);
-    scene.add(lights.envLight);
-    scene.add(lights.sunLight);
-    scene.add(lights.sunLight.target);
-
-    // /** 创建辅助对象，包括灯光参数控制器等 */
-    // import dat from '../../node_modules/three/examples/jsm/libs/dat.gui.module.js';
-    // import {
-    //   DirectionalLightHelper,
-    //   GridHelper,
-    //   AxesHelper,
-    // } from '../../node_modules/three/build/three.module.js';
-    // const gui = new dat.GUI();
-    // const meshFolder = gui.addFolder('网格');
-    // class AxisGridHelper {
-    //   constructor(element, gridSize) {
-    //     const axes = new AxesHelper();
-    //     axes.material.depthTest = false;
-    //     axes.renderOrder = 2;
-    //     element.add(axes);
-    //     const grid = new GridHelper(gridSize, gridSize);
-    //     grid.material.depthTest = false;
-    //     grid.renderOrder = 1;
-    //     element.add(grid);
-    //     this.grid = grid;
-    //     this.axes = axes;
-    //     this.visible = false;
-    //   }
-    //   get visible() { return this._visible; }
-    //   set visible(v) {
-    //     this._visible = v;
-    //     this.grid.visible = v;
-    //     this.axes.visible = v;
-    //   }
-    // }
-    // const sceneHelper = new AxisGridHelper(this.frame.scene, 300);
-    // meshFolder.add(sceneHelper, 'visible').name('场景网格');
-    // const helper = new DirectionalLightHelper(this.frame.lights.sunLight);
-    // helper.update();
-    // this.frame.scene.add(helper);
+  /**
+   * 隐藏指定叠加层
+   * @param layer: 叠加层层次，置空时隐藏所有叠加层且停止追踪
+   */
+  hideOverlay(layer?: Overlay): void {
+    this.getBlocks().forEach((block) => {
+      if (block !== null) { this.setOverlayVisibility(block, false, layer); }
+    });
+    if (layer === undefined) { this.tracker.enable = false; }
   }
 }
 

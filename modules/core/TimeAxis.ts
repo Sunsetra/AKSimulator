@@ -1,5 +1,5 @@
 /**
- * 时间轴类，扩展自THREE的Clock类
+ * 时间轴类，扩展THREE内置的Clock时间轴类，支持格式化输出经过时间及继续计时函数
  * @author: 落日羽音
  */
 
@@ -7,7 +7,6 @@ import { Clock } from '../../node_modules/three/build/three.module.js';
 
 
 class TimeAxis extends Clock {
-  /** 扩展THREE内置的Clock时间轴类，支持格式化输出经过时间及继续计时函数 */
   constructor() {
     super(false);
   }
