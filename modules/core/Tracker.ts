@@ -15,6 +15,8 @@ import GameFrame from './GameFrame.js';
 class Tracker {
   pickPos: Vector2 | null; // 光标在目标对象上的世界坐标（不含Y）
 
+  lastPos: Vector2; // 上次追踪的光标抽象坐标（标准化）
+
   private readonly rayCaster: Raycaster;
 
   private readonly mesh: Mesh;
@@ -26,6 +28,7 @@ class Tracker {
     this.mesh = map;
     this.rayCaster = new Raycaster();
     this.pickPos = null;
+    this.lastPos = new Vector2(-100000, -100000);
   }
 
   /**

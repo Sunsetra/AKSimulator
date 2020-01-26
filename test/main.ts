@@ -4,15 +4,11 @@ import {
   MapInfo,
   ResourcesList,
 } from '../modules/core/MapInfo';
+import Overlay from '../modules/core/Overlay.js';
 import TimeAxis from '../modules/core/TimeAxis.js';
-import Tracker from '../modules/core/Tracker.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import ResourceLoader from '../modules/loaders/ResourceLoader.js';
-import {
-  BlockType,
-  Overlay,
-  WebGLAvailability,
-} from '../modules/others/constants.js';
+import { WebGLAvailability } from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
@@ -20,10 +16,7 @@ import {
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
-import {
-  Color,
-  Vector2,
-} from '../node_modules/three/build/three.module.js';
+import { Vector2 } from '../node_modules/three/build/three.module.js';
 import GameController from './Controllers/GameCtl.js';
 import LoadingUICtl from './Controllers/LoadingUICtl.js';
 import RenderController from './Controllers/RenderCtl.js';
@@ -48,11 +41,19 @@ const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
 function main(mapInfo: MapInfo, resList: ResourcesList): void {
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), resList); // 全局地图对象
   const gameCtl = new GameController(frame.scene, map, resList, timeAxisUI); // 游戏控制器
-  const tracker = new Tracker(frame, map);
+
+  /* 添加设置叠加层 */
+  const placeLayer = new Overlay(frame.scene, map, 1, map.getPlaceableArea());
+  placeLayer.setOverlayStyle('green');
+  const attackLayer = new Overlay(frame.scene, map, 2, undefined, placeLayer);
+  attackLayer.setOverlayStyle('red');
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
-    start: (): void => timeAxis.start(),
+    start: (): void => {
+      timeAxis.start();
+      placeLayer.show();
+    },
     pause: (): void => timeAxis.stop(),
     continue: (): void => timeAxis.continue(),
     stop: (): void => timeAxis.stop(),
@@ -61,12 +62,16 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
       gameCtl.resetGame();
+      placeLayer.hide();
+      map.stopTrack(attackLayer);
     },
   };
   renderCtl.reset();
 
   /* 指定每帧渲染前需要执行的回调 */
   function frameCallback(rAFTime: number): void {
+    map.trackOverlay(attackLayer, [new Vector2(0, 0), new Vector2(1, 0)], true);
+    /* 执行位置和状态更新 */
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.enemyCount) {
       gameCtl.updateEnemyStatus(currentTime);

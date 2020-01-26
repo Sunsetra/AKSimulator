@@ -11,9 +11,6 @@ import {
   Material,
   Math as _Math,
   Mesh,
-  MeshBasicMaterial,
-  PlaneBufferGeometry,
-  Texture,
   Vector2,
   Vector3,
 } from '../../node_modules/three/build/three.module.js';
@@ -23,7 +20,6 @@ import Decoration from '../buildings/Decoration.js';
 import {
   BlockType,
   BlockUnit,
-  Overlay,
 } from '../others/constants.js';
 import {
   BlockInfoError,
@@ -41,6 +37,7 @@ import {
   MapInfo,
   ResourcesList,
 } from './MapInfo';
+import Overlay from './Overlay.js';
 import Tracker from './Tracker.js';
 import Unit from './Unit';
 
@@ -55,8 +52,6 @@ class GameMap {
   readonly data: MapInfo; // 原始地图信息
 
   readonly mesh: Mesh; // 地图网格体
-
-  private lastPos: Vector2; // 上次追踪的光标抽象坐标（标准化）
 
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
@@ -253,10 +248,6 @@ class GameMap {
         }
       });
 
-      /* 添加叠加层 */
-      this.addOverlay(Overlay.Placeable, new Color('green'));
-      this.addOverlay(Overlay.AttackArea, new Color('red'));
-
       /* 设置场景灯光 */
       {
         const {
@@ -351,7 +342,6 @@ class GameMap {
     }
 
     this.tracker = new Tracker(frame, this.mesh);
-    this.lastPos = new Vector2(-100000, -100000);
   }
 
   /**
@@ -532,127 +522,25 @@ class GameMap {
   }
 
   /**
-   * 向地图中添加叠加层
-   * @param layer: 叠加层层次，从0开始为最底层
-   * @param map: 叠加层样式，默认为绿色纯色
-   * @param visible: 叠加层是否显示，默认为隐藏
-   */
-  addOverlay(layer: Overlay, map: Texture | Color = new Color('green'), visible = false): void {
-    this.blockData.forEach((block) => {
-      if (block !== null) {
-        const geometry = new PlaneBufferGeometry(BlockUnit, BlockUnit);
-        const material = new MeshBasicMaterial({
-          transparent: true,
-          opacity: 0.4,
-        });
-        if (map instanceof Texture) {
-          material.map = map;
-        } else {
-          material.color = map;
-        }
-        const proto = new Mesh(geometry, material); // 创建叠加层原型
-
-        const posX = block.size.x * (block.x + 0.5);
-        const posY = block.size.y + (layer + 1) * 0.01;
-        const posZ = block.size.z * (block.z + 0.5);
-        proto.position.set(posX, posY, posZ);
-        proto.rotateX(-Math.PI / 2);
-        proto.visible = visible;
-
-        if (block.overlay === undefined) { block.overlay = new Map(); }
-        block.overlay.set(layer, proto);
-        this.frame.scene.add(proto);
-      }
-    });
-  }
-
-  /**
-   * 设置叠加层样式
-   * @param layer: 叠加层层次
-   * @param map: 提供叠加层贴图或纯色叠加层
-   */
-  setOverlayStyle(layer: Overlay, map: Texture | Color): void {
-    this.blockData.forEach((block) => {
-      if (block !== null && block.overlay !== undefined) {
-        const mesh = block.overlay.get(layer);
-        if (mesh !== undefined) {
-          if (map instanceof Texture) {
-            (mesh.material as MeshBasicMaterial).map = map;
-          } else {
-            (mesh.material as MeshBasicMaterial).color = map;
-          }
-        }
-      }
-    });
-  }
-
-  /**
-   * 设定指定位置的叠加层的可见性
-   * @param a: 目标叠加层所在的砖块
-   * @param b: 新可见性
-   * @param c: 叠加层的层次，置空时设置所有叠加层
-   */
-  setOverlayVisibility(a: BlockInfo, b: boolean, c?: Overlay): void;
-  /**
-   * 设定指定位置的叠加层的可见性
-   * @param a: 叠加层所在X位置
-   * @param b: 叠加层所在Z位置
-   * @param c: 新可见性
-   * @param layer: 叠加层的层次，置空时设置所有叠加层
-   */
-  setOverlayVisibility(a: number, b: number, c: boolean, layer?: Overlay): void;
-  setOverlayVisibility(a: BlockInfo | number, b: number | boolean, c?: boolean | Overlay, layer?: Overlay): void {
-    /* 获取砖块实例 */
-    let block: BlockInfo | null;
-    if (typeof a === 'number') {
-      if (typeof b === 'number') {
-        block = this.getBlock(a, b);
-      } else { block = this.getBlock(a, 0); }
-    } else { block = a; }
-
-    if (block !== null && block.overlay !== undefined) {
-      /* 三参重载 */
-      if (typeof b === 'boolean') {
-        if (typeof c === 'number') {
-          const mesh = block.overlay.get(c);
-          if (mesh !== undefined) { mesh.visible = b; }
-        } else {
-          block.overlay.forEach((mesh) => { mesh.visible = b; });
-        }
-      }
-      /* 四参重载 */
-      if (typeof c === 'boolean') {
-        if (typeof layer === 'number') {
-          const mesh = block.overlay.get(layer);
-          if (mesh !== undefined) { mesh.visible = c; }
-        } else {
-          block.overlay.forEach((mesh) => { mesh.visible = c; });
-        }
-      }
-    }
-  }
-
-  /**
-   * 显示指定范围内的叠加层
-   * @param layer: 叠加层层次
+   * 追踪光标在指定叠加层上的位置
+   * @param layer: 目标叠加层
    * @param area: 相对于中心坐标的Vector2偏移量数组
-   * @param parent: 指定父叠加层范围，仅追踪光标时生效
    * @param isTrack: area是否相对于当前光标位置
    */
-  showOverlay(layer: Overlay, area: Vector2[], isTrack = false, parent?: Vector2[]): void {
+  trackOverlay(layer: Overlay, area: Vector2[], isTrack = false): void {
     if (isTrack) {
       this.tracker.enable = true;
       if (this.tracker.pickPos === null) {
-        this.hideOverlay(layer);
+        if (layer.visibility !== false) { layer.hide(); } // 光标未在目标对象上且当前叠加层未完全隐藏时隐藏叠加层
       } else {
         const absPos = realPosToAbsPos(this.tracker.pickPos, true); // 当前位置的抽象坐标
+        if (!absPos.equals(this.tracker.lastPos)) {
+          layer.hide(); // 当前位置非前次记录位置时，首先全隐藏当前叠加层
 
-        if (!absPos.equals(this.lastPos)) { // 当前位置非前次记录位置
-          this.hideOverlay(layer);
           if (((): boolean => {
-            if (parent !== undefined) {
-              for (let i = 0; i < parent.length; i += 1) {
-                if (parent[i].equals(absPos)) { return true; }
+            if (layer.parent !== undefined) {
+              for (let i = 0; i < layer.parent.area.length; i += 1) {
+                if (layer.parent.area[i].equals(absPos)) { return true; }
               }
               return false;
             }
@@ -660,28 +548,27 @@ class GameMap {
           })()) { // 在父范围内
             area.forEach((point) => {
               const newPos = new Vector2().addVectors(absPos, point);
-              this.setOverlayVisibility(newPos.x, newPos.y, true, layer);
+              layer.setOverlayVisibility(newPos, true);
             });
-            this.lastPos = absPos;
+            this.tracker.lastPos = absPos;
           }
         }
       }
     } else { // 不追踪光标，仅显示叠加层区域
       area.forEach((point) => {
-        this.setOverlayVisibility(point.x, point.y, true, layer);
+        layer.setOverlayVisibility(point, true);
       });
     }
   }
 
   /**
-   * 隐藏指定叠加层
-   * @param layer: 叠加层层次，置空时隐藏所有叠加层且停止追踪
+   * 隐藏指定叠加层并停止追踪
+   * @param layer: 要停止追踪的叠加层对象
    */
-  hideOverlay(layer?: Overlay): void {
-    this.getBlocks().forEach((block) => {
-      if (block !== null) { this.setOverlayVisibility(block, false, layer); }
-    });
-    if (layer === undefined) { this.tracker.enable = false; }
+  stopTrack(layer: Overlay): void {
+    layer.hide();
+    this.tracker.enable = false;
+    this.tracker.lastPos = new Vector2(-100000, -100000);
   }
 }
 
