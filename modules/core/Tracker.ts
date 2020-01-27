@@ -15,7 +15,7 @@ import GameFrame from './GameFrame.js';
 class Tracker {
   pickPos: Vector2 | null; // 光标在目标对象上的世界坐标（不含Y）
 
-  lastPos: Vector2; // 上次追踪的光标抽象坐标（标准化）
+  lastPos: Vector2 | null; // 上次追踪的光标抽象坐标（标准化）
 
   private readonly rayCaster: Raycaster;
 
@@ -23,26 +23,32 @@ class Tracker {
 
   private readonly frame: GameFrame;
 
+  private status: boolean; // 光标位置追踪运行状态
+
   constructor(frame: GameFrame, map: Mesh) {
     this.frame = frame;
     this.mesh = map;
     this.rayCaster = new Raycaster();
     this.pickPos = null;
-    this.lastPos = new Vector2(-100000, -100000);
+    this.lastPos = null;
+    this.status = false;
   }
 
-  /**
-   * 光标位置追踪控制开关
-   * @param state: 开启/关闭状态
-   */
-  set enable(state: boolean) {
-    if (state) {
-      this.frame.addEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
-      this.frame.addEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
-    } else {
-      this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
-      this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
-    }
+  /** 返回当前追踪运行状态 */
+  get enabled(): boolean { return this.status; }
+
+  /** 启动光标位置追踪 */
+  enable(): void {
+    this.frame.addEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+    this.frame.addEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    this.status = true;
+  }
+
+  /** 关闭光标位置追踪 */
+  disable(): void {
+    this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+    this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    this.status = false;
   }
 
   /**

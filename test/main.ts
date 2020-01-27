@@ -8,7 +8,10 @@ import Overlay from '../modules/core/Overlay.js';
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import ResourceLoader from '../modules/loaders/ResourceLoader.js';
-import { WebGLAvailability } from '../modules/others/constants.js';
+import {
+  BlockType,
+  WebGLAvailability,
+} from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
@@ -43,7 +46,7 @@ function main(mapInfo: MapInfo, resList: ResourcesList): void {
   const gameCtl = new GameController(frame.scene, map, resList, timeAxisUI); // 游戏控制器
 
   /* 添加设置叠加层 */
-  const placeLayer = new Overlay(frame.scene, map, 1, map.getPlaceableArea());
+  const placeLayer = new Overlay(frame.scene, map, 1, map.getPlaceableArea(BlockType.HighBlock));
   placeLayer.setOverlayStyle('green');
   const attackLayer = new Overlay(frame.scene, map, 2, undefined, placeLayer);
   attackLayer.setOverlayStyle('red');

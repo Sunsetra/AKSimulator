@@ -529,29 +529,25 @@ class GameMap {
    */
   trackOverlay(layer: Overlay, area: Vector2[], isTrack = false): void {
     if (isTrack) {
-      this.tracker.enable = true;
+      if (!this.tracker.enabled) { this.tracker.enable(); } // 若未开始追踪则开启追踪
       if (this.tracker.pickPos === null) {
         if (layer.visibility !== false) { layer.hide(); } // 光标未在目标对象上且当前叠加层未完全隐藏时隐藏叠加层
+        this.tracker.lastPos = null;
       } else {
         const absPos = realPosToAbsPos(this.tracker.pickPos, true); // 当前位置的抽象坐标
-        if (!absPos.equals(this.tracker.lastPos)) {
+        if (!this.tracker.lastPos || !absPos.equals(this.tracker.lastPos)) {
           layer.hide(); // 当前位置非前次记录位置时，首先全隐藏当前叠加层
 
           if (((): boolean => {
-            if (layer.parent !== undefined) {
-              for (let i = 0; i < layer.parent.area.length; i += 1) {
-                if (layer.parent.area[i].equals(absPos)) { return true; }
-              }
-              return false;
-            }
+            if (layer.parent !== undefined) { return layer.parent.has(absPos); }
             return true;
           })()) { // 在父范围内
             area.forEach((point) => {
               const newPos = new Vector2().addVectors(absPos, point);
               layer.setOverlayVisibility(newPos, true);
             });
-            this.tracker.lastPos = absPos;
           }
+          this.tracker.lastPos = absPos;
         }
       }
     } else { // 不追踪光标，仅显示叠加层区域
@@ -567,8 +563,8 @@ class GameMap {
    */
   stopTrack(layer: Overlay): void {
     layer.hide();
-    this.tracker.enable = false;
-    this.tracker.lastPos = new Vector2(-100000, -100000);
+    this.tracker.disable();
+    this.tracker.lastPos = null;
   }
 }
 
