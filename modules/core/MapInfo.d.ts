@@ -16,13 +16,14 @@ import Enemy from '../enemies/Enemy.js';
 import { BlockType } from '../others/constants.js';
 
 
-export interface Resource { // 资源对象
-  url: string; // 资源URL
-  tex?: Texture; // 贴图型资源
-  geo?: BufferGeometry; // 资源几何体
-  mat?: Material | Material[]; // 资源材质
-  entity?: Mesh; // 实体网格体
+export interface Data {
+  materials: resData;
+  units: oprData;
 }
+
+
+export type resData = { resources: ResourcesList; icons: IconList };
+export type oprData = { [name: string]: { [type: string]: string | number } };
 
 
 export interface ResourcesList { // 总资源列表对象
@@ -36,6 +37,22 @@ export interface ResourcesList { // 总资源列表对象
     entry: Resource;
   }; // 导入模型
   [resType: string]: { [texType: string]: Resource };
+}
+
+
+export interface Resource { // 资源对象
+  url: string; // 资源URL
+  tex?: Texture; // 贴图型资源
+  geo?: BufferGeometry; // 资源几何体
+  mat?: Material | Material[]; // 资源材质
+  entity?: Mesh; // 实体网格体
+}
+
+
+export interface IconList {
+  class: { [classType: string]: string }; // 干员职业图标
+  rarity: { [rarity: string]: string }; // 干员稀有度图标
+  operator: { [oprType: string]: string }; // 干员头像图标
 }
 
 

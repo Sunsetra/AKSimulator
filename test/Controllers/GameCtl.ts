@@ -143,6 +143,7 @@ class GameController {
     this.activeEnemy.forEach((enemy) => {
       if (enemy.inst !== undefined) {
         this.scene.remove(enemy.inst.mesh);
+        disposeResources(enemy.inst.mesh); // 释放掉敌人实体
         this.activeEnemy.delete(enemy);
       }
     });

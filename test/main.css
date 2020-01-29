@@ -314,11 +314,9 @@ canvas {
   padding-bottom: 8%;
   border: 1px solid white;
   box-shadow: inset 0 0 10px white;
-  border-bottom: 4px solid MediumSlateBlue; /* TODO: JS实现*/
-  background: url("res/img/misc/caster.png") no-repeat top left/25%,
-  url("res/img/misc/rare_4.png") no-repeat bottom right/45%,
-  url("res/img/operator/haze.png") no-repeat top left/cover;
+  border-bottom: 4px solid;
   pointer-events: auto;
+  cursor: pointer;
 }
 
 .opr-cost {

@@ -62,12 +62,9 @@ class Overlay {
         proto.visible = false; // 新创建的叠加层默认隐藏显示
 
         if (block.overlay === undefined) { block.overlay = new Map(); }
-        const mesh = block.overlay.get(depth);
-        if (mesh === undefined) {
-          block.overlay.set(depth, proto); // 同深度叠加层，后添加的替换先添加的
-        } else {
-          disposeResources(mesh); // 废弃先添加的叠加层
-        }
+        const mesh = block.overlay.get(depth); // 取砖块上现有的叠加层
+        if (mesh !== undefined) { disposeResources(mesh); } // 如果砖块上已有该层，则废弃先添加的叠加层
+        block.overlay.set(depth, proto); // 同深度叠加层，后添加的替换先添加的
         scene.add(proto);
       }
     });

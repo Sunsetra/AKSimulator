@@ -4,12 +4,13 @@
  */
 
 import { Mesh } from '../../node_modules/three/build/three.module.js';
+import { sizeAlpha } from '../others/constants.js';
 import Enemy from './Enemy.js';
 
 
 class Slime extends Enemy {
   constructor(mesh: Mesh) {
-    super(mesh, 0.7, 550, 0.5);
+    super(mesh, sizeAlpha, 550, 0.5);
   }
 }
 

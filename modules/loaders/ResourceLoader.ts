@@ -19,6 +19,7 @@ import {
 import { GLTFLoader } from '../../node_modules/three/examples/jsm/loaders/GLTFLoader.js';
 
 import {
+  Data,
   Resource,
   ResourceInfo,
   ResourcesList,
@@ -28,11 +29,11 @@ import { LoadingError } from '../others/exceptions.js';
 
 
 class ResourceLoader {
-  resListAll: ResourcesList; // 总资源列表
+  resList: ResourcesList; // 总资源列表
 
   mapResList: ResourceInfo | undefined; // 地图所需资源列表
 
-  onLoad?: (resList: ResourcesList) => void;
+  onLoad?: (resList: Data) => void;
 
   onProgress?: (url: string, loaded: number, total: number) => void;
 
@@ -46,11 +47,11 @@ class ResourceLoader {
 
   private readonly texLoader: TextureLoader;
 
-  constructor(resListAll: ResourcesList,
-              onLoad?: (resList: ResourcesList) => void,
+  constructor(data: Data,
+              onLoad?: (resList: Data) => void,
               onProgress?: (url: string, loaded: number, total: number) => void,
               onError?: (url: string) => void) {
-    this.resListAll = resListAll;
+    this.resList = data.materials.resources;
     this.onLoad = onLoad;
     this.onProgress = onProgress;
     this.onError = onError;
@@ -61,7 +62,7 @@ class ResourceLoader {
       } else {
         this.createGeometry(this.mapResList);
       }
-      if (this.onLoad !== undefined) { this.onLoad(this.resListAll); }
+      if (this.onLoad !== undefined) { this.onLoad(data); }
     }, onProgress, onError);
     this.texLoader = new TextureLoader(this.loadManager);
     this.gltfLoader = new GLTFLoader(this.loadManager);
@@ -77,7 +78,7 @@ class ResourceLoader {
 
     /* 加载进出点及干员贴图 */
     ['EDPoint', 'operator'].forEach((type) => {
-      Object.values(this.resListAll[type]).forEach((texRes) => {
+      Object.values(this.resList[type]).forEach((texRes) => {
         this.loadTexture(texRes);
       });
     });
@@ -85,14 +86,14 @@ class ResourceLoader {
     /* 加载砖块及敌人贴图 */
     ['block', 'enemy'].forEach((category) => {
       mapRes[category].forEach((texType: string) => {
-        const thisRes = this.resListAll[category][texType];
+        const thisRes = this.resList[category][texType];
         this.loadTexture(thisRes);
       });
     });
 
     /* 加载建筑模型 */
     mapRes.model.forEach((modelType) => {
-      const thisRes = this.resListAll.model[modelType];
+      const thisRes = this.resList.model[modelType];
       this.loadModel(thisRes);
     });
 
@@ -129,15 +130,15 @@ class ResourceLoader {
 
     /* 构建敌方单位材质及实体 */
     res.enemy.forEach((name) => {
-      const texRes = this.resListAll.enemy[name];
+      const texRes = this.resList.enemy[name];
       createUnitRes(texRes);
     });
 
     /* 构建干员单位材质及实体 */
-    Object.values(this.resListAll.operator).forEach((opRes) => { createUnitRes(opRes); });
+    Object.values(this.resList.operator).forEach((opRes) => { createUnitRes(opRes); });
 
     /* 构建ED点的材质 */
-    Object.values(this.resListAll.EDPoint).forEach((edRes) => {
+    Object.values(this.resList.EDPoint).forEach((edRes) => {
       if (!Object.prototype.hasOwnProperty.call(edRes, 'mat')) {
         const material = new MeshBasicMaterial({
           depthWrite: false,
@@ -153,15 +154,15 @@ class ResourceLoader {
     if (!((): boolean => {
       let integrity = true;
       ['destination', 'entry'].forEach((type) => {
-        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'geo');
-        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'mat');
-        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resListAll.model[type], 'entity');
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resList.model[type], 'geo');
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resList.model[type], 'mat');
+        integrity = integrity && Object.prototype.hasOwnProperty.call(this.resList.model[type], 'entity');
       }); // 检查ED点资源对象的属性是否完备
       return integrity;
     })()) { // 若EDPoint无需重新定义则跳过
       const {
         destTop, destSide, entryTop, entrySide,
-      } = this.resListAll.EDPoint;
+      } = this.resList.EDPoint;
       /* EDPoint中加载的材质一定不是数组 */
       const destTopMat = (destTop.mat ? destTop.mat : new Material()) as Material;
       const destSideMat = (destSide.mat ? destSide.mat : new Material()) as Material;
@@ -174,12 +175,12 @@ class ResourceLoader {
       const destMesh = new Mesh(geometry, destMat);
       const entryMesh = new Mesh(geometry, entryMat);
 
-      Object.defineProperties(this.resListAll.model.destination, {
+      Object.defineProperties(this.resList.model.destination, {
         geo: { value: geometry },
         mat: { value: destMat },
         entity: { value: destMesh },
       });
-      Object.defineProperties(this.resListAll.model.entry, {
+      Object.defineProperties(this.resList.model.entry, {
         geo: { value: geometry },
         mat: { value: entryMat },
         entity: { value: entryMesh },
@@ -188,7 +189,7 @@ class ResourceLoader {
 
     /* 构建砖块材质 */
     res.block.forEach((texType) => {
-      const texRes = this.resListAll.block[texType];
+      const texRes = this.resList.block[texType];
       if (!Object.prototype.hasOwnProperty.call(texRes, 'mat')) {
         const material = new MeshPhysicalMaterial({
           metalness: 0.1,
