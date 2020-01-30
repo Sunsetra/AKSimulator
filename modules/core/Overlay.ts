@@ -5,90 +5,58 @@
 
 import {
   Color,
-  Mesh,
   MeshBasicMaterial,
-  PlaneBufferGeometry,
-  Scene,
   Texture,
   Vector2,
 } from '../../node_modules/three/build/three.module.js';
 
-import { BlockUnit } from '../others/constants.js';
-import { disposeResources } from '../others/utils.js';
+import { OverlayType } from '../others/constants.js';
 import GameMap from './GameMap.js';
-import { BlockInfo } from './MapInfo';
 
 
 class Overlay {
-  readonly area: Vector2[]; // 当前叠加层覆盖区域
-
   readonly parent: Overlay | undefined; // 父叠加层对象
+
+  private enableArea: Vector2[]; // 当前叠加层可用区域
 
   private readonly map: GameMap;
 
-  private readonly depth: number; // 叠加层深度，0值为距地面高0.01位置，依次增加0.01
+  private readonly depth: OverlayType; // 叠加层深度，依叠加层种类而定
 
   private visible: boolean | null; // 当前叠加层的可见性，当且仅当所有均不可见时值为false，部分隐藏时值为null
 
-  constructor(scene: Scene, map: GameMap, depth: number, area?: Vector2[], parent?: Overlay) {
+  /**
+   * 创建叠加层构造函数
+   * @param map: 地图对象
+   * @param depth: 叠加层高度，0为最底层
+   * @param parent: 父叠加层对象
+   */
+  constructor(map: GameMap, depth: OverlayType, parent?: Overlay) {
     this.map = map;
     this.depth = depth;
     this.parent = parent;
     this.visible = false;
-
-    /* 当叠加层区域参数缺省/undefined时，表示叠加层覆盖整个地图区域 */
-    if (area === undefined) {
-      this.area = [];
-      map.getBlocks().forEach((block) => {
-        if (block !== null) { this.area.push(new Vector2(block.x, block.z)); }
-      });
-    } else { this.area = area; }
-
-    this.area.forEach((pos) => {
-      const block = map.getBlock(pos);
-      if (block !== null) {
-        const geometry = new PlaneBufferGeometry(BlockUnit, BlockUnit);
-        const material = new MeshBasicMaterial({
-          transparent: true,
-          opacity: 0.4,
-        });
-        const proto = new Mesh(geometry, material); // 创建叠加层原型
-
-        const posX = block.size.x * (block.x + 0.5);
-        const posY = block.size.y + (depth + 1) * 0.01;
-        const posZ = block.size.z * (block.z + 0.5);
-        proto.position.set(posX, posY, posZ);
-        proto.rotateX(-Math.PI / 2);
-        proto.visible = false; // 新创建的叠加层默认隐藏显示
-
-        if (block.overlay === undefined) { block.overlay = new Map(); }
-        const mesh = block.overlay.get(depth); // 取砖块上现有的叠加层
-        if (mesh !== undefined) { disposeResources(mesh); } // 如果砖块上已有该层，则废弃先添加的叠加层
-        block.overlay.set(depth, proto); // 同深度叠加层，后添加的替换先添加的
-        scene.add(proto);
-      }
-    });
+    this.enableArea = []; // 初始状态时，叠加层可用区域为空
   }
 
-  /** 获取当前叠加层的可见性 */
+  /** 获取当前可用叠加层的可见性 */
   get visibility(): boolean | null {
     return this.visible;
   }
 
   /**
-   * 设置叠加层样式
-   * @param map: 提供叠加层贴图或纯色叠加层
+   * 设置整体叠加层样式
+   * @param style: 提供叠加层贴图或纯色叠加层
    */
-  setOverlayStyle(map: Texture | Color | string | number): void {
-    this.area.forEach((pos) => {
-      const block = this.map.getBlock(pos);
+  setOverlayStyle(style: Texture | Color | string | number): void {
+    this.map.getBlocks().forEach((block) => {
       if (block !== null && block.overlay !== undefined) {
         const mesh = block.overlay.get(this.depth); // 获取当前砖块上的叠加层
         if (mesh !== undefined) {
-          if (map instanceof Texture) {
-            (mesh.material as MeshBasicMaterial).map = map;
+          if (style instanceof Texture) {
+            (mesh.material as MeshBasicMaterial).map = style;
           } else {
-            (mesh.material as MeshBasicMaterial).color = new Color(map);
+            (mesh.material as MeshBasicMaterial).color = new Color(style);
           }
         }
       }
@@ -96,21 +64,25 @@ class Overlay {
   }
 
   /**
-   * 检查指定位置是否位于当前叠加层的范围内
-   * @param pos: 需检查的位置坐标
+   * 检查指定位置是否位于当前叠加层的可用范围内
+   * @param x: 目标位置的Vector2对象或X坐标
+   * @param y: 目标位置的Y坐标
    */
-  has(pos: Vector2): boolean {
-    for (let i = 0; i < this.area.length; i += 1) {
-      if (this.area[i].equals(pos)) { return true; }
+  has(x: number, y: number): boolean;
+  has(x: Vector2): boolean;
+  has(x: Vector2 | number, y?: number): boolean {
+    const pos = x instanceof Vector2 ? x : new Vector2(x, y);
+    for (let i = 0; i < this.enableArea.length; i += 1) {
+      if (this.enableArea[i].equals(pos)) { return true; }
     }
     return false;
   }
 
-  /** 将范围内所有叠加层设置为显示 */
+  /** 将所有可用叠加层设置为显示 */
   show(): void {
     if (!this.visible) { // 仅当全隐藏或部分隐藏时显示
-      for (let i = 0; i < this.area.length; i += 1) {
-        const block = this.map.getBlock(this.area[i]);
+      for (let i = 0; i < this.enableArea.length; i += 1) {
+        const block = this.map.getBlock(this.enableArea[i]);
         if (block !== null && block.overlay !== undefined) {
           const mesh = block.overlay.get(this.depth); // 遍历范围内砖块的叠加层
           if (mesh !== undefined) { mesh.visible = true; }
@@ -120,11 +92,11 @@ class Overlay {
     }
   }
 
-  /** 将范围内所有叠加层设置为隐藏 */
+  /** 将所有可用叠加层设置为隐藏 */
   hide(): void {
     if (this.visible !== false) { // 仅当全显示或部分隐藏时隐藏
-      for (let i = 0; i < this.area.length; i += 1) {
-        const block = this.map.getBlock(this.area[i]);
+      for (let i = 0; i < this.enableArea.length; i += 1) {
+        const block = this.map.getBlock(this.enableArea[i]);
         if (block !== null && block.overlay !== undefined) {
           const mesh = block.overlay.get(this.depth); // 遍历范围内砖块的叠加层
           if (mesh !== undefined) { mesh.visible = false; }
@@ -135,37 +107,49 @@ class Overlay {
   }
 
   /**
-   * 设定指定位置的叠加层的可见性
+   * 设定指定位置的叠加层的可见性，必须在可用区域内
    * @param a: 目标叠加层所在的砖块
    * @param b: 新可见性
    */
   setOverlayVisibility(a: Vector2, b: boolean): void;
   /**
-   * 设定指定位置的叠加层的可见性
+   * 设定指定位置的叠加层的可见性，必须在可用区域内
    * @param a: 叠加层所在X位置
    * @param b: 叠加层所在Z位置
    * @param c: 新可见性
    */
   setOverlayVisibility(a: number, b: number, c: boolean): void;
   setOverlayVisibility(a: Vector2 | number, b: number | boolean, c?: boolean): void {
-    /* 获取砖块实例 */
-    let block: BlockInfo | null;
+    /* 计算目标叠加层的位置 */
+    let pos: Vector2;
     if (typeof a === 'number') {
       if (typeof b === 'number') {
-        block = this.map.getBlock(a, b);
-      } else { block = this.map.getBlock(a, 0); }
-    } else { block = this.map.getBlock(a); }
+        pos = new Vector2(a, b);
+      } else { pos = new Vector2(a, 0); }
+    } else { pos = a; }
 
-    if (block !== null && block.overlay !== undefined) {
-      const mesh = block.overlay.get(this.depth);
-      if (typeof b === 'boolean' && mesh !== undefined) { // 二参重载
-        mesh.visible = b;
-        this.updateVisibility(b);
-      } else if (c !== undefined && mesh !== undefined) { // 三参重载
-        mesh.visible = c;
-        this.updateVisibility(c);
+    if (this.has(pos)) { // 检查设置位置是否在可用区域内
+      const block = this.map.getBlock(pos);
+      if (block !== null && block.overlay !== undefined) {
+        const mesh = block.overlay.get(this.depth);
+        if (typeof b === 'boolean' && mesh !== undefined) { // 二参重载
+          mesh.visible = b;
+          this.updateVisibility(b);
+        } else if (c !== undefined && mesh !== undefined) { // 三参重载
+          mesh.visible = c;
+          this.updateVisibility(c);
+        }
       }
     }
+  }
+
+  /**
+   * 设置新的可用区域，若原为显示状态会自动隐藏
+   * @param area: 新的可用区域
+   */
+  setEnableArea(area: Vector2[]): void {
+    this.hide();
+    this.enableArea = area;
   }
 
   /**
@@ -174,8 +158,8 @@ class Overlay {
    * @param state: 新可见性
    */
   private updateVisibility(state: boolean): void {
-    for (let i = 0; i < this.area.length; i += 1) {
-      const block = this.map.getBlock(this.area[i]);
+    for (let i = 0; i < this.enableArea.length; i += 1) {
+      const block = this.map.getBlock(this.enableArea[i]);
       if (block !== null && block.overlay !== undefined) {
         const mesh = block.overlay.get(this.depth); // 遍历范围内砖块的叠加层
         if (mesh !== undefined && mesh.visible === !state) {

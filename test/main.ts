@@ -4,12 +4,11 @@ import {
   Data,
   MapInfo,
 } from '../modules/core/MapInfo';
-import Overlay from '../modules/core/Overlay.js';
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import ResourceLoader from '../modules/loaders/ResourceLoader.js';
 import {
-  BlockType,
+  OverlayType,
   WebGLAvailability,
 } from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
@@ -46,21 +45,19 @@ function main(mapInfo: MapInfo, data: Data): void {
   const { materials } = data;
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
   const gameCtl = new GameController(frame.scene, map, materials.resources, timeAxisUI); // 游戏控制器
-  const gameUICtl = new GameUIController(data);
+  const gameUICtl = new GameUIController(frame, map, data);
   gameUICtl.addOprCard(['haze']);
 
   /* 添加设置叠加层 */
-  const placeLayer = new Overlay(frame.scene, map, 1, map.getPlaceableArea(BlockType.HighBlock));
+  const placeLayer = map.addOverlay(OverlayType.PlaceLayer);
   placeLayer.setOverlayStyle('green');
-  const attackLayer = new Overlay(frame.scene, map, 2, undefined, placeLayer);
+  const attackLayer = map.addOverlay(OverlayType.AttackLayer, placeLayer);
   attackLayer.setOverlayStyle('red');
+  attackLayer.setEnableArea(map.getPlaceableArea()); // 攻击范围叠加层全域有效
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
-    start: (): void => {
-      timeAxis.start();
-      placeLayer.show();
-    },
+    start: (): void => timeAxis.start(),
     pause: (): void => timeAxis.stop(),
     continue: (): void => timeAxis.continue(),
     stop: (): void => timeAxis.stop(),
@@ -69,15 +66,16 @@ function main(mapInfo: MapInfo, data: Data): void {
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
       gameCtl.resetGame();
-      placeLayer.hide();
-      map.stopTrack(attackLayer);
+      map.hideOverlay();
+      map.tracker.disable();
     },
   };
   renderCtl.reset();
 
   /* 指定每帧渲染前需要执行的回调 */
   function frameCallback(rAFTime: number): void {
-    map.trackOverlay(attackLayer, [new Vector2(0, 0), new Vector2(1, 0)], true);
+    /* TODO: 包装 */
+    map.trackOverlay(attackLayer, [new Vector2(0, 0), new Vector2(1, 0)]);
     /* 执行位置和状态更新 */
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.enemyCount) {

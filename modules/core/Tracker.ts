@@ -49,6 +49,8 @@ class Tracker {
     this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
     this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
     this.status = false;
+    this.pickPos = null;
+    this.lastPos = null;
   }
 
   /**

@@ -1,3 +1,4 @@
+/* WebGL可用性常量 */
 export enum WebGLAvailability {
   Unavailable,
   Available,
@@ -5,19 +6,29 @@ export enum WebGLAvailability {
 }
 
 
+/* 砖块类型常量 */
 export enum BlockType {
+  PlaceableBlock,
   BasicBlock,
   HighBlock,
 }
 
 
+/* 叠加层常量 */
+export enum OverlayType {
+  PlaceLayer,
+  AttackLayer,
+}
+
+
+/* 稀有度常量定义 */
 export enum RarityColor {
   White = 1,
   GreenYellow,
   DeepSkyBlue,
   MediumSlateBlue,
   Gold,
-  Orange
+  Orange,
 }
 
 

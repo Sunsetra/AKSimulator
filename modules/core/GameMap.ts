@@ -11,6 +11,8 @@ import {
   Material,
   Math as _Math,
   Mesh,
+  MeshBasicMaterial,
+  PlaneBufferGeometry,
   Vector2,
   Vector3,
 } from '../../node_modules/three/build/three.module.js';
@@ -20,6 +22,7 @@ import Decoration from '../buildings/Decoration.js';
 import {
   BlockType,
   BlockUnit,
+  OverlayType,
 } from '../others/constants.js';
 import {
   BlockInfoError,
@@ -53,11 +56,13 @@ class GameMap {
 
   readonly mesh: Mesh; // 地图网格体
 
+  overlay: Map<number, Overlay>; // 地图中的叠加层映射
+
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
   private readonly resList: ResourcesList; // 全资源列表
 
-  private readonly tracker: Tracker; // 光标位置追踪器
+  readonly tracker: Tracker; // 光标位置追踪器
 
   private readonly frame: GameFrame; // 游戏框架
 
@@ -342,6 +347,7 @@ class GameMap {
     }
 
     this.tracker = new Tracker(frame, this.mesh);
+    this.overlay = new Map<number, Overlay>();
   }
 
   /**
@@ -373,13 +379,15 @@ class GameMap {
 
   /**
    * 获取指定可放置单位的砖块种类的位置列表
-   * @param type: 砖块种类，置空时获取所有可放置的砖块
+   * @param type: 砖块种类，置空时获取所有砖块位置
    */
   getPlaceableArea(type?: BlockType): Vector2[] {
     const area: Vector2[] = [];
     this.blockData.forEach((block) => {
-      if (block !== null && block.placeable) {
-        if (block.blockType === type || type === undefined) {
+      if (block !== null) {
+        if (type === undefined) {
+          area.push(new Vector2(block.x, block.z));
+        } else if (block.placeable && (type === block.blockType || type === BlockType.PlaceableBlock)) {
           area.push(new Vector2(block.x, block.z));
         }
       }
@@ -522,14 +530,67 @@ class GameMap {
   }
 
   /**
+   * 向地图中添加叠加层，范围整个地图，返回添加的叠加层
+   * @param depth: 叠加层高度
+   * @param parent: 叠加层的父级
+   */
+  addOverlay(depth: OverlayType, parent?: Overlay): Overlay {
+    const overlay = new Overlay(this, depth, parent);
+    this.getBlocks().forEach((block) => {
+      if (block !== null) {
+        const geometry = new PlaneBufferGeometry(BlockUnit, BlockUnit);
+        const material = new MeshBasicMaterial({
+          transparent: true,
+          opacity: 0.4,
+        });
+        const proto = new Mesh(geometry, material); // 创建叠加层原型
+
+        const posX = block.size.x * (block.x + 0.5);
+        const posY = block.size.y + (depth + 1) * 0.01;
+        const posZ = block.size.z * (block.z + 0.5);
+        proto.position.set(posX, posY, posZ);
+        proto.rotateX(-Math.PI / 2);
+        proto.visible = false; // 新创建的叠加层默认隐藏显示
+
+        if (block.overlay === undefined) { block.overlay = new Map(); }
+        const mesh = block.overlay.get(depth); // 取砖块上现有的叠加层
+        if (mesh !== undefined) { disposeResources(mesh); } // 如果砖块上已有该层，则废弃先添加的叠加层
+        block.overlay.set(depth, proto); // 同深度叠加层，后添加的替换先添加的
+        this.frame.scene.add(proto);
+      }
+    });
+    this.overlay.set(depth, overlay);
+    return overlay;
+  }
+
+  /**
+   * 获取指定高度的叠加层对象（用OverlayType获取的叠加层不可能不存在）
+   * @param depth: 目标叠加层高度
+   */
+  getOverlay(depth: OverlayType): Overlay {
+    return this.overlay.get(depth) as Overlay;
+  }
+
+  /**
+   * 隐藏指定叠加层，参数为空时隐藏所有叠加层
+   * @param depth: 要隐藏的叠加层类型
+   */
+  hideOverlay(depth?: OverlayType): void {
+    if (depth === undefined) {
+      this.overlay.forEach((layer) => { layer.hide(); });
+    } else {
+      const layer = this.overlay.get(depth);
+      if (layer !== undefined) { layer.hide(); }
+    }
+  }
+
+  /**
    * 追踪光标在指定叠加层上的位置
    * @param layer: 目标叠加层
    * @param area: 相对于中心坐标的Vector2偏移量数组
-   * @param isTrack: area是否相对于当前光标位置
    */
-  trackOverlay(layer: Overlay, area: Vector2[], isTrack = false): void {
-    if (isTrack) {
-      if (!this.tracker.enabled) { this.tracker.enable(); } // 若未开始追踪则开启追踪
+  trackOverlay(layer: Overlay, area: Vector2[]): void {
+    if (this.tracker.enabled) {
       if (this.tracker.pickPos === null) {
         if (layer.visibility !== false) { layer.hide(); } // 光标未在目标对象上且当前叠加层未完全隐藏时隐藏叠加层
         this.tracker.lastPos = null;
@@ -541,7 +602,7 @@ class GameMap {
           if (((): boolean => {
             if (layer.parent !== undefined) { return layer.parent.has(absPos); }
             return true;
-          })()) { // 在父范围内
+          })()) { // 检查当前位置是否在父范围内
             area.forEach((point) => {
               const newPos = new Vector2().addVectors(absPos, point);
               layer.setOverlayVisibility(newPos, true);
@@ -550,21 +611,7 @@ class GameMap {
           this.tracker.lastPos = absPos;
         }
       }
-    } else { // 不追踪光标，仅显示叠加层区域
-      area.forEach((point) => {
-        layer.setOverlayVisibility(point, true);
-      });
     }
-  }
-
-  /**
-   * 隐藏指定叠加层并停止追踪
-   * @param layer: 要停止追踪的叠加层对象
-   */
-  stopTrack(layer: Overlay): void {
-    layer.hide();
-    this.tracker.disable();
-    this.tracker.lastPos = null;
   }
 }
 
