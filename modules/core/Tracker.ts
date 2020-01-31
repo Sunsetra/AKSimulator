@@ -55,7 +55,7 @@ class Tracker {
 
   /**
    * 在光标移动时获取并计算光标的标准位置，更新成员pickPos。应与光标移动事件绑定。
-   * @param event: 鼠标移动事件
+   * @param event: 光标移动事件
    */
   private getNormalizedPosition = (event: MouseEvent): void => {
     const rect = this.frame.canvas.getBoundingClientRect();

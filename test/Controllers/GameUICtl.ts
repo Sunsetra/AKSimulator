@@ -10,6 +10,8 @@ import {
   RarityColor,
 } from '../../modules/others/constants.js';
 import { realPosToAbsPos } from '../../modules/others/utils.js';
+import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
+import { Vector2 } from '../../node_modules/three/build/three.module.js';
 
 
 /* 定义角色卡所需的数据接口，值均为地址字符串 */
@@ -22,27 +24,25 @@ interface CardData {
 
 
 class GameUIController {
+  cardChosen: boolean; // 干员卡选择状态，在点击后应设为true，取消状态后应设为false
+
   private readonly unitData: oprData; // 单位名对应的单位数据
 
   private readonly iconData: IconList; // 图标资源数据
 
-  cardChosen: boolean; // 干员卡选择状态，在点击后应设为true，取消状态后应设为false
+  private readonly map: GameMap; // 地图对象
 
-  private readonly map: GameMap;
+  private readonly frame: GameFrame; // 游戏框架
 
-  constructor(frame: GameFrame, map: GameMap, data: Data) {
+  private readonly renderer: StaticRenderer; // 静态渲染器
+
+  constructor(frame: GameFrame, map: GameMap, renderer: StaticRenderer, data: Data) {
+    this.frame = frame;
     this.map = map;
+    this.renderer = renderer;
     this.iconData = data.materials.icons;
     this.unitData = data.units;
     this.cardChosen = false;
-
-    // TODO: 增加在暂停时绘制叠加层
-    frame.addEventListener(frame.canvas, 'mouseup', () => {
-      if (this.map.tracker.pickPos !== null) {
-        console.log(realPosToAbsPos(this.map.tracker.pickPos, true));
-      }
-      this.mouseupCallback();
-    });
   }
 
   /**
@@ -88,16 +88,32 @@ class GameUIController {
         const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
         placeLayer.setEnableArea(this.map.getPlaceableArea(Number(data.placeType)));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
-        const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
-        atkLayer.hide(); // 隐藏上次显示的区域
+        this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏上次显示的区域
+        this.renderer.requestRender();
 
         this.cardChosen = true;
         this.map.tracker.enable();
+
+        this.frame.addEventListener(this.frame.canvas, 'mousemove', this.canvasMousemoveHandler);
+        this.frame.canvas.addEventListener('mouseup', () => {
+          if (this.map.tracker.pickPos !== null) {
+            const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
+            if (placeLayer.has(pos)) { console.log(pos); }
+          }
+          this.mouseupCallback();
+        }, { once: true });
       });
 
       oprNode.addEventListener('mouseup', this.mouseupCallback);
     });
   }
+
+  /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
+  private canvasMousemoveHandler = (): void => {
+    const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
+    this.map.trackOverlay(atkLayer, [new Vector2(0, 0), new Vector2(1, 0)]);
+    this.renderer.requestRender();
+  };
 
   /** 当光标在角色头像上松开时的回调函数 */
   private mouseupCallback = (): void => {
@@ -107,6 +123,8 @@ class GameUIController {
       this.cardChosen = false;
       this.map.hideOverlay();
       this.map.tracker.disable();
+      this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.canvasMousemoveHandler);
+      this.renderer.requestRender();
     }
   };
 }

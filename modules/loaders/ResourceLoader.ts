@@ -76,14 +76,14 @@ class ResourceLoader {
   load(mapRes: ResourceInfo): void {
     this.mapResList = mapRes;
 
-    /* 加载进出点及干员贴图 */
+    /* 加载进出点及干员贴图（进出点贴图会导致一例警告） */
     ['EDPoint', 'operator'].forEach((type) => {
       Object.values(this.resList[type]).forEach((texRes) => {
         this.loadTexture(texRes);
       });
     });
 
-    /* 加载砖块及敌人贴图 */
+    /* 加载砖块及敌人贴图（砖块贴图会导致一例警告） */
     ['block', 'enemy'].forEach((category) => {
       mapRes[category].forEach((texType: string) => {
         const thisRes = this.resList[category][texType];
@@ -91,7 +91,7 @@ class ResourceLoader {
       });
     });
 
-    /* 加载建筑模型 */
+    /* 加载建筑模型（建筑模型会导致一例警告） */
     mapRes.model.forEach((modelType) => {
       const thisRes = this.resList.model[modelType];
       this.loadModel(thisRes);

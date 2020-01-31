@@ -18,7 +18,6 @@ import {
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
-import { Vector2 } from '../node_modules/three/build/three.module.js';
 import GameController from './Controllers/GameCtl.js';
 import GameUIController from './Controllers/GameUICtl.js';
 import LoadingUICtl from './Controllers/LoadingUICtl.js';
@@ -45,7 +44,7 @@ function main(mapInfo: MapInfo, data: Data): void {
   const { materials } = data;
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
   const gameCtl = new GameController(frame.scene, map, materials.resources, timeAxisUI); // 游戏控制器
-  const gameUICtl = new GameUIController(frame, map, data);
+  const gameUICtl = new GameUIController(frame, map, staticRenderer, data);
   gameUICtl.addOprCard(['haze']);
 
   /* 添加设置叠加层 */
@@ -74,8 +73,6 @@ function main(mapInfo: MapInfo, data: Data): void {
 
   /* 指定每帧渲染前需要执行的回调 */
   function frameCallback(rAFTime: number): void {
-    /* TODO: 包装 */
-    map.trackOverlay(attackLayer, [new Vector2(0, 0), new Vector2(1, 0)]);
     /* 执行位置和状态更新 */
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.enemyCount) {
@@ -102,6 +99,7 @@ function main(mapInfo: MapInfo, data: Data): void {
 function resetGameFrame(): void {
   renderCtl.reset(); // 重置渲染及时间轴
   disposeResources(frame.scene); // 废弃原地图中的资源
+  frame.scene.dispose(); // 清除场景对象中的其余资源
   frame.clearEventListener(); // 清空监听器
 }
 
