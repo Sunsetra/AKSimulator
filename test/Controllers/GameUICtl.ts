@@ -154,8 +154,9 @@ class GameUIController {
   /** 追踪光标位置叠加层元素 */
   private trackMouseOverlay(): void {
     if (this.map.tracker.pointerPos !== null) {
-      this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x}px`;
-      this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y}px`;
+      const imgRect = (this.mouseLayer.children.item(0) as HTMLElement).getBoundingClientRect();
+      this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x - imgRect.width / 2}px`;
+      this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
     }
   }
 }

@@ -9,7 +9,7 @@ import {
   Color,
   Fog,
   Material,
-  Math as _Math,
+  MathUtils,
   Mesh,
   MeshBasicMaterial,
   PlaneBufferGeometry,
@@ -283,10 +283,10 @@ class GameMap {
         const mapPhi = phi || randomDeg; // 如果未指定方位角，则使用随机方位角
         const lightRad = maxSize; // 光源半径为地图最大尺寸
         const theta = 140 - mapHour * 12; // 从地图时间计算天顶角
-        const cosTheta = Math.cos(_Math.degToRad(theta)); // 计算光源位置
-        const sinTheta = Math.sin(_Math.degToRad(theta));
-        const cosPhi = Math.cos(_Math.degToRad(mapPhi));
-        const sinPhi = Math.sin(_Math.degToRad(mapPhi));
+        const cosTheta = Math.cos(MathUtils.degToRad(theta)); // 计算光源位置
+        const sinTheta = Math.sin(MathUtils.degToRad(theta));
+        const cosPhi = Math.cos(MathUtils.degToRad(mapPhi));
+        const sinPhi = Math.sin(MathUtils.degToRad(mapPhi));
         const lightPosX = lightRad * sinTheta * cosPhi + centerX;
         const lightPosY = lightRad * cosTheta;
         const lightPosZ = lightRad * sinTheta * sinPhi + centerZ;
@@ -367,7 +367,9 @@ class GameMap {
    * @returns - 指定位置处存在砖块时返回砖块，不存在则返回null
    */
   getBlock(x: number, z: number): BlockInfo | null;
+
   getBlock(x: Vector2): BlockInfo | null;
+
   getBlock(x: number | Vector2, z?: number): BlockInfo | null {
     if (x instanceof Vector2) {
       const verifyRow = Math.floor(x.x / this.width);

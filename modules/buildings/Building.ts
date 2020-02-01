@@ -5,7 +5,7 @@
 
 import {
   Box3,
-  Math as _Math,
+  MathUtils,
   Mesh,
   Object3D,
   Vector3,
@@ -35,7 +35,7 @@ class Building {
     const rotation = info.rotation ? info.rotation : 0;
     const sizeAlpha = info.sizeAlpha ? info.sizeAlpha : 1;
 
-    mesh.rotation.y = _Math.degToRad(rotation);
+    mesh.rotation.y = MathUtils.degToRad(rotation);
     mesh.geometry.center(); // 重置原点为几何中心
     mesh.geometry.computeBoundingBox();
     mesh.geometry.boundingBox.getCenter(mesh.position);

@@ -88,6 +88,7 @@ class GameFrame {
    * @param r: 16进制颜色或颜色字符串
    */
   setColor(r: string | number): void;
+
   /**
    * 设置场景及雾气背景色（三参）
    * @param r: 红色通道值，范围为0-1
@@ -95,6 +96,7 @@ class GameFrame {
    * @param b: 蓝色通道值，范围为0-1
    */
   setColor(r: number, g: number, b: number): void;
+
   setColor(r: string | number, g?: number, b?: number): void {
     const color = (typeof r === 'number' && g !== undefined && b !== undefined) ? new Color(r, g, b) : new Color(r);
     this.scene.background = color;
