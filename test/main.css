@@ -334,6 +334,18 @@ canvas {
 }
 
 
+/* 光标叠加层 */
+.mouse-overlay {
+  position: absolute;
+  width: 5%;
+  pointer-events: none;
+}
+
+.mouse-overlay img {
+  width: 100%;
+}
+
+
 /* 加载画面 */
 #loading {
   position: absolute;

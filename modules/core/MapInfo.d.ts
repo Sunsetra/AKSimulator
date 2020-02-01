@@ -18,15 +18,32 @@ import { BlockType } from '../others/constants.js';
 
 export interface Data {
   materials: resData;
-  units: oprData;
+  units: { [oprType: string]: OperatorData };
 }
 
 
 export type resData = { resources: ResourcesList; icons: IconList };
-export type oprData = { [name: string]: { [type: string]: string | number } };
 
 
-export interface ResourcesList { // 总资源列表对象
+/* 干员数据接口 */
+export interface OperatorData {
+  class: string; // 干员职业
+  placeType: number; // 干员可放置砖块类别，见BlockType常量
+  rarity: number; // 干员稀有度
+  cost: number; // 干员cost
+  hp: number; // 干员血量
+  atk: number; // 干员攻击力
+  def: number; // 物理防御力
+  resist: number; // 法术抗性
+  reSpn: number; // 再部署时间
+  block: number; // 阻挡数
+  atkSpd: number; // 攻击速度
+  atkArea: [number, number][]; // 攻击范围
+}
+
+
+/* 总资源列表对象 */
+export interface ResourcesList {
   block: { [texType: string]: Resource }; // 砖块贴图
   EDPoint: { [texType: string]: Resource }; // 进出点贴图
   enemy: { [texType: string]: Resource }; // 敌人贴图
@@ -49,6 +66,7 @@ export interface Resource { // 资源对象
 }
 
 
+/* 图标资源列表 */
 export interface IconList {
   class: { [classType: string]: string }; // 干员职业图标
   rarity: { [rarity: string]: string }; // 干员稀有度图标

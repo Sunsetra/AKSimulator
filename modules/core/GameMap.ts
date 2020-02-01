@@ -1,5 +1,5 @@
 /**
- * 地图管理类，包括地图构造、地图数据获取，叠加层设置及管理
+ * 地图管理类
  * @author: 落日羽音
  */
 
@@ -45,6 +45,9 @@ import Tracker from './Tracker.js';
 import Unit from './Unit';
 
 
+/**
+ * 地图管理类，包括地图构造、地图数据获取，叠加层设置及管理
+ */
 class GameMap {
   readonly name: string; // 地图名称
 
@@ -348,6 +351,13 @@ class GameMap {
 
     this.tracker = new Tracker(frame, this.mesh);
     this.overlay = new Map<number, Overlay>();
+
+    /* 添加叠加层 */
+    const placeLayer = this.addOverlay(OverlayType.PlaceLayer);
+    placeLayer.setOverlayStyle('green');
+    const attackLayer = this.addOverlay(OverlayType.AttackLayer, placeLayer);
+    attackLayer.setOverlayStyle('red');
+    attackLayer.setEnableArea(this.getPlaceableArea()); // 攻击范围叠加层全域有效
   }
 
   /**
@@ -573,7 +583,7 @@ class GameMap {
 
   /**
    * 隐藏指定叠加层，参数为空时隐藏所有叠加层
-   * @param depth: 要隐藏的叠加层类型
+   * @param depth 要隐藏的叠加层类型
    */
   hideOverlay(depth?: OverlayType): void {
     if (depth === undefined) {

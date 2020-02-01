@@ -7,10 +7,7 @@ import {
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import ResourceLoader from '../modules/loaders/ResourceLoader.js';
-import {
-  OverlayType,
-  WebGLAvailability,
-} from '../modules/others/constants.js';
+import { WebGLAvailability } from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
@@ -43,16 +40,11 @@ const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
 function main(mapInfo: MapInfo, data: Data): void {
   const { materials } = data;
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
+
+  /* 设置全局控制器 */
   const gameCtl = new GameController(frame.scene, map, materials.resources, timeAxisUI); // 游戏控制器
   const gameUICtl = new GameUIController(frame, map, staticRenderer, data);
   gameUICtl.addOprCard(['haze']);
-
-  /* 添加设置叠加层 */
-  const placeLayer = map.addOverlay(OverlayType.PlaceLayer);
-  placeLayer.setOverlayStyle('green');
-  const attackLayer = map.addOverlay(OverlayType.AttackLayer, placeLayer);
-  attackLayer.setOverlayStyle('red');
-  attackLayer.setEnableArea(map.getPlaceableArea()); // 攻击范围叠加层全域有效
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {

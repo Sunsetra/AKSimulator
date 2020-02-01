@@ -13,6 +13,8 @@ import GameFrame from './GameFrame.js';
 
 
 class Tracker {
+  pointerPos: Vector2 | null; // 光标在画布上的位置
+
   pickPos: Vector2 | null; // 光标在目标对象上的世界坐标（不含Y）
 
   lastPos: Vector2 | null; // 上次追踪的光标抽象坐标（标准化）
@@ -29,6 +31,7 @@ class Tracker {
     this.frame = frame;
     this.mesh = map;
     this.rayCaster = new Raycaster();
+    this.pointerPos = null;
     this.pickPos = null;
     this.lastPos = null;
     this.status = false;
@@ -49,6 +52,7 @@ class Tracker {
     this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
     this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
     this.status = false;
+    this.pointerPos = null;
     this.pickPos = null;
     this.lastPos = null;
   }
@@ -59,10 +63,10 @@ class Tracker {
    */
   private getNormalizedPosition = (event: MouseEvent): void => {
     const rect = this.frame.canvas.getBoundingClientRect();
-    const pos = new Vector2(event.clientX - rect.left, event.clientY - rect.top);
+    this.pointerPos = new Vector2(event.clientX - rect.left, event.clientY - rect.top);
     const normalizedPos = new Vector2(
-      (pos.x / this.frame.canvas.clientWidth) * 2 - 1,
-      (pos.y / this.frame.canvas.clientHeight) * -2 + 1,
+      (this.pointerPos.x / this.frame.canvas.clientWidth) * 2 - 1,
+      (this.pointerPos.y / this.frame.canvas.clientHeight) * -2 + 1,
     );
     this.rayCaster.setFromCamera(normalizedPos, this.frame.camera);
     const intersectObj = this.rayCaster.intersectObject(this.mesh);
