@@ -115,8 +115,8 @@ class GameUIController {
           this.map.hideOverlay();
           this.map.tracker.disable();
 
-          const chosenCard = document.querySelector('#chosen') as HTMLElement;
-          chosenCard.removeAttribute('id'); // 恢复未选定状态
+          const chosenCard = document.querySelector('#chosen');
+          if (chosenCard !== null) { chosenCard.removeAttribute('id'); } // 当干员卡还存在（未放置）时恢复未选定状态
           this.removeFromMouseOverlay();
           this.frame.removeEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
           this.renderer.requestRender();
@@ -146,8 +146,11 @@ class GameUIController {
           if (this.map.tracker.pickPos !== null) {
             const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
             if (placeLayer.has(pos)) {
-              const unit = this.gameCtl.creatUnit('operator', opr, oprData);
-              this.map.addUnit(pos.x, pos.y, unit);
+              const unit = this.gameCtl.createOperator(opr, oprData);
+              if (unit !== null) {
+                this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
+                this.removeOprCard(oprNode); // TODO: 上场后需要确认剩余数量后再决定是否删除节点
+              }
             }
           }
           mouseupCallback();
@@ -157,6 +160,18 @@ class GameUIController {
       /* 绑定干员头像上的抬起事件 */
       oprNode.addEventListener('mouseup', mouseupCallback);
     });
+  }
+
+  enableOprCard(card: HTMLElement): void {
+    card.style.filter = '';
+  }
+
+  disableOprCard(card: HTMLElement): void {
+    card.style.filter = 'brightness(50%)';
+  }
+
+  removeOprCard(card: HTMLElement): void {
+    card.remove();
   }
 
   /** 移除光标叠加层元素中的子元素 */

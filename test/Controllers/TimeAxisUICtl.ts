@@ -47,7 +47,7 @@ class TimeAxisUICtl {
 
         if (icon && detail && arrow) {
           if (window.getComputedStyle(icon).filter === 'none') { // 在原样式基础上增加光标高亮行为
-            icon.style.filter = 'brightness(2)';
+            icon.style.filter = 'brightness(200%)';
           } else {
             icon.style.filter = `${window.getComputedStyle(icon).filter} brightness(2)`;
           }

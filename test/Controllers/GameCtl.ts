@@ -10,13 +10,11 @@ import {
   OperatorData,
   WaveInfo,
 } from '../../modules/core/MapInfo';
-import Unit from '../../modules/core/Unit.js';
+import Enemy from '../../modules/enemies/Enemy.js';
 import Enemies from '../../modules/enemies/EnemyList.js';
+import Operator from '../../modules/operators/Operator.js';
 import Operators from '../../modules/operators/OperatorList.js';
-import {
-  DataError,
-  ResourcesUnavailableError,
-} from '../../modules/others/exceptions.js';
+import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
 import { disposeResources } from '../../modules/others/utils.js';
 
 import {
@@ -24,31 +22,6 @@ import {
   Vector2,
 } from '../../node_modules/three/build/three.module.js';
 import TimeAxisUICtl from './TimeAxisUICtl.js';
-
-
-/**
- * 敌人数据类型。
- * @property type - UnitType.Enemy常量；
- * @property value - Fragment类。
- */
-interface EnemyDataParam {
-  type: 'enemy';
-  value: Fragment;
-}
-
-
-/**
- * 干员数据类型。
- * @property type - UnitType.Operator常量；
- * @property value - Operator类。
- */
-interface OperatorDataParam {
-  type: 'operator';
-  value: OperatorData;
-}
-
-
-type DataType = EnemyDataParam | OperatorDataParam;
 
 
 /**
@@ -60,6 +33,8 @@ class GameController {
   waves: WaveInfo[]; // 波次信息
 
   activeEnemy: Set<Fragment>; // 在场存活敌人集合
+
+  activeOperator: Map<string, Operator>; // 在场上的干员映射
 
   private readonly scene: Scene;
 
@@ -77,6 +52,7 @@ class GameController {
     this.waves = JSON.parse(JSON.stringify(map.data.waves));
 
     this.activeEnemy = new Set();
+    this.activeOperator = new Map<string, Operator>();
     this.enemyId = 0;
   }
 
@@ -92,7 +68,7 @@ class GameController {
       const { time, name, path } = thisFrag; // 首只敌人信息
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
-        const enemy = this.creatUnit('enemy', name, thisFrag);
+        const enemy = this.createEnemy(name, thisFrag) as Enemy; // 生成的敌人对象不可能为null
         const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
@@ -183,37 +159,44 @@ class GameController {
 
 
   /**
-   * 创建单位（敌人/干员）实例，若成功返回创建的实例
-   * @param type: 单位类型常量UnitType
-   * @param name: 单位名称
-   * @param data: 创建实例时所需的单位数据
-   * 注：类型Enemy对应data类型为Fragment，Operator对应OperatorData
+   * 创建敌人实例，并返回创建的实例
+   * @param name: 敌方单位名称
+   * @param data: 创建实例时所需的数据类Fragment
    */
-  creatUnit<TParam extends DataType['type']>(type: TParam,
-                                             name: string,
-                                             data: Extract<DataType, { type: TParam }>['value']): Unit {
-    const { entity } = this.data.materials.resources[type][name]; // 读取敌人实体
+  createEnemy(name: string, data: Fragment): Enemy {
+    const { entity } = this.data.materials.resources.enemy[name]; // 读取敌人实体
     if (entity === undefined) {
-      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources[type][name]);
+      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources.enemy[name]);
+    }
+    const enemy = new Enemies[name](entity.clone());
+    /* 定义敌人分片中需要的属性 */
+    Object.defineProperties(data, {
+      id: { value: this.enemyId, enumerable: true },
+      inst: { value: enemy, enumerable: true },
+    });
+    this.enemyId += 1;
+    this.activeEnemy.add(data as Fragment); // 新增活跃敌人，数据类型为Fragment
+    return enemy;
+  }
+
+  /**
+   * 创建干员实例，若成功返回创建的实例，若失败（超过上场数量限制）返回null
+   * @param name: 干员名称
+   * @param data: 创建实例时所需的单位数据OperatorData
+   */
+  createOperator(name: string, data: OperatorData): Operator | null {
+    const { entity } = this.data.materials.resources.operator[name]; // 读取敌人实体
+    if (entity === undefined) {
+      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources.operator[name]);
     }
 
-    if (type === 'enemy') {
-      const enemy = new Enemies[name](entity.clone());
-      /* 定义敌人分片中需要的属性 */
-      Object.defineProperties(data, {
-        id: { value: this.enemyId, enumerable: true },
-        inst: { value: enemy, enumerable: true },
-      });
-      this.enemyId += 1;
-      this.activeEnemy.add(data as Fragment); // 新增活跃敌人，数据类型为Fragment
-      return enemy;
-    }
-
-    if (type === 'operator') {
+    if (this.activeOperator.get(name) === undefined) {
       const { maxHp } = data as OperatorData; // 新增活跃干员，数据类型为OperatorData
-      return new Operators[name](entity, maxHp);
+      const opr = new Operators[name](entity, maxHp);
+      this.activeOperator.set(name, opr);
+      return opr;
     }
-    throw new DataError(`无法创建${type}单位实例${name}:`, data); // 未创建实例抛出数据错误异常
+    return null;
   }
 
   // /** TODO: 单位自动寻路

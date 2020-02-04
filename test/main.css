@@ -317,6 +317,7 @@ canvas {
   border-bottom: 4px solid;
   pointer-events: auto;
   cursor: pointer;
+  transition: transform 0.2s;
 }
 
 .opr-card#chosen {
