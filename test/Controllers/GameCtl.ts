@@ -13,7 +13,6 @@ import {
 import Unit from '../../modules/core/Unit.js';
 import Enemies from '../../modules/enemies/EnemyList.js';
 import Operators from '../../modules/operators/OperatorList.js';
-import { UnitType } from '../../modules/others/constants.js';
 import {
   DataError,
   ResourcesUnavailableError,
@@ -33,7 +32,7 @@ import TimeAxisUICtl from './TimeAxisUICtl.js';
  * @property value - Fragment类。
  */
 interface EnemyDataParam {
-  type: UnitType.Enemy;
+  type: 'enemy';
   value: Fragment;
 }
 
@@ -44,7 +43,7 @@ interface EnemyDataParam {
  * @property value - Operator类。
  */
 interface OperatorDataParam {
-  type: UnitType.Operator;
+  type: 'operator';
   value: OperatorData;
 }
 
@@ -52,6 +51,9 @@ interface OperatorDataParam {
 type DataType = EnemyDataParam | OperatorDataParam;
 
 
+/**
+ * 游戏控制类，用于管理游戏进行中敌人/干员单位的状态、位置等信息。
+ */
 class GameController {
   enemyCount: number; // 敌人总数量
 
@@ -90,7 +92,7 @@ class GameController {
       const { time, name, path } = thisFrag; // 首只敌人信息
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
-        const enemy = this.creatUnit(UnitType.Enemy, name, thisFrag);
+        const enemy = this.creatUnit('enemy', name, thisFrag);
         const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
@@ -180,6 +182,13 @@ class GameController {
   }
 
 
+  /**
+   * 创建单位（敌人/干员）实例，若成功返回创建的实例
+   * @param type: 单位类型常量UnitType
+   * @param name: 单位名称
+   * @param data: 创建实例时所需的单位数据
+   * 注：类型Enemy对应data类型为Fragment，Operator对应OperatorData
+   */
   creatUnit<TParam extends DataType['type']>(type: TParam,
                                              name: string,
                                              data: Extract<DataType, { type: TParam }>['value']): Unit {
@@ -188,7 +197,7 @@ class GameController {
       throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources[type][name]);
     }
 
-    if (type === UnitType.Enemy) {
+    if (type === 'enemy') {
       const enemy = new Enemies[name](entity.clone());
       /* 定义敌人分片中需要的属性 */
       Object.defineProperties(data, {
@@ -196,13 +205,13 @@ class GameController {
         inst: { value: enemy, enumerable: true },
       });
       this.enemyId += 1;
-      this.activeEnemy.add(data as Fragment); // 新增活跃敌人
+      this.activeEnemy.add(data as Fragment); // 新增活跃敌人，数据类型为Fragment
       return enemy;
     }
 
-    if (type === UnitType.Operator) {
-      const { hp } = data as OperatorData;
-      return new Operators[name](entity, hp);
+    if (type === 'operator') {
+      const { maxHp } = data as OperatorData; // 新增活跃干员，数据类型为OperatorData
+      return new Operators[name](entity, maxHp);
     }
     throw new DataError(`无法创建${type}单位实例${name}:`, data); // 未创建实例抛出数据错误异常
   }

@@ -27,17 +27,24 @@ export type resData = { resources: ResourcesList; icons: IconList };
 
 /* 干员数据接口 */
 export interface OperatorData {
-  class: string; // 干员职业
-  placeType: number; // 干员可放置砖块类别，见BlockType常量
+  prof: string; // 干员职业
+  posType: string; // 干员可放置砖块类别，见BlockType常量
   rarity: number; // 干员稀有度
-  cost: number; // 干员cost
-  hp: number; // 干员血量
+  maxHp: number; // 干员血量
   atk: number; // 干员攻击力
   def: number; // 物理防御力
   resist: number; // 法术抗性
-  reSpn: number; // 再部署时间
+  cost: number; // 干员cost
   block: number; // 阻挡数
-  atkSpd: number; // 攻击速度
+  atkTime: number; // 攻击速度
+  respawnTime: number; // 再部署时间
+  hpRecoveryPerSec: number; // 每秒自回血量
+  spRecoveryPerSec: number; // 每秒自回技力
+  maxDeployCount: number; // 最大布署数量
+  tauntLevel: number; // 嘲讽等级
+  massLevel: number; // 重量等级
+  stunImmune: boolean; // 眩晕抗性
+  silenceImmune: boolean; // 沉默抗性
   atkArea: [number, number][]; // 攻击范围
 }
 
@@ -69,12 +76,13 @@ export interface Resource {
 
 /* 图标资源列表 */
 export interface IconList {
-  class: { [classType: string]: string }; // 干员职业图标
+  prof: { [classType: string]: string }; // 干员职业图标
   rarity: { [rarity: string]: string }; // 干员稀有度图标
   operator: { [oprType: string]: string }; // 干员头像图标
 }
 
 
+/* 地图所需的资源信息 */
 export interface ResourceInfo {
   block: string[]; // 所需的砖块贴图
   enemy: string[]; // 所需的敌人贴图
@@ -83,7 +91,8 @@ export interface ResourceInfo {
 }
 
 
-export interface BuildingInfo { // 建筑信息
+/* 建筑信息 */
+export interface BuildingInfo {
   desc: string; // 建筑描述（大类）
   rotation?: number; // 建筑旋转角度（deg），默认为空表示0度
   sizeAlpha?: number; // 建筑缩放比例，默认为空表示1倍
@@ -95,11 +104,13 @@ export interface BuildingInfo { // 建筑信息
 }
 
 
-export interface BlockInfo { // 砖块信息
+/* 砖块信息 */
+export interface BlockInfo {
   x: number; // 砖块所在X坐标
   z: number; // 砖块所在Z坐标
   blockType: BlockType; // 砖块类型
   placeable: boolean; // 是否可以放置干员
+  passable: boolean; // 是否可通过
   heightAlpha: number; // 砖块高度系数
   size: Vector3; // 砖块三维世界尺寸，在创建地图时生成
   overlay?: Map<number, Mesh>; // 砖块叠加层，数字表示层数，0层最低

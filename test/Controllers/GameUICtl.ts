@@ -1,3 +1,8 @@
+/**
+ * 游戏UI控制类
+ * @author: 落日羽音
+ */
+
 import GameFrame from '../../modules/core/GameFrame.js';
 import GameMap from '../../modules/core/GameMap.js';
 import {
@@ -8,7 +13,6 @@ import {
 import {
   OverlayType,
   RarityColor,
-  UnitType,
 } from '../../modules/others/constants.js';
 import { realPosToAbsPos } from '../../modules/others/utils.js';
 import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
@@ -25,6 +29,9 @@ interface CardData {
 }
 
 
+/**
+ * UI控制类，用于构建游戏窗口中的UI，以及获取用户交互信息并传递给游戏控制类。
+ */
 class GameUIController {
   private cardChosen: boolean; // 干员卡选择状态，在点击后应设为true，取消状态后应设为false
 
@@ -65,7 +72,7 @@ class GameUIController {
       const oprData = this.unitData[opr];
       const cardData: CardData = {
         icon: this.matData.icons.operator[opr],
-        class: this.matData.icons.class[oprData.class],
+        class: this.matData.icons.prof[oprData.prof],
         cost: oprData.cost.toString(),
         rarity: this.matData.icons.rarity[oprData.rarity],
       };
@@ -120,7 +127,7 @@ class GameUIController {
       oprNode.addEventListener('mousedown', () => {
         /* 显示UI */
         oprNode.setAttribute('id', 'chosen'); // 按下时进入选定状态
-        placeLayer.setEnableArea(this.map.getPlaceableArea(Number(oprData.placeType)));
+        placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
         this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏上次显示的区域
         this.renderer.requestRender();
@@ -139,7 +146,7 @@ class GameUIController {
           if (this.map.tracker.pickPos !== null) {
             const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
             if (placeLayer.has(pos)) {
-              const unit = this.gameCtl.creatUnit(UnitType.Operator, opr, oprData);
+              const unit = this.gameCtl.creatUnit('operator', opr, oprData);
               this.map.addUnit(pos.x, pos.y, unit);
             }
           }

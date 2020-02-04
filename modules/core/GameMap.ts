@@ -392,7 +392,7 @@ class GameMap {
    * 获取指定可放置单位的砖块种类的位置列表
    * @param type: 砖块种类，置空时获取所有砖块位置
    */
-  getPlaceableArea(type?: BlockType): Vector2[] {
+  getPlaceableArea(type?: string): Vector2[] {
     const area: Vector2[] = [];
     this.blockData.forEach((block) => {
       if (block !== null) {

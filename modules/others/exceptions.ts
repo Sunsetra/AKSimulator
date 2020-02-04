@@ -12,6 +12,11 @@ import {
 } from '../core/MapInfo';
 
 
+/**
+ * 资源失效异常类
+ * @param msg - 异常消息
+ * @param res - 发生异常的资源对象
+ */
 class ResourcesUnavailableError extends Error {
   constructor(msg: string, res: Resource) {
     super(msg);
@@ -20,6 +25,11 @@ class ResourcesUnavailableError extends Error {
 }
 
 
+/**
+ * 建筑信息错误异常类
+ * @param msg - 异常消息
+ * @param res - 发生异常的建筑信息对象
+ */
 class BuildingInfoError extends Error {
   constructor(msg: string, buildingInfo: BuildingInfo) {
     super(msg);
@@ -28,6 +38,11 @@ class BuildingInfoError extends Error {
 }
 
 
+/**
+ * 砖块信息错误异常类
+ * @param msg - 异常消息
+ * @param res - 发生异常的砖块信息对象
+ */
 class BlockInfoError extends Error {
   constructor(msg: string, blockInfo: BlockInfo) {
     super(msg);
@@ -36,6 +51,11 @@ class BlockInfoError extends Error {
 }
 
 
+/**
+ * 数据信息错误异常类
+ * @param msg - 异常消息
+ * @param res - 发生异常的单位数据信息对象
+ */
 class DataError extends Error {
   constructor(msg: string, blockInfo: Fragment | OperatorData) {
     super(msg);
@@ -44,6 +64,10 @@ class DataError extends Error {
 }
 
 
+/**
+ * 加载时错误异常类
+ * @param msg - 异常消息
+ */
 class LoadingError extends Error {
   constructor(msg: string) {
     super(msg);

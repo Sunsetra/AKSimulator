@@ -8,16 +8,24 @@ export enum WebGLAvailability {
 
 /* 砖块类型常量 */
 export enum BlockType {
-  PlaceableBlock,
-  BasicBlock,
-  HighBlock,
+  PlaceableBlock = 'ALL',
+  BasicBlock = 'MELEE',
+  HighBlock = 'RANGED',
 }
 
 
 /* 单位类型常量定义 */
-export enum UnitType {
-  Enemy = 'enemy',
-  Operator = 'operator',
+// export enum UnitType {
+//   Enemy = 'ENEMY',
+//   Operator = 'OPERATOR',
+// }
+
+
+/* 单位放置类型定义 */
+export enum PositionType {
+  Melee = 'MELEE',
+  Ranged = 'RANGED',
+  All = 'ALL',
 }
 
 
@@ -28,7 +36,7 @@ export enum OverlayType {
 }
 
 
-/* 稀有度常量定义 */
+/* 稀有度颜色常量定义 */
 export enum RarityColor {
   White = 1,
   GreenYellow,
@@ -36,6 +44,21 @@ export enum RarityColor {
   MediumSlateBlue,
   Gold,
   Orange,
+}
+
+
+/* 单位职业常量定义 */
+export enum Profession {
+  Warrior = 'WARRIOR',
+  Caster = 'CASTER',
+  Pioneer = 'PIONEER',
+  Medic = 'MEDIC',
+  Tank = 'TANK',
+  Sniper = 'SNIPER',
+  Support = 'SUPPORT',
+  Special = 'SPECIAL',
+  Token = 'TOKEN',
+  Trap = 'TRAP',
 }
 
 
