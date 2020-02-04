@@ -228,7 +228,7 @@ canvas {
   background-color: orange;
 }
 
-.mark-icon > .ally { /* 蓝色节点表示友方 */
+.mark-icon > .operator { /* 蓝色节点表示干员 */
   background-color: dodgerblue;
 }
 
@@ -306,7 +306,7 @@ canvas {
   justify-content: center;
 }
 
-.operator {
+.opr-card {
   position: relative;
   /* 等比调整宽度和padding-bottom以调整图标尺寸 */
   width: 8%;
@@ -319,7 +319,7 @@ canvas {
   cursor: pointer;
 }
 
-.operator#chosen {
+.opr-card#chosen {
   transform: translateY(-20%);
 }
 

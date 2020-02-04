@@ -2,30 +2,38 @@
  * 时间轴UI控制器
  * @author: 落日羽音
  */
+import { ResourcesList } from '../../modules/core/MapInfo';
+
 
 class TimeAxisUICtl {
   private readonly timeAxis: HTMLElement;
 
   private readonly timer: HTMLElement;
 
+  private readonly resList: ResourcesList;
+
   /** 时间轴UI控制 */
-  constructor() {
+  constructor(resList: ResourcesList) {
+    this.resList = resList;
     this.timeAxis = document.querySelector('#axis') as HTMLElement;
     this.timer = document.querySelector('#timer') as HTMLElement; // 计时器
   }
 
   /**
    * 创建显示在时间轴上的单位节点
-   * @param type - 单位节点视觉行为，由单位类型与单位行为组成：
-   *  类型：（标记）橙色表示敌方单位(enemy)，蓝色表示己方单位(ally)
+   * @param prop - 单位节点视觉行为，由单位类型与单位行为组成：
+   *  类型：（标记）橙色表示敌方单位(enemy)，蓝色表示干员(operator)
    *  行为：（图标）正常色表示创建(create)，灰度表示死亡(dead)，漏怪(drop)以红色标记表示
    * @param id - 单位名称：用于节点类名
-   * @param iconUrl - 单位图标资源url
+   * @param name - 单位名称
    * @param currentTime - 当前时间元组
    * @returns - 返回时间轴节点
    */
-  createAxisNode(type: string, id: string, iconUrl: string, currentTime: [string, number]): HTMLDivElement {
+  createAxisNode(prop: string, id: string, name: string, currentTime: [string, number]): HTMLDivElement {
+    const type = prop.split(' ')[0]; // 制作的节点类型
+    const { url } = this.resList[type][name]; // 资源URL
     const [nodeTime, createTime] = currentTime;
+
     const node = document.createElement('div'); // 创建容器节点
     node.dataset.createTime = createTime.toFixed(4); // 在节点的数据属性中记录出现时间
     node.setAttribute('class', `mark-icon ${id}`);
@@ -71,11 +79,11 @@ class TimeAxisUICtl {
     });
 
     const markNode = document.createElement('div'); // 创建时间轴标记节点
-    markNode.setAttribute('class', `mark ${type}`);
+    markNode.setAttribute('class', `mark ${prop}`);
 
     const iconNode = document.createElement('div'); // 创建图标标记节点
     iconNode.setAttribute('class', 'icon');
-    iconNode.style.backgroundImage = `url("${iconUrl}")`;
+    iconNode.style.backgroundImage = `url("${url}")`;
 
     const detailNode = document.createElement('div'); // 创建详细时间节点
     detailNode.setAttribute('class', 'detail');

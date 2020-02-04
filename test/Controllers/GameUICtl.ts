@@ -1,4 +1,4 @@
-import GameFrame from '../../modules/core/GameFrame';
+import GameFrame from '../../modules/core/GameFrame.js';
 import GameMap from '../../modules/core/GameMap.js';
 import {
   Data,
@@ -8,10 +8,12 @@ import {
 import {
   OverlayType,
   RarityColor,
+  UnitType,
 } from '../../modules/others/constants.js';
 import { realPosToAbsPos } from '../../modules/others/utils.js';
 import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
 import { Vector2 } from '../../node_modules/three/build/three.module.js';
+import GameController from './GameCtl.js';
 
 
 /* 定义角色卡所需的数据接口，值均为地址字符串 */
@@ -32,16 +34,19 @@ class GameUIController {
 
   private readonly map: GameMap; // 地图对象
 
-  private readonly frame: GameFrame; // 游戏框架
+  private readonly frame: GameFrame; // 游戏框架，用于管理事件监听
 
   private readonly renderer: StaticRenderer; // 静态渲染器
 
   private readonly mouseLayer: HTMLElement; // 跟随光标位置的叠加层元素
 
-  constructor(frame: GameFrame, map: GameMap, renderer: StaticRenderer, data: Data) {
+  private readonly gameCtl: GameController; // 游戏控制器
+
+  constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
     this.map = map;
     this.renderer = renderer;
+    this.gameCtl = gameCtl;
     this.matData = data.materials;
     this.unitData = data.units;
     this.cardChosen = false;
@@ -57,21 +62,21 @@ class GameUIController {
     oprCardNode.childNodes.forEach((node) => { node.remove(); });
     oprList.forEach((opr) => {
       /* 收集干员信息 */
-      const data = this.unitData[opr];
+      const oprData = this.unitData[opr];
       const cardData: CardData = {
         icon: this.matData.icons.operator[opr],
-        class: this.matData.icons.class[data.class],
-        cost: data.cost.toString(),
-        rarity: this.matData.icons.rarity[data.rarity],
+        class: this.matData.icons.class[oprData.class],
+        cost: oprData.cost.toString(),
+        rarity: this.matData.icons.rarity[oprData.rarity],
       };
 
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
-      oprNode.setAttribute('class', 'operator');
+      oprNode.setAttribute('class', 'opr-card');
       oprNode.dataset.class = cardData.class;
       oprNode.dataset.cost = cardData.cost;
       oprNode.dataset.name = opr;
-      oprNode.style.borderBottomColor = RarityColor[Number(data.rarity)];
+      oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];
       oprNode.style.background = `
         url("${cardData.class}") no-repeat top left/25%,
         url("${cardData.rarity}") no-repeat bottom right/45%,
@@ -87,7 +92,7 @@ class GameUIController {
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
       const atkArea: Vector2[] = [];
-      data.atkArea.forEach((tuple) => {
+      oprData.atkArea.forEach((tuple) => {
         atkArea.push(new Vector2(tuple[0], tuple[1])); // 转译干员攻击范围
       });
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
@@ -115,7 +120,7 @@ class GameUIController {
       oprNode.addEventListener('mousedown', () => {
         /* 显示UI */
         oprNode.setAttribute('id', 'chosen'); // 按下时进入选定状态
-        placeLayer.setEnableArea(this.map.getPlaceableArea(Number(data.placeType)));
+        placeLayer.setEnableArea(this.map.getPlaceableArea(Number(oprData.placeType)));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
         this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏上次显示的区域
         this.renderer.requestRender();
@@ -133,7 +138,10 @@ class GameUIController {
         this.frame.canvas.addEventListener('mouseup', () => {
           if (this.map.tracker.pickPos !== null) {
             const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
-            if (placeLayer.has(pos)) { console.log(pos); }
+            if (placeLayer.has(pos)) {
+              const unit = this.gameCtl.creatUnit(UnitType.Operator, opr, oprData);
+              this.map.addUnit(pos.x, pos.y, unit);
+            }
           }
           mouseupCallback();
         }, { once: true });

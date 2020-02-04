@@ -26,7 +26,6 @@ const canvas = document.querySelector('canvas') as HTMLCanvasElement;
 const frame = new GameFrame(canvas);
 
 const timeAxis = new TimeAxis();
-const timeAxisUI = new TimeAxisUICtl();
 
 const staticRenderer = new StaticRenderer(frame); // 静态渲染器
 const dynamicRenderer = new DynamicRenderer(frame); // 动态渲染器
@@ -42,8 +41,9 @@ function main(mapInfo: MapInfo, data: Data): void {
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
 
   /* 设置全局控制器 */
-  const gameCtl = new GameController(frame.scene, map, materials.resources, timeAxisUI); // 游戏控制器
-  const gameUICtl = new GameUIController(frame, map, staticRenderer, data);
+  const gameCtl = new GameController(frame.scene, map, data); // 游戏控制器
+  const timeAxisUI = new TimeAxisUICtl(materials.resources);
+  const gameUICtl = new GameUIController(frame, map, gameCtl, staticRenderer, data);
   gameUICtl.addOprCard(['haze']);
 
   /* 指定渲染控制回调 */
@@ -68,9 +68,9 @@ function main(mapInfo: MapInfo, data: Data): void {
     /* 执行位置和状态更新 */
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.enemyCount) {
-      gameCtl.updateEnemyStatus(currentTime);
+      gameCtl.updateEnemyStatus(timeAxisUI, currentTime);
       const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
-      gameCtl.updateEnemyPosition(interval, currentTime);
+      gameCtl.updateEnemyPosition(timeAxisUI, interval, currentTime);
       timeAxisUI.setTimer(currentTime[0]); // 更新计时器
       timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
     } else {

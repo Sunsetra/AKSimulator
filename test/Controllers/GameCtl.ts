@@ -5,20 +5,51 @@
 
 import GameMap from '../../modules/core/GameMap.js';
 import {
+  Data,
   Fragment,
-  ResourcesList,
+  OperatorData,
   WaveInfo,
 } from '../../modules/core/MapInfo';
 import Unit from '../../modules/core/Unit.js';
 import Enemies from '../../modules/enemies/EnemyList.js';
-import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
+import Operators from '../../modules/operators/OperatorList.js';
+import { UnitType } from '../../modules/others/constants.js';
+import {
+  DataError,
+  ResourcesUnavailableError,
+} from '../../modules/others/exceptions.js';
 import { disposeResources } from '../../modules/others/utils.js';
 
 import {
   Scene,
   Vector2,
 } from '../../node_modules/three/build/three.module.js';
-import TimeAxisUICtl from './TimeAxisUICtl';
+import TimeAxisUICtl from './TimeAxisUICtl.js';
+
+
+/**
+ * 敌人数据类型。
+ * @property type - UnitType.Enemy常量；
+ * @property value - Fragment类。
+ */
+interface EnemyDataParam {
+  type: UnitType.Enemy;
+  value: Fragment;
+}
+
+
+/**
+ * 干员数据类型。
+ * @property type - UnitType.Operator常量；
+ * @property value - Operator类。
+ */
+interface OperatorDataParam {
+  type: UnitType.Operator;
+  value: OperatorData;
+}
+
+
+type DataType = EnemyDataParam | OperatorDataParam;
 
 
 class GameController {
@@ -32,17 +63,14 @@ class GameController {
 
   private readonly map: GameMap;
 
-  private readonly resList: ResourcesList;
-
   private enemyId: number; // 已出场敌人唯一ID
 
-  private timeAxisUI: TimeAxisUICtl; // 时间轴UI控制器
+  private readonly data: Data;
 
-  constructor(scene: Scene, map: GameMap, resList: ResourcesList, timeAxisUI: TimeAxisUICtl) {
+  constructor(scene: Scene, map: GameMap, data: Data) {
     this.scene = scene;
     this.map = map;
-    this.resList = resList;
-    this.timeAxisUI = timeAxisUI;
+    this.data = data;
     this.enemyCount = map.data.enemyNum;
     this.waves = JSON.parse(JSON.stringify(map.data.waves));
 
@@ -52,23 +80,23 @@ class GameController {
 
   /**
    * 管理及更新敌人状态，包括创建敌人实例/时间轴节点/管理波次数据
+   * @param timeAxisUI: 时间轴控制器
    * @param axisTime: 时间轴当前时间元组
    */
-  updateEnemyStatus(axisTime: [string, number]): void {
+  updateEnemyStatus(timeAxisUI: TimeAxisUICtl, axisTime: [string, number]): void {
     if (this.waves.length) {
       const { fragments } = this.waves[0]; // 当前波次的敌人列表
       const thisFrag = fragments[0];
       const { time, name, path } = thisFrag; // 首只敌人信息
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
-        const enemy = this.createEnemy(name, thisFrag);
+        const enemy = this.creatUnit(UnitType.Enemy, name, thisFrag);
         const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
         const nodeType = 'enemy create';
         const nodeId = `${name}-${thisFrag.id}`;
-        const resUrl = this.resList.enemy[name].url;
-        this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, axisTime);
+        timeAxisUI.createAxisNode(nodeType, nodeId, name, axisTime);
 
         path.shift(); // 删除首个路径点
         fragments.shift(); // 从当前波次中删除该敌人
@@ -79,10 +107,11 @@ class GameController {
 
   /**
    * 更新维护所有在场敌人的位置变化
+   * @param timeAxisUI: 时间轴控制器
    * @param interval: 本帧与前帧的时间间隔
    * @param currentTime: 时间轴当前时间元组
    */
-  updateEnemyPosition(interval: number, currentTime: [string, number]): void {
+  updateEnemyPosition(timeAxisUI: TimeAxisUICtl, interval: number, currentTime: [string, number]): void {
     this.activeEnemy.forEach((frag) => {
       const { path, name, inst } = frag;
       if (inst !== undefined) {
@@ -126,8 +155,7 @@ class GameController {
 
           const nodeType = 'enemy drop';
           const nodeId = `${name}-${frag.id}`;
-          const resUrl = this.resList.enemy[name].url;
-          this.timeAxisUI.createAxisNode(nodeType, nodeId, resUrl, currentTime);
+          timeAxisUI.createAxisNode(nodeType, nodeId, name, currentTime);
 
           this.activeEnemy.delete(frag);
           this.enemyCount -= 1;
@@ -151,22 +179,32 @@ class GameController {
     this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
   }
 
-  private createEnemy(name: string, enemyFrag: Fragment): Unit {
-    const mesh = this.resList.enemy[name].entity; // 读取敌人实例
-    if (mesh === undefined) {
-      throw new ResourcesUnavailableError(`未找到${name}单位实例`, this.resList.enemy[name]);
+
+  creatUnit<TParam extends DataType['type']>(type: TParam,
+                                             name: string,
+                                             data: Extract<DataType, { type: TParam }>['value']): Unit {
+    const { entity } = this.data.materials.resources[type][name]; // 读取敌人实体
+    if (entity === undefined) {
+      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources[type][name]);
     }
 
-    const enemy = new Enemies[name](mesh.clone());
-    Object.defineProperties(enemyFrag, {
-      id: { value: this.enemyId, enumerable: true },
-      inst: { value: enemy, enumerable: true },
-    }); // 定义敌人分片中需要的属性
-    this.enemyId += 1;
+    if (type === UnitType.Enemy) {
+      const enemy = new Enemies[name](entity.clone());
+      /* 定义敌人分片中需要的属性 */
+      Object.defineProperties(data, {
+        id: { value: this.enemyId, enumerable: true },
+        inst: { value: enemy, enumerable: true },
+      });
+      this.enemyId += 1;
+      this.activeEnemy.add(data as Fragment); // 新增活跃敌人
+      return enemy;
+    }
 
-    this.activeEnemy.add(enemyFrag); // 新增活跃敌人
-    this.scene.add(enemy.mesh); // 添加敌人到地图
-    return enemy;
+    if (type === UnitType.Operator) {
+      const { hp } = data as OperatorData;
+      return new Operators[name](entity, hp);
+    }
+    throw new DataError(`无法创建${type}单位实例${name}:`, data); // 未创建实例抛出数据错误异常
   }
 
   // /** TODO: 单位自动寻路

@@ -14,6 +14,13 @@ export enum BlockType {
 }
 
 
+/* 单位类型常量定义 */
+export enum UnitType {
+  Enemy = 'enemy',
+  Operator = 'operator',
+}
+
+
 /* 叠加层常量 */
 export enum OverlayType {
   PlaceLayer,

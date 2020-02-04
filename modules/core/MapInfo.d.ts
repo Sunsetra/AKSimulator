@@ -57,7 +57,8 @@ export interface ResourcesList {
 }
 
 
-export interface Resource { // 资源对象
+/* 资源对象 */
+export interface Resource {
   url: string; // 资源URL
   tex?: Texture; // 贴图型资源
   geo?: BufferGeometry; // 资源几何体

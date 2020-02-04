@@ -251,8 +251,7 @@ class GameMap {
         if (item !== null && item.buildingInfo) { // 此处有砖块有建筑
           const { x, z } = item;
           this.removeBuilding(x, z);
-          const building = this.bindBuilding(x, z, item.buildingInfo);
-          if (building !== null) { scene.add(building.mesh); }
+          this.bindBuilding(x, z, item.buildingInfo);
         }
       });
 
@@ -408,17 +407,33 @@ class GameMap {
   }
 
   /**
-   * 创建建筑实例并向地图添加建筑绑定，并返回绑定后的建筑实例
+   * （游戏控制类）在指定位置添加单位实例
+   * @param x: 单位需添加到的X位置
+   * @param z: 单位需添加到的Z位置
+   * @param unit: 单位实例
+   */
+  addUnit(x: number, z: number, unit: Unit): void {
+    const thisBlock = this.getBlock(x, z);
+    if (thisBlock !== null) {
+      const y = thisBlock.size.y + unit.height / 2;
+      unit.setY(y);
+      unit.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
+      this.frame.scene.add(unit.mesh); // 添加单位到地图
+    }
+  }
+
+  /* ---------------------------------场景建筑相关操作--------------------------------- */
+  /**
+   * 创建建筑实例并向地图添加建筑绑定
    * 跨距建筑：范围中所有砖块均有buildingInfo信息，但只有主块有inst实例
-   * 绑定建筑后必须手动将建筑的mesh添加至scene
    * @param x: 绑定目标X位置
    * @param z: 绑定目标Z位置
    * @param info: 绑定目标建筑信息
    */
-  bindBuilding(x: number, z: number, info: BuildingInfo): Building | null {
-    /* 目标位置无砖块，则返回null放置失败 */
+  bindBuilding(x: number, z: number, info: BuildingInfo): void {
+    /* 目标位置无砖块，则返回放置失败 */
     const block = this.getBlock(x, z);
-    if (block === null) { return null; }
+    if (block === null) { return; }
 
     /* 目标建筑未创建实体则抛出异常 */
     const { entity } = this.resList.model[info.desc];
@@ -428,13 +443,13 @@ class GameMap {
 
     const xSpan = info.xSpan ? info.xSpan : 1;
     const zSpan = info.zSpan ? info.zSpan : 1;
-    /* 检查跨距建筑范围内的砖块是否有buildingInfo，有则返回null放置失败 */
+    /* 检查跨距建筑范围内的砖块是否有buildingInfo，有则返回放置失败 */
     for (let xNum = 0; xNum < xSpan; xNum += 1) {
       for (let zNum = 0; zNum < zSpan; zNum += 1) {
         const thisBlock = this.getBlock(xNum + x, zNum + z);
         if (thisBlock !== null && Object.prototype.hasOwnProperty.call(thisBlock, 'buildingInfo')) {
           console.warn(`无法绑定建筑：(${zNum}, ${xNum})处已存在建筑导致冲突`);
-          return null; // 不能合并，否则新建的buildingInfo会污染该跨距区域
+          return; // 不能合并，否则新建的buildingInfo会污染该跨距区域
         }
       }
     }
@@ -484,7 +499,7 @@ class GameMap {
     const posY = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
     const posZ = (z + building.zSpan / 2) * block.size.z;
     building.mesh.position.set(posX, posY, posZ);
-    return building;
+    this.frame.scene.add(building.mesh);
   }
 
   /**
@@ -526,21 +541,7 @@ class GameMap {
     }
   }
 
-  /**
-   * 在指定位置添加单位实例
-   * @param x: 单位需添加到的X位置
-   * @param z: 单位需添加到的Z位置
-   * @param unit: 单位实例
-   */
-  addUnit(x: number, z: number, unit: Unit): void {
-    const thisBlock = this.getBlock(x, z);
-    if (thisBlock !== null) {
-      const y = thisBlock.size.y + unit.height / 2;
-      unit.setY(y);
-      unit.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
-    }
-  }
-
+  /* ---------------------------------叠加层相关操作--------------------------------- */
   /**
    * 向地图中添加叠加层，范围整个地图，返回添加的叠加层
    * @param depth: 叠加层高度

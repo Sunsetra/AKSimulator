@@ -6,6 +6,8 @@
 import {
   BlockInfo,
   BuildingInfo,
+  Fragment,
+  OperatorData,
   Resource,
 } from '../core/MapInfo';
 
@@ -34,6 +36,14 @@ class BlockInfoError extends Error {
 }
 
 
+class DataError extends Error {
+  constructor(msg: string, blockInfo: Fragment | OperatorData) {
+    super(msg);
+    console.error(msg, blockInfo);
+  }
+}
+
+
 class LoadingError extends Error {
   constructor(msg: string) {
     super(msg);
@@ -45,6 +55,7 @@ class LoadingError extends Error {
 export {
   BlockInfoError,
   BuildingInfoError,
+  DataError,
   LoadingError,
   ResourcesUnavailableError,
 };
