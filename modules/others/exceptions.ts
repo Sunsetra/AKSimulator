@@ -6,7 +6,7 @@
 import {
   BlockInfo,
   BuildingInfo,
-  Fragment,
+  EnemyWrapper,
   OperatorData,
   Resource,
 } from '../core/MapInfo';
@@ -57,7 +57,7 @@ class BlockInfoError extends Error {
  * @param res - 发生异常的单位数据信息对象
  */
 class DataError extends Error {
-  constructor(msg: string, blockInfo: Fragment | OperatorData) {
+  constructor(msg: string, blockInfo: EnemyWrapper | OperatorData) {
     super(msg);
     console.error(msg, blockInfo);
   }

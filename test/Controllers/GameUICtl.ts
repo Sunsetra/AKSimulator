@@ -7,8 +7,8 @@ import GameFrame from '../../modules/core/GameFrame.js';
 import GameMap from '../../modules/core/GameMap.js';
 import {
   Data,
-  OperatorData,
-  resData,
+  ResourceData,
+  UnitData,
 } from '../../modules/core/MapInfo';
 import {
   OverlayType,
@@ -35,9 +35,9 @@ interface CardData {
 class GameUIController {
   private cardChosen: boolean; // 干员卡选择状态，在点击后应设为true，取消状态后应设为false
 
-  private readonly unitData: { [oprType: string]: OperatorData }; // 单位名对应的单位数据
+  private readonly unitData: UnitData; // 单位名对应的单位数据
 
-  private readonly matData: resData; // 资源数据
+  private readonly matData: ResourceData; // 资源数据
 
   private readonly map: GameMap; // 地图对象
 
@@ -69,7 +69,7 @@ class GameUIController {
     oprCardNode.childNodes.forEach((node) => { node.remove(); });
     oprList.forEach((opr) => {
       /* 收集干员信息 */
-      const oprData = this.unitData[opr];
+      const oprData = this.unitData.operator[opr];
       const cardData: CardData = {
         icon: this.matData.icons.operator[opr],
         class: this.matData.icons.prof[oprData.prof],

@@ -98,7 +98,7 @@ function resetGameFrame(): void {
 /** 异步获取所需的数据文件 */
 async function fetchData(): Promise<Data> {
   const fetchResInfo = fetch('res/list.json'); // 加载总资源列表
-  const fetchUnitInfo = fetch('res/data/operator.json'); // 加载数据文件
+  const fetchUnitInfo = fetch('res/unit_data.json'); // 加载数据文件
   const response = await Promise.all([fetchResInfo, fetchUnitInfo]);
   return {
     materials: await response[0].json(),

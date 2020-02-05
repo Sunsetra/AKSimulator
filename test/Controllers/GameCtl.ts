@@ -6,16 +6,16 @@
 import GameMap from '../../modules/core/GameMap.js';
 import {
   Data,
+  EnemyData,
+  EnemyWrapper,
   Fragment,
   OperatorData,
   WaveInfo,
 } from '../../modules/core/MapInfo';
-import Enemy from '../../modules/enemies/Enemy.js';
-import Enemies from '../../modules/enemies/EnemyList.js';
-import Operator from '../../modules/operators/Operator.js';
-import Operators from '../../modules/operators/OperatorList.js';
 import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
 import { disposeResources } from '../../modules/others/utils.js';
+import Enemy from '../../modules/units/Enemy.js';
+import Operator from '../../modules/units/Operator.js';
 
 import {
   Scene,
@@ -32,7 +32,7 @@ class GameController {
 
   waves: WaveInfo[]; // 波次信息
 
-  activeEnemy: Set<Fragment>; // 在场存活敌人集合
+  activeEnemy: Set<EnemyWrapper>; // 在场存活敌人集合
 
   activeOperator: Map<string, Operator>; // 在场上的干员映射
 
@@ -65,18 +65,19 @@ class GameController {
     if (this.waves.length) {
       const { fragments } = this.waves[0]; // 当前波次的敌人列表
       const thisFrag = fragments[0];
-      const { time, name, path } = thisFrag; // 首只敌人信息
+      const { time, name, route } = thisFrag; // 首只敌人信息
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
-        const enemy = this.createEnemy(name, thisFrag) as Enemy; // 生成的敌人对象不可能为null
-        const { x, z } = path[0] as { x: number; z: number }; // 首个路径点不可能是暂停
+        const enemyData = this.data.units.enemy[name];
+        const enemy = this.createEnemy(name, thisFrag, enemyData); // 生成的敌人对象不可能为null
+        const { x, z } = route[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
         const nodeType = 'enemy create';
         const nodeId = `${name}-${thisFrag.id}`;
         timeAxisUI.createAxisNode(nodeType, nodeId, name, axisTime);
 
-        path.shift(); // 删除首个路径点
+        route.shift(); // 删除首个路径点
         fragments.shift(); // 从当前波次中删除该敌人
         if (!fragments.length) { this.waves.shift(); } // 若当前波次中剩余敌人为0则删除当前波次
       }
@@ -91,26 +92,26 @@ class GameController {
    */
   updateEnemyPosition(timeAxisUI: TimeAxisUICtl, interval: number, currentTime: [string, number]): void {
     this.activeEnemy.forEach((frag) => {
-      const { path, name, inst } = frag;
+      const { route, name, inst } = frag;
       if (inst !== undefined) {
-        if (path.length) { // 判定敌人是否到达终点
-          if ('pause' in path[0]) { // 当前节点是暂停节点时
+        if (route.length) { // 判定敌人是否到达终点
+          if ('pause' in route[0]) { // 当前节点是暂停节点时
             if (typeof frag.pause === 'undefined') { // 当前敌人分片中没有暂停节点（新进入暂停）
-              frag.pause = path[0].pause - interval; // 减去本帧已暂停时长（渲染均位于帧回调之后）
+              frag.pause = route[0].pause - interval; // 减去本帧已暂停时长（渲染均位于帧回调之后）
             } else {
               frag.pause -= interval; // 更新敌人分片中的暂停时间计时
               if (frag.pause <= 0) { // 取消停顿，从下一帧恢复移动
-                path.shift();
+                route.shift();
                 delete frag.pause;
               }
             }
           } else {
             const oldX = inst.position.x;
             const oldZ = inst.position.y;
-            const newX = path[0].x + 0.5;
-            const newZ = path[0].z + 0.5;
+            const newX = route[0].x + 0.5;
+            const newZ = route[0].z + 0.5;
 
-            let velocityX = inst.speed / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
+            let velocityX = inst.moveSpd / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
             velocityX = newX >= oldX ? velocityX : -velocityX;
             let velocityZ = Math.abs(((newZ - oldZ) / (newX - oldX)) * velocityX);
             velocityZ = newZ >= oldZ ? velocityZ : -velocityZ;
@@ -125,7 +126,7 @@ class GameController {
 
             const ifDeltaX = Math.abs(newX - stepX) <= Math.abs(interval * velocityX);
             const ifDeltaZ = Math.abs(newZ - stepZ) <= Math.abs(interval * velocityZ);
-            if (ifDeltaX && ifDeltaZ) { path.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
+            if (ifDeltaX && ifDeltaZ) { route.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
           }
         } else {
           this.scene.remove(inst.mesh);
@@ -161,28 +162,31 @@ class GameController {
   /**
    * 创建敌人实例，并返回创建的实例
    * @param name: 敌方单位名称
-   * @param data: 创建实例时所需的数据类Fragment
+   * @param frag: 敌方单位行动片段信息
+   * @param data: 创建实例时所需的数据类
    */
-  createEnemy(name: string, data: Fragment): Enemy {
+  createEnemy(name: string, frag: Fragment, data: EnemyData): Enemy {
     const { entity } = this.data.materials.resources.enemy[name]; // 读取敌人实体
     if (entity === undefined) {
       throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources.enemy[name]);
     }
-    const enemy = new Enemies[name](entity.clone());
-    /* 定义敌人分片中需要的属性 */
-    Object.defineProperties(data, {
+    const enemy = new Enemy(entity.clone(), data);
+
+    /* 以敌人分段信息为基础，完善单位总信息对象EnemyWrapper */
+    const wrapper: EnemyWrapper = frag;
+    Object.defineProperties(wrapper, {
       id: { value: this.enemyId, enumerable: true },
       inst: { value: enemy, enumerable: true },
     });
     this.enemyId += 1;
-    this.activeEnemy.add(data as Fragment); // 新增活跃敌人，数据类型为Fragment
+    this.activeEnemy.add(wrapper); // 新增活跃敌人，数据类型为Fragment
     return enemy;
   }
 
   /**
    * 创建干员实例，若成功返回创建的实例，若失败（超过上场数量限制）返回null
    * @param name: 干员名称
-   * @param data: 创建实例时所需的单位数据OperatorData
+   * @param data: 创建实例时所需的单位源数据OperatorData
    */
   createOperator(name: string, data: OperatorData): Operator | null {
     const { entity } = this.data.materials.resources.operator[name]; // 读取敌人实体
@@ -191,8 +195,7 @@ class GameController {
     }
 
     if (this.activeOperator.get(name) === undefined) {
-      const { maxHp } = data as OperatorData; // 新增活跃干员，数据类型为OperatorData
-      const opr = new Operators[name](entity, maxHp);
+      const opr = new Operator(entity, data); // 不需要克隆实体，干员在场只有一名
       this.activeOperator.set(name, opr);
       return opr;
     }
