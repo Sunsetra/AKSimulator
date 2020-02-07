@@ -173,8 +173,7 @@ class GameController {
     const enemy = new Enemy(entity.clone(), data);
 
     /* 以敌人分段信息为基础，完善单位总信息对象EnemyWrapper */
-    const wrapper: EnemyWrapper = frag;
-    Object.defineProperties(wrapper, {
+    const wrapper: EnemyWrapper = Object.defineProperties(frag, {
       id: { value: this.enemyId, enumerable: true },
       inst: { value: enemy, enumerable: true },
     });

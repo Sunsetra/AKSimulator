@@ -101,6 +101,7 @@ export interface OperatorData extends UnitAbstractData {
 export interface EnemyData extends UnitAbstractData {
   moveSpd: number; // 移动速度
   rangeRad: number; // 攻击范围半径
+  sizeAlpha: number; // 模型尺寸系数
 }
 
 
@@ -189,7 +190,7 @@ export interface Fragment {
 
 /* 敌方单位总信息 */
 export interface EnemyWrapper extends Fragment {
-  id?: number; // 敌方单位唯一标识符，在出场时指定
-  inst?: Enemy; // 敌方单位实例
+  id: number; // 敌方单位唯一指定标识符
+  inst: Enemy; // 敌方单位实例
   pause?: number; // 当前敌方单位暂停时间倒计时，在暂停时指定
 }

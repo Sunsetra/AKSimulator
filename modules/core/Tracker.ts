@@ -12,6 +12,10 @@ import {
 import GameFrame from './GameFrame.js';
 
 
+/**
+ * 追踪器类，用于追踪光标所在位置。
+ * 可追踪光标在canvas元素或目标对象上的位置。
+ */
 class Tracker {
   pointerPos: Vector2 | null; // 光标在画布上的位置
 
@@ -25,8 +29,6 @@ class Tracker {
 
   private readonly frame: GameFrame;
 
-  private status: boolean; // 光标位置追踪运行状态
-
   constructor(frame: GameFrame, map: Mesh) {
     this.frame = frame;
     this.mesh = map;
@@ -34,27 +36,8 @@ class Tracker {
     this.pointerPos = null;
     this.pickPos = null;
     this.lastPos = null;
-    this.status = false;
-  }
-
-  /** 返回当前追踪运行状态 */
-  get enabled(): boolean { return this.status; }
-
-  /** 启动光标位置追踪 */
-  enable(): void {
     this.frame.addEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
     this.frame.addEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
-    this.status = true;
-  }
-
-  /** 关闭光标位置追踪 */
-  disable(): void {
-    this.frame.removeEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
-    this.frame.removeEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
-    this.status = false;
-    this.pointerPos = null;
-    this.pickPos = null;
-    this.lastPos = null;
   }
 
   /**
@@ -79,7 +62,9 @@ class Tracker {
 
   /** 设置光标拾取为null */
   private clearPickedPosition = (): void => {
+    this.pointerPos = null;
     this.pickPos = null;
+    this.lastPos = null;
   };
 }
 

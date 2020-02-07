@@ -58,7 +58,6 @@ function main(mapInfo: MapInfo, data: Data): void {
       timeAxisUI.resetTimer();
       gameCtl.resetGame();
       map.hideOverlay();
-      map.tracker.disable();
     },
   };
   renderCtl.reset();

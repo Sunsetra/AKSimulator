@@ -6,21 +6,28 @@
 import GameFrame from '../../modules/core/GameFrame.js';
 import GameMap from '../../modules/core/GameMap.js';
 import {
+  BlockInfo,
   Data,
   ResourceData,
   UnitData,
-} from '../../modules/core/MapInfo';
+} from '../../modules/core/MapInfo.js';
 import {
   OverlayType,
   RarityColor,
 } from '../../modules/others/constants.js';
-import { realPosToAbsPos } from '../../modules/others/utils.js';
+import {
+  absPosToRealPos,
+  realPosToAbsPos,
+} from '../../modules/others/utils.js';
 import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
-import { Vector2 } from '../../node_modules/three/build/three.module.js';
+import {
+  Vector2,
+  Vector3,
+} from '../../node_modules/three/build/three.module.js';
 import GameController from './GameCtl.js';
 
 
-/* 定义角色卡所需的数据接口，值均为地址字符串 */
+/* 定义角色卡所需的资源数据接口，值均为地址字符串 */
 interface CardData {
   icon: string;
   class: string;
@@ -43,11 +50,11 @@ class GameUIController {
 
   private readonly frame: GameFrame; // 游戏框架，用于管理事件监听
 
+  private readonly gameCtl: GameController; // 游戏控制器
+
   private readonly renderer: StaticRenderer; // 静态渲染器
 
   private readonly mouseLayer: HTMLElement; // 跟随光标位置的叠加层元素
-
-  private readonly gameCtl: GameController; // 游戏控制器
 
   constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
@@ -58,6 +65,9 @@ class GameUIController {
     this.unitData = data.units;
     this.cardChosen = false;
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLElement;
+
+    /* 为画布（地面）上的点击事件绑定点击位置追踪函数 */
+    this.frame.addEventListener(this.frame.canvas, 'click', this.trackMousePosition);
   }
 
   /**
@@ -102,6 +112,7 @@ class GameUIController {
       oprData.atkArea.forEach((tuple) => {
         atkArea.push(new Vector2(tuple[0], tuple[1])); // 转译干员攻击范围
       });
+
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
       const canvasMousemoveHandler = (): void => {
         this.trackMouseOverlay();
@@ -113,7 +124,6 @@ class GameUIController {
         if (this.cardChosen) {
           this.cardChosen = false;
           this.map.hideOverlay();
-          this.map.tracker.disable();
 
           const chosenCard = document.querySelector('#chosen');
           if (chosenCard !== null) { chosenCard.removeAttribute('id'); } // 当干员卡还存在（未放置）时恢复未选定状态
@@ -132,7 +142,6 @@ class GameUIController {
         this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏上次显示的区域
         this.renderer.requestRender();
         this.cardChosen = true;
-        this.map.tracker.enable();
 
         /* 添加干员图片到指针叠加层元素 */
         const oprRes = this.matData.resources.operator[opr];
@@ -140,7 +149,7 @@ class GameUIController {
         img.setAttribute('src', oprRes.url);
         this.mouseLayer.appendChild(img);
 
-        /* 绑定画布上的光标移动及抬起事件 */
+        /* 绑定画布上的光标移动及抬起事件（单次） */
         this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
         this.frame.canvas.addEventListener('mouseup', () => {
           if (this.map.tracker.pickPos !== null) {
@@ -149,7 +158,8 @@ class GameUIController {
               const unit = this.gameCtl.createOperator(opr, oprData);
               if (unit !== null) {
                 this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
-                this.removeOprCard(oprNode); // TODO: 上场后需要确认剩余数量后再决定是否删除节点
+                this.setDirection();
+                // this.removeOprCard(oprNode); // TODO: 上场后需要确认剩余数量后再决定是否删除节点
               }
             }
           }
@@ -162,16 +172,61 @@ class GameUIController {
     });
   }
 
-  enableOprCard(card: HTMLElement): void {
-    card.style.filter = '';
-  }
+  // removeOprCard(card: HTMLElement): void {
+  //   card.remove();
+  // }
 
-  disableOprCard(card: HTMLElement): void {
-    card.style.filter = 'brightness(50%)';
-  }
+  // enableOprCard(card: HTMLElement): void {
+  //   card.style.filter = '';
+  // }
 
-  removeOprCard(card: HTMLElement): void {
-    card.remove();
+  // disableOprCard(card: HTMLElement): void {
+  //   card.style.filter = 'brightness(50%)';
+  // }
+
+  private setDirection(): void {
+    const layer = document.querySelector('.select-overlay') as HTMLCanvasElement;
+    layer.width = this.frame.canvas.width;
+    layer.height = this.frame.canvas.height;
+
+    const ctx = layer.getContext('2d') as CanvasRenderingContext2D;
+
+    /* 叠加层定位 */
+    const pickPos = realPosToAbsPos(this.map.tracker.pickPos as Vector2, true); // 获取点击处的砖块抽象坐标
+    const height = (this.map.getBlock(pickPos) as BlockInfo).size.y; // 点击处砖块高度
+    const realPos = absPosToRealPos(pickPos.x + 0.5, pickPos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
+    const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
+    const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width; // 中心X坐标
+    const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height; // 中心Y坐标
+    const rad = layer.width * 0.1; // 方向选择区半径
+
+    /* 动画渲染 */
+    const drawSelector = (e: MouseEvent): void => {
+      const theta = Math.atan2((e.clientY - centerY / 2), (e.clientX - centerX / 2)); // 与X方向夹角
+      /* 绘制背景区域初始状态 */
+      ctx.clearRect(0, 0, layer.width, layer.height);
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, layer.width, layer.height);
+
+      ctx.strokeStyle = 'white';
+      ctx.lineWidth = 10;
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, rad, 0, 2 * Math.PI);
+      ctx.stroke();
+
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fillStyle = 'blue';
+      ctx.fill();
+      ctx.globalCompositeOperation = 'source-over';
+
+      /* 绘制方向指示 */
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, rad + 20, theta - Math.PI / 6, theta + Math.PI / 6);
+      ctx.stroke();
+    };
+
+    this.frame.addEventListener(layer, 'mousemove', drawSelector);
+    layer.style.display = 'block';
   }
 
   /** 移除光标叠加层元素中的子元素 */
@@ -189,6 +244,22 @@ class GameUIController {
       this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
     }
   }
+
+  /** 光标位置追踪回调 */
+  private trackMousePosition = (): void => {
+    const { pickPos } = this.map.tracker;
+    if (pickPos !== null) {
+      const absPos = realPosToAbsPos(pickPos, true);
+      const block = this.map.getBlock(absPos);
+      if (block !== null) {
+        this.gameCtl.activeOperator.forEach((opr) => {
+          if (absPos.equals(opr.position.floor())) {
+            console.log('选择干员', opr);
+          }
+        });
+      }
+    }
+  };
 }
 
 

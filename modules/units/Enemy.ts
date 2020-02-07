@@ -6,7 +6,6 @@
 import { Mesh } from '../../node_modules/three/build/three.module.js';
 import { EnemyData } from '../core/MapInfo.js';
 import Unit from '../core/Unit.js';
-import { sizeAlpha } from '../others/constants.js';
 
 
 /**
@@ -18,7 +17,7 @@ class Enemy extends Unit {
   readonly rangeRad: number; // 攻击范围半径
 
   constructor(mesh: Mesh, data: EnemyData) {
-    super(mesh, sizeAlpha, data);
+    super(mesh, data.sizeAlpha, data);
 
     this.moveSpd = data.moveSpd;
     this.rangeRad = data.rangeRad;

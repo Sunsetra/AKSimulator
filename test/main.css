@@ -293,15 +293,12 @@ canvas {
   position: absolute;
   bottom: 0;
   left: 50%;
-  min-height: 3rem;
   width: 80%;
   transform: translateX(-50%);
   pointer-events: none;
 }
 
 #operator-card {
-  width: 100%;
-  bottom: 0;
   display: flex;
   justify-content: center;
 }
@@ -325,7 +322,6 @@ canvas {
 }
 
 .opr-cost {
-  top: 0;
   right: 0;
   position: absolute;
   border-radius: 0 0 0 1px;
@@ -344,6 +340,15 @@ canvas {
 
 .mouse-overlay img {
   width: 100%;
+}
+
+
+/* 方向/干员选择画布叠加层 */
+.select-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: none;
 }
 
 

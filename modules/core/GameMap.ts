@@ -603,26 +603,24 @@ class GameMap {
    * @param area: 相对于中心坐标的Vector2偏移量数组
    */
   trackOverlay(layer: Overlay, area: Vector2[]): void {
-    if (this.tracker.enabled) {
-      if (this.tracker.pickPos === null) {
-        if (layer.visibility !== false) { layer.hide(); } // 光标未在目标对象上且当前叠加层未完全隐藏时隐藏叠加层
-        this.tracker.lastPos = null;
-      } else {
-        const absPos = realPosToAbsPos(this.tracker.pickPos, true); // 当前位置的抽象坐标
-        if (!this.tracker.lastPos || !absPos.equals(this.tracker.lastPos)) {
-          layer.hide(); // 当前位置非前次记录位置时，首先全隐藏当前叠加层
+    if (this.tracker.pickPos === null) {
+      if (layer.visibility !== false) { layer.hide(); } // 光标未在目标对象上且当前叠加层未完全隐藏时隐藏叠加层
+      this.tracker.lastPos = null;
+    } else {
+      const absPos = realPosToAbsPos(this.tracker.pickPos, true); // 当前位置的抽象坐标
+      if (!this.tracker.lastPos || !absPos.equals(this.tracker.lastPos)) {
+        layer.hide(); // 当前位置非前次记录位置时，首先全隐藏当前叠加层
 
-          if (((): boolean => {
-            if (layer.parent !== undefined) { return layer.parent.has(absPos); }
-            return true;
-          })()) { // 检查当前位置是否在父范围内
-            area.forEach((point) => {
-              const newPos = new Vector2().addVectors(absPos, point);
-              layer.setOverlayVisibility(newPos, true);
-            });
-          }
-          this.tracker.lastPos = absPos;
+        if (((): boolean => {
+          if (layer.parent !== undefined) { return layer.parent.has(absPos); }
+          return true;
+        })()) { // 检查当前位置是否在父范围内
+          area.forEach((point) => {
+            const newPos = new Vector2().addVectors(absPos, point);
+            layer.setOverlayVisibility(newPos, true);
+          });
         }
+        this.tracker.lastPos = absPos;
       }
     }
   }

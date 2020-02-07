@@ -63,4 +63,4 @@ export enum Profession {
 
 
 export const BlockUnit = 10; // 砖块单位长度
-export const sizeAlpha = 0.7; // 单位尺寸系数
+export const sizeAlpha = 0.9; // 干员单位尺寸系数

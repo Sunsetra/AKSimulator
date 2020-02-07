@@ -82,7 +82,7 @@ abstract class Unit {
   }
 
   /**
-   * 读取模型的抽象位置（二维）
+   * 读取模型的抽象位置（二维），转化时未经截断处理
    */
   get position(): Vector2 {
     const pos = this.mesh.getWorldPosition(new Vector3());
