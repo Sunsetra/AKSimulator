@@ -91,7 +91,6 @@ export interface OperatorData extends UnitAbstractData {
   block: number; // 阻挡数
   respawnTime: number; // 再部署时间
   spRecoveryPerSec: number; // 每秒自回技力
-  maxDeployCount: number; // 最大布署数量
   tauntLevel: number; // 嘲讽等级
   atkArea: [number, number][]; // 攻击范围
 }

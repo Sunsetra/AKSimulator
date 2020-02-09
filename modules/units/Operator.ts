@@ -3,7 +3,10 @@
  * @author: 落日羽音
  */
 
-import { Mesh } from '../../node_modules/three/build/three.module.js';
+import {
+  Mesh,
+  Vector2,
+} from '../../node_modules/three/build/three.module.js';
 import { OperatorData } from '../core/MapInfo.js';
 import Unit from '../core/Unit.js';
 import { sizeAlpha } from '../others/constants.js';
@@ -25,11 +28,9 @@ class Operator extends Unit {
 
   readonly spRecoveryPerSec: number; // 每秒自回技力
 
-  readonly maxDeployCount: number; // 最大布署数量
-
   readonly tauntLevel: number; // 嘲讽等级
 
-  readonly atkArea: [number, number][]; // 攻击范围
+  atkArea: Vector2[]; // 攻击范围，可在选择干员朝向时设置
 
   constructor(mesh: Mesh, data: OperatorData) {
     super(mesh, sizeAlpha, data);
@@ -40,9 +41,14 @@ class Operator extends Unit {
     this.block = data.block;
     this.respawnTime = data.respawnTime;
     this.spRecoveryPerSec = data.spRecoveryPerSec;
-    this.maxDeployCount = data.maxDeployCount;
     this.tauntLevel = data.tauntLevel;
-    this.atkArea = data.atkArea;
+
+    /* 转译攻击范围为Vector2数组 */
+    const atkArea: Vector2[] = [];
+    data.atkArea.forEach((tuple) => {
+      atkArea.push(new Vector2(tuple[0], tuple[1]));
+    });
+    this.atkArea = atkArea;
   }
 }
 

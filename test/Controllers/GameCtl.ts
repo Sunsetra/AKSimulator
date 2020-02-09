@@ -13,14 +13,10 @@ import {
   WaveInfo,
 } from '../../modules/core/MapInfo';
 import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
-import { disposeResources } from '../../modules/others/utils.js';
 import Enemy from '../../modules/units/Enemy.js';
 import Operator from '../../modules/units/Operator.js';
 
-import {
-  Scene,
-  Vector2,
-} from '../../node_modules/three/build/three.module.js';
+import { Vector2 } from '../../node_modules/three/build/three.module.js';
 import TimeAxisUICtl from './TimeAxisUICtl.js';
 
 
@@ -36,16 +32,13 @@ class GameController {
 
   activeOperator: Map<string, Operator>; // 在场上的干员映射
 
-  private readonly scene: Scene;
-
   private readonly map: GameMap;
 
   private enemyId: number; // 已出场敌人唯一ID
 
   private readonly data: Data;
 
-  constructor(scene: Scene, map: GameMap, data: Data) {
-    this.scene = scene;
+  constructor(map: GameMap, data: Data) {
     this.map = map;
     this.data = data;
     this.enemyCount = map.data.enemyNum;
@@ -129,9 +122,7 @@ class GameController {
             if (ifDeltaX && ifDeltaZ) { route.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
           }
         } else {
-          this.scene.remove(inst.mesh);
-          disposeResources(inst.mesh); // 释放掉敌人实体
-
+          this.map.removeUnit(inst);
           const nodeType = 'enemy drop';
           const nodeId = `${name}-${frag.id}`;
           timeAxisUI.createAxisNode(nodeType, nodeId, name, currentTime);
@@ -147,12 +138,13 @@ class GameController {
    * 重置游戏：清空场上所有敌人并重置计数变量
    */
   resetGame(): void {
+    this.activeOperator.forEach((opr) => {
+      this.map.removeUnit(opr);
+      this.activeOperator.clear();
+    });
     this.activeEnemy.forEach((enemy) => {
-      if (enemy.inst !== undefined) {
-        this.scene.remove(enemy.inst.mesh);
-        disposeResources(enemy.inst.mesh); // 释放掉敌人实体
-        this.activeEnemy.delete(enemy);
-      }
+      this.map.removeUnit(enemy.inst); // 释放掉敌人实体
+      this.activeEnemy.delete(enemy);
     });
     this.enemyCount = this.map.data.enemyNum;
     this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
@@ -194,9 +186,7 @@ class GameController {
     }
 
     if (this.activeOperator.get(name) === undefined) {
-      const opr = new Operator(entity, data); // 不需要克隆实体，干员在场只有一名
-      this.activeOperator.set(name, opr);
-      return opr;
+      return new Operator(entity.clone(), data); // 克隆实体，以兼容后续添加召唤物等
     }
     return null;
   }

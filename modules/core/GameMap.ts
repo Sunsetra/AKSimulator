@@ -39,10 +39,10 @@ import {
   BuildingInfo,
   MapInfo,
   ResourcesList,
-} from './MapInfo';
+} from './MapInfo.js';
 import Overlay from './Overlay.js';
 import Tracker from './Tracker.js';
-import Unit from './Unit';
+import Unit from './Unit.js';
 
 
 /**
@@ -422,6 +422,19 @@ class GameMap {
     }
   }
 
+  /**
+   * 以指定位置为原点，在指定叠加层上显示指定区域
+   * @param layer: 要显示区域的叠加层
+   * @param center: 区域的显示原点
+   * @param area: 区域指示列表
+   */
+  static showArea(layer: Overlay, center: Vector2, area: Vector2[]): void {
+    area.forEach((point) => {
+      const newPos = new Vector2().addVectors(center, point);
+      layer.setOverlayVisibility(newPos, true);
+    });
+  }
+
   /* ---------------------------------场景建筑相关操作--------------------------------- */
   /**
    * 创建建筑实例并向地图添加建筑绑定
@@ -598,6 +611,15 @@ class GameMap {
   }
 
   /**
+   * 从地图中移除指定单位实例
+   * @param unit: 要移除的单位
+   */
+  removeUnit(unit: Unit): void {
+    this.frame.scene.remove(unit.mesh);
+    disposeResources(unit.mesh);
+  }
+
+  /**
    * 追踪光标在指定叠加层上的位置
    * @param layer: 目标叠加层
    * @param area: 相对于中心坐标的Vector2偏移量数组
@@ -615,10 +637,7 @@ class GameMap {
           if (layer.parent !== undefined) { return layer.parent.has(absPos); }
           return true;
         })()) { // 检查当前位置是否在父范围内
-          area.forEach((point) => {
-            const newPos = new Vector2().addVectors(absPos, point);
-            layer.setOverlayVisibility(newPos, true);
-          });
+          GameMap.showArea(layer, absPos, area);
         }
         this.tracker.lastPos = absPos;
       }

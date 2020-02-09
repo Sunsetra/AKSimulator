@@ -20,6 +20,7 @@ import {
   realPosToAbsPos,
 } from '../../modules/others/utils.js';
 import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
+import Operator from '../../modules/units/Operator.js';
 import {
   Vector2,
   Vector3,
@@ -87,6 +88,12 @@ class GameUIController {
         rarity: this.matData.icons.rarity[oprData.rarity],
       };
 
+      /* 转译攻击范围为Vector2数组 */
+      const atkArea: Vector2[] = [];
+      oprData.atkArea.forEach((tuple) => {
+        atkArea.push(new Vector2(tuple[0], tuple[1]));
+      });
+
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
       oprNode.setAttribute('class', 'opr-card');
@@ -108,10 +115,6 @@ class GameUIController {
 
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
-      const atkArea: Vector2[] = [];
-      oprData.atkArea.forEach((tuple) => {
-        atkArea.push(new Vector2(tuple[0], tuple[1])); // 转译干员攻击范围
-      });
 
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
       const canvasMousemoveHandler = (): void => {
@@ -158,7 +161,7 @@ class GameUIController {
               const unit = this.gameCtl.createOperator(opr, oprData);
               if (unit !== null) {
                 this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
-                this.setDirection();
+                this.setDirection(unit);
                 // this.removeOprCard(oprNode); // TODO: 上场后需要确认剩余数量后再决定是否删除节点
               }
             }
@@ -184,7 +187,13 @@ class GameUIController {
   //   card.style.filter = 'brightness(50%)';
   // }
 
-  private setDirection(): void {
+  /**
+   * 选择设置干员的朝向及攻击区域
+   * @param opr: 干员实例
+   */
+  private setDirection(opr: Operator): void {
+    const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
+    atkLayer.hide();
     const layer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     layer.width = this.frame.canvas.width;
     layer.height = this.frame.canvas.height;
@@ -198,12 +207,13 @@ class GameUIController {
     const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
     const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width; // 中心X坐标
     const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height; // 中心Y坐标
-    const rad = layer.width * 0.1; // 方向选择区半径
 
-    /* 动画渲染 */
-    const drawSelector = (e: MouseEvent): void => {
-      const theta = Math.atan2((e.clientY - centerY / 2), (e.clientX - centerX / 2)); // 与X方向夹角
-      /* 绘制背景区域初始状态 */
+    const aziAngle = this.frame.controls.getAzimuthalAngle(); // 镜头控制器的方位角 0.25-0.75在右侧 -0.25-0.25正面
+    const rad = layer.width * 0.1; // 方向选择区半径
+    let newArea: Vector2[] = []; // 干员的新攻击范围
+
+    /** 绘制背景区域初始状态 */
+    const drawBackGround = (): void => {
       ctx.clearRect(0, 0, layer.width, layer.height);
       ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
       ctx.fillRect(0, 0, layer.width, layer.height);
@@ -218,14 +228,108 @@ class GameUIController {
       ctx.fillStyle = 'blue';
       ctx.fill();
       ctx.globalCompositeOperation = 'source-over';
-
-      /* 绘制方向指示 */
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, rad + 20, theta - Math.PI / 6, theta + Math.PI / 6);
-      ctx.stroke();
     };
 
+    /** 动画渲染 */
+    const drawSelector = (e: MouseEvent): void => {
+      atkLayer.hide();
+      drawBackGround();
+      /* 判定光标位置是在中心还是在外部 */
+      const distX = e.clientX - centerX / 2;
+      const distY = e.clientY - centerY / 2;
+      const dist = Math.sqrt(distX ** 2 + distY ** 2);
+      if (dist < rad / 4) {
+        ctx.strokeStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rad / 2, 0, 2 * Math.PI);
+        ctx.stroke();
+        atkLayer.hide();
+      } else {
+        /* 绘制方向指示 */
+        const theta = Math.atan2(distY, distX); // 与X方向夹角
+        ctx.strokeStyle = 'gold';
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, rad + 20, theta - Math.PI / 4, theta + Math.PI / 4);
+        ctx.stroke();
+
+        /* 判定镜头及光标方位，旋转模型及叠加层 */
+        const tempAzi = aziAngle - 0.25 * Math.PI; // 重置方位角为四个象限
+        const sinAzi = Math.sin(tempAzi) > 0; // 镜头二象限判定
+        const cosAzi = Math.cos(tempAzi) > 0; // 镜头四象限判定
+        const tanAzi = Math.tan(tempAzi) > 0; // 镜头三象限判定
+        const andAzi = sinAzi && cosAzi && tanAzi; // 镜头一象限判定
+
+        const tempTheta = theta - 0.25 * Math.PI;
+        const sinTheta = Math.sin(tempTheta) > 0; // 朝向二象限判定
+        const cosTheta = Math.cos(tempTheta) > 0; // 朝向四象限判定
+        const tanTheta = Math.tan(tempTheta) > 0; // 朝向三象限判定
+        const andTheta = sinTheta && cosTheta && tanTheta; // 朝向一象限判定
+
+        const narrowBool = !andTheta && !andAzi; // 当镜头方位角在一象限时三个判定均为true，会导致提前进入其他镜头方位角的分支
+
+        newArea = []; // 清除上次设置的攻击区域
+        if ((andAzi && andTheta)
+          || (sinAzi && sinTheta && narrowBool)
+          || (tanAzi && tanTheta && narrowBool)
+          || (cosAzi && cosTheta && narrowBool)) {
+          /* 正面向右 */
+          opr.mesh.rotation.y = 0;
+          newArea = opr.atkArea;
+        } else if ((andAzi && sinTheta)
+          || (sinAzi && tanTheta && narrowBool)
+          || (tanAzi && cosTheta && narrowBool)
+          || (cosAzi && andTheta)) {
+          /* 正面向下 */
+          opr.mesh.rotation.y = -0.5 * Math.PI;
+          opr.atkArea.forEach((area) => {
+            newArea.push(new Vector2(-area.y, area.x));
+          });
+        } else if ((andAzi && tanTheta)
+          || (sinAzi && cosTheta && narrowBool)
+          || (tanAzi && andTheta)
+          || (cosAzi && sinTheta)) {
+          /* 正面向左 */
+          opr.mesh.rotation.y = Math.PI;
+          opr.atkArea.forEach((area) => {
+            newArea.push(new Vector2(-area.x, -area.y));
+          });
+        } else if ((andAzi && cosTheta)
+          || (sinAzi && andTheta)
+          || (tanAzi && sinTheta)
+          || (cosAzi && tanTheta)) {
+          /* 正面向上 */
+          opr.mesh.rotation.y = 0.5 * Math.PI;
+          opr.atkArea.forEach((area) => {
+            newArea.push(new Vector2(area.y, -area.x));
+          });
+        }
+        GameMap.showArea(atkLayer, pickPos, newArea);
+      }
+      this.renderer.requestRender();
+    };
+
+    /** 选择方向时的点击事件 */
+    const selectDirection = (e: MouseEvent): void => {
+      /* 判定光标位置是在中心还是在外部 */
+      const distX = e.clientX - centerX / 2;
+      const distY = e.clientY - centerY / 2;
+      const dist = Math.sqrt(distX ** 2 + distY ** 2);
+      if (dist > rad / 4) {
+        opr.atkArea = newArea; // 更新攻击范围
+        this.gameCtl.activeOperator.set(opr.name, opr); // 添加干员到游戏控制器
+      } else {
+        this.map.removeUnit(opr);
+      }
+      this.frame.removeEventListener(layer, 'mousemove', drawSelector);
+      this.frame.removeEventListener(layer, 'click', selectDirection);
+      atkLayer.hide();
+      layer.style.display = 'none';
+      this.renderer.requestRender();
+    };
+
+    drawBackGround();
     this.frame.addEventListener(layer, 'mousemove', drawSelector);
+    this.frame.addEventListener(layer, 'click', selectDirection);
     layer.style.display = 'block';
   }
 

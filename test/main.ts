@@ -41,7 +41,7 @@ function main(mapInfo: MapInfo, data: Data): void {
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
 
   /* 设置全局控制器 */
-  const gameCtl = new GameController(frame.scene, map, data); // 游戏控制器
+  const gameCtl = new GameController(map, data); // 游戏控制器
   const timeAxisUI = new TimeAxisUICtl(materials.resources);
   const gameUICtl = new GameUIController(frame, map, gameCtl, staticRenderer, data);
   gameUICtl.addOprCard(['haze']);
