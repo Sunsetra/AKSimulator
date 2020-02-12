@@ -62,5 +62,14 @@ export enum Profession {
 }
 
 
+/* 游戏状态常量定义 */
+export enum GameStatus {
+  Standby = 'STANDBY',
+  Victory = 'VICTORY',
+  Defeat = 'DEFEAT',
+  Running = 'RUNNING',
+}
+
+
 export const BlockUnit = 10; // 砖块单位长度
 export const sizeAlpha = 0.9; // 干员单位尺寸系数

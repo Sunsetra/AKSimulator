@@ -7,7 +7,10 @@ import {
 import TimeAxis from '../modules/core/TimeAxis.js';
 import MapLoader from '../modules/loaders/MapLoader.js';
 import ResourceLoader from '../modules/loaders/ResourceLoader.js';
-import { WebGLAvailability } from '../modules/others/constants.js';
+import {
+  GameStatus,
+  WebGLAvailability,
+} from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
   checkWebGLVersion,
@@ -48,7 +51,10 @@ function main(mapInfo: MapInfo, data: Data): void {
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
-    start: (): void => timeAxis.start(),
+    start: (): void => {
+      timeAxis.start();
+      gameCtl.setStatus(GameStatus.Running);
+    },
     pause: (): void => timeAxis.stop(),
     continue: (): void => timeAxis.continue(),
     stop: (): void => timeAxis.stop(),
@@ -56,9 +62,10 @@ function main(mapInfo: MapInfo, data: Data): void {
       timeAxis.stop();
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
-      gameCtl.reset();
-      GameUIController.reset();
       map.hideOverlay();
+      gameCtl.setStatus(GameStatus.Standby);
+      gameCtl.reset();
+      gameUICtl.reset();
     },
   };
   renderCtl.reset();
@@ -67,9 +74,10 @@ function main(mapInfo: MapInfo, data: Data): void {
   function frameCallback(rAFTime: number): void {
     /* 执行位置和状态更新 */
     const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
-    if (gameCtl.enemyCount) {
-      gameCtl.updateEnemyStatus(timeAxisUI, currentTime);
+    if (gameCtl.getStatus() === GameStatus.Running || gameCtl.getStatus() === GameStatus.Standby) {
       const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
+      gameUICtl.updateCost(gameCtl.updateCost(interval));
+      gameCtl.updateEnemyStatus(timeAxisUI, currentTime);
       gameCtl.updateEnemyPosition(timeAxisUI, interval, currentTime);
       timeAxisUI.setTimer(currentTime[0]); // 更新计时器
       timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标

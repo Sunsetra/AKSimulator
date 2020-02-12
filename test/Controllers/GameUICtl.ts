@@ -53,6 +53,8 @@ class GameUIController {
 
   private readonly renderer: StaticRenderer; // 静态渲染器
 
+  private readonly oprCards: HTMLDivElement; // 干员头像卡节点
+
   private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
 
   private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
@@ -61,6 +63,8 @@ class GameUIController {
 
   private center: Vector2; // 干员位置中心坐标
 
+  private cost: number; // UI显示的cost（整数）
+
   constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
     this.map = map;
@@ -68,6 +72,8 @@ class GameUIController {
     this.gameCtl = gameCtl;
     this.matData = data.materials;
     this.unitData = data.units;
+    this.cost = Math.floor(gameCtl.cost);
+    this.oprCards = document.querySelector('#operator-card') as HTMLDivElement;
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
@@ -112,12 +118,28 @@ class GameUIController {
     });
   }
 
-  /** 重置角色卡 */
-  static reset(): void {
-    const oprCardNode = document.querySelector('#operator-card') as HTMLElement;
-    (oprCardNode.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
+  /** 重置游戏UI */
+  reset(): void {
+    this.cost = Math.floor(this.gameCtl.cost);
+    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
       card.style.display = 'block';
     });
+    this.disableOprCard();
+  }
+
+  /**
+   * 按cost更新UI状态
+   * @param cost - 游戏当前的Cost值
+   */
+  updateCost(cost: number): void {
+    if (Math.floor(cost) !== this.cost) {
+      this.cost = Math.floor(cost);
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+        if (cost >= Number(child.dataset.cost)) {
+          this.enableOprCard(child);
+        } else { this.disableOprCard(child); }
+      });
+    }
   }
 
   /**
@@ -125,8 +147,7 @@ class GameUIController {
    * @param oprList: 干员名称列表
    */
   addOprCard(oprList: string[]): void {
-    const oprCardNode = document.querySelector('#operator-card') as HTMLElement;
-    oprCardNode.childNodes.forEach((node) => { node.remove(); });
+    this.oprCards.childNodes.forEach((node) => { node.remove(); });
     oprList.forEach((opr) => {
       /* 收集干员信息 */
       const oprData = this.unitData.operator[opr];
@@ -160,7 +181,7 @@ class GameUIController {
       costNode.setAttribute('class', 'opr-cost');
       costNode.appendChild(costText);
       oprNode.appendChild(costNode);
-      oprCardNode.appendChild(oprNode);
+      this.oprCards.appendChild(oprNode);
 
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
@@ -172,8 +193,8 @@ class GameUIController {
       const mouseupHandler = (reset = true): void => {
         /* eslint-disable @typescript-eslint/no-use-before-define */
         if (reset) {
-          const chosenCard = document.querySelector('#chosen') as HTMLElement;
-          chosenCard.removeAttribute('id'); // 当干员卡还存在（未放置）时恢复未选定状态
+          const chosenCard = document.querySelector('#chosen');
+          if (chosenCard !== null) { chosenCard.removeAttribute('id'); } // 当干员卡还存在（未放置）时恢复未选定状态
         }
         this.map.hideOverlay();
         this.mouseLayer.style.left = '-1000px';
@@ -222,20 +243,25 @@ class GameUIController {
         this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏移动光标时显示的区域
         this.renderer.requestRender();
 
-        /* 添加干员图片到指针叠加层元素 */
-        const oprRes = this.matData.resources.operator[opr];
-        const img = document.createElement('img');
-        img.setAttribute('src', oprRes.url);
-        this.mouseLayer.appendChild(img);
+        if (oprNode.dataset.status === 'enable') {
+          /* 添加干员图片到指针叠加层元素 */
+          const oprRes = this.matData.resources.operator[opr];
+          const img = document.createElement('img');
+          img.setAttribute('src', oprRes.url);
+          this.mouseLayer.appendChild(img);
 
-        /* 绑定画布上的光标移动及抬起事件 */
-        this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-        this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
+          /* 绑定画布上的光标移动及抬起事件 */
+          this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
+          this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
+        } else {
+          this.frame.canvas.addEventListener('mouseup', () => { mouseupHandler(); }, { once: true });
+        }
       });
 
       /* 绑定干员头像上的释放事件 */
       oprNode.addEventListener('mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
     });
+    this.disableOprCard(); // 初始状态禁用所有干员卡
   }
 
   /**
@@ -269,13 +295,37 @@ class GameUIController {
     this.ctx.globalCompositeOperation = 'source-over';
   }
 
-  // enableOprCard(card: HTMLElement): void {
-  //   card.style.filter = '';
-  // }
+  /**
+   * 启用指定干员卡，当省略参数时启用所有干员卡
+   * @param card - 要启用的干员卡
+   */
+  private enableOprCard(card?: HTMLElement): void {
+    if (card === undefined) {
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+        child.style.filter = '';
+        child.dataset.status = 'enable';
+      });
+    } else {
+      card.style.filter = '';
+      card.dataset.status = 'enable';
+    }
+  }
 
-  // disableOprCard(card: HTMLElement): void {
-  //   card.style.filter = 'brightness(50%)';
-  // }
+  /**
+   * 禁用指定干员卡，当省略参数时禁用所有卡
+   * @param card - 要禁用的干员卡
+   */
+  private disableOprCard(card?: HTMLElement): void {
+    if (card === undefined) {
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+        child.style.filter = 'brightness(50%)';
+        child.dataset.status = 'disable';
+      });
+    } else {
+      card.style.filter = 'brightness(50%)';
+      card.dataset.status = 'disable';
+    }
+  }
 
   /**
    * 选择设置干员的朝向及攻击区域
@@ -383,14 +433,15 @@ class GameUIController {
       const distY = e.clientY - this.center.y / 2;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
       const rad = this.selectLayer.width * 0.1; // 方向选择区半径
-      const chosenCard = document.querySelector('#chosen') as HTMLElement;
-      chosenCard.removeAttribute('id'); // 恢复干员卡未选定状态
-
-      if (dist > rad / 4) {
-        opr.atkArea = newArea; // 更新攻击范围
-        this.gameCtl.activeOperator.set(opr.name, opr); // 添加干员到游戏控制器
-        chosenCard.style.display = 'none';
-      } else { this.map.removeUnit(opr); }
+      const chosenCard = document.querySelector('#chosen') as HTMLDivElement;
+      if (chosenCard !== null) {
+        chosenCard.removeAttribute('id'); // 恢复干员卡未选定状态
+        if (dist > rad / 4) {
+          opr.atkArea = newArea; // 更新攻击范围
+          chosenCard.style.display = 'none';
+          if (this.gameCtl.addOperator(opr)) { this.disableOprCard(); } // 到达干员上限，禁用所有干员卡
+        } else { this.map.removeUnit(opr); }
+      }
 
       this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);
       this.frame.removeEventListener(window, 'resize', recalculatePos);

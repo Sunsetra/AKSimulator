@@ -49,6 +49,8 @@ import Unit from './Unit.js';
  * 地图管理类，包括地图构造、地图数据获取，叠加层设置及管理
  */
 class GameMap {
+  overlay: Map<number, Overlay>; // 地图中的叠加层映射
+
   readonly name: string; // 地图名称
 
   readonly width: number; // 地图宽度格数
@@ -59,13 +61,11 @@ class GameMap {
 
   readonly mesh: Mesh; // 地图网格体
 
-  overlay: Map<number, Overlay>; // 地图中的叠加层映射
+  readonly tracker: Tracker; // 光标位置追踪器
 
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
   private readonly resList: ResourcesList; // 全资源列表
-
-  readonly tracker: Tracker; // 光标位置追踪器
 
   private readonly frame: GameFrame; // 游戏框架
 
@@ -245,6 +245,8 @@ class GameMap {
       camera.position.set(centerX, centerZ * 3, centerZ * 3);
       camera.updateProjectionMatrix();
       controls.target.set(centerX, 0, centerZ); // 设置摄影机朝向为地图中心
+      controls.minDistance = maxSize / 1.5;
+      controls.maxDistance = maxSize * 1.5;
 
       /* 从原始数据绑定并添加建筑 */
       this.data.blockInfo.forEach((item) => {
@@ -496,7 +498,7 @@ class GameMap {
 
     /* 放置建筑 */
     const posX = (x + building.xSpan / 2) * block.size.x;
-    const posY = building.size.y / 2 + highestAlpha * BlockUnit - 0.01; // 跨距建筑以最高砖块为准
+    const posY = building.size.y / 2 + highestAlpha * BlockUnit - 0.02; // 跨距建筑以最高砖块为准
     const posZ = (z + building.zSpan / 2) * block.size.z;
     building.mesh.position.set(posX, posY, posZ);
     this.frame.scene.add(building.mesh);

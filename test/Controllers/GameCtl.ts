@@ -5,14 +5,21 @@
 
 import GameMap from '../../modules/core/GameMap.js';
 import {
+  ControlData,
   Data,
   EnemyData,
   EnemyWrapper,
   Fragment,
   OperatorData,
+  ResourceData,
+  UnitData,
   WaveInfo,
 } from '../../modules/core/MapInfo';
-import { ResourcesUnavailableError } from '../../modules/others/exceptions.js';
+import { GameStatus } from '../../modules/others/constants.js';
+import {
+  DataError,
+  ResourcesUnavailableError,
+} from '../../modules/others/exceptions.js';
 import Enemy from '../../modules/units/Enemy.js';
 import Operator from '../../modules/units/Operator.js';
 
@@ -24,29 +31,79 @@ import TimeAxisUICtl from './TimeAxisUICtl.js';
  * 游戏控制类，用于管理游戏进行中敌人/干员单位的状态、位置等信息。
  */
 class GameController {
-  enemyCount: number; // 敌人总数量
-
   waves: WaveInfo[]; // 波次信息
 
   activeEnemy: Set<EnemyWrapper>; // 在场存活敌人集合
 
   activeOperator: Map<string, Operator>; // 在场上的干员映射
 
-  private readonly map: GameMap;
+  private enemyCount: number; // 剩余敌人计数
 
   private enemyId: number; // 已出场敌人唯一ID
 
-  private readonly data: Data;
+  private lifePoint: number; // 剩余生命点数
+
+  private stat: GameStatus.Standby | GameStatus.Running; // 游戏运行状态存储
+
+  private gameCost: number; // 当前游戏cost
+
+  private readonly map: GameMap;
+
+  private readonly unitData: UnitData; // 单位名对应的单位数据
+
+  private readonly matData: ResourceData; // 资源数据
+
+  private readonly ctlData: ControlData; // 游戏控制数据
 
   constructor(map: GameMap, data: Data) {
     this.map = map;
-    this.data = data;
-    this.enemyCount = map.data.enemyNum;
+    this.ctlData = map.data.ctlData;
+    this.matData = data.materials;
+    this.unitData = data.units;
     this.waves = JSON.parse(JSON.stringify(map.data.waves));
 
+    this.lifePoint = this.ctlData.maxLP;
+    this.enemyCount = this.ctlData.enemyNum;
+    this.gameCost = this.ctlData.initCost;
     this.activeEnemy = new Set();
     this.activeOperator = new Map<string, Operator>();
     this.enemyId = 0;
+    this.stat = GameStatus.Standby;
+  }
+
+  /** 返回当前cost值，保证cost只读 */
+  get cost(): number {
+    return this.gameCost;
+  }
+
+  /**
+   * 设置游戏状态
+   * @param newStatus: 新状态只能是待机或运行中
+   */
+  setStatus(newStatus: GameStatus.Standby | GameStatus.Running): void {
+    this.stat = newStatus;
+  }
+
+  /** 每帧检查控制游戏状态 */
+  getStatus(): GameStatus {
+    if (this.lifePoint === 0) {
+      return GameStatus.Defeat;
+    }
+    if (this.enemyCount === 0) {
+      return GameStatus.Victory;
+    }
+    return this.stat;
+  }
+
+  /**
+   * 更新并返回当前cost
+   * @param interval - 帧时间间隔
+   */
+  updateCost(interval: number): number {
+    if (this.cost <= this.ctlData.maxCost) {
+      this.gameCost += this.ctlData.costInc * interval;
+    }
+    return this.cost;
   }
 
   /**
@@ -61,7 +118,7 @@ class GameController {
       const { time, name, route } = thisFrag; // 首只敌人信息
 
       if (Math.abs(axisTime[1] - time) <= 0.01 || axisTime[1] > time) { // 检查应出现的新敌人；防止resize事件影响敌人创建
-        const enemyData = this.data.units.enemy[name];
+        const enemyData = this.unitData.enemy[name];
         const enemy = this.createEnemy(name, thisFrag, enemyData); // 生成的敌人对象不可能为null
         const { x, z } = route[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
@@ -86,50 +143,52 @@ class GameController {
   updateEnemyPosition(timeAxisUI: TimeAxisUICtl, interval: number, currentTime: [string, number]): void {
     this.activeEnemy.forEach((frag) => {
       const { route, name, inst } = frag;
-      if (inst !== undefined) {
-        if (route.length) { // 判定敌人是否到达终点
-          if ('pause' in route[0]) { // 当前节点是暂停节点时
-            if (typeof frag.pause === 'undefined') { // 当前敌人分片中没有暂停节点（新进入暂停）
-              frag.pause = route[0].pause - interval; // 减去本帧已暂停时长（渲染均位于帧回调之后）
-            } else {
-              frag.pause -= interval; // 更新敌人分片中的暂停时间计时
-              if (frag.pause <= 0) { // 取消停顿，从下一帧恢复移动
-                route.shift();
-                delete frag.pause;
-              }
-            }
+      if (inst === undefined) {
+        throw new DataError(`未找到${name}单位实例:`, frag);
+      } else if (route.length) { // 判定敌人是否到达终点
+        if ('pause' in route[0]) { // 当前节点是暂停节点时
+          if (frag.pause === undefined) { // 当前敌人分片中没有暂停节点（新进入暂停）
+            frag.pause = route[0].pause - interval; // 减去本帧已暂停时长（渲染均位于帧回调之后）
           } else {
-            const oldX = inst.position.x;
-            const oldZ = inst.position.y;
-            const newX = route[0].x + 0.5;
-            const newZ = route[0].z + 0.5;
-
-            let velocityX = inst.moveSpd / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
-            velocityX = newX >= oldX ? velocityX : -velocityX;
-            let velocityZ = Math.abs(((newZ - oldZ) / (newX - oldX)) * velocityX);
-            velocityZ = newZ >= oldZ ? velocityZ : -velocityZ;
-
-            const stepX = interval * velocityX + oldX;
-            const stepZ = interval * velocityZ + oldZ;
-            inst.position = new Vector2(stepX, stepZ);
-            // this.placeEnemy(inst, stepX, stepZ);
-
-            const rotateDeg = Math.atan((newZ - oldZ) / (newX - oldX));
-            inst.mesh.rotation.y = Math.PI - rotateDeg; // 调整运动方向
-
-            const ifDeltaX = Math.abs(newX - stepX) <= Math.abs(interval * velocityX);
-            const ifDeltaZ = Math.abs(newZ - stepZ) <= Math.abs(interval * velocityZ);
-            if (ifDeltaX && ifDeltaZ) { route.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
+            frag.pause -= interval; // 更新敌人分片中的暂停时间计时
+            if (frag.pause <= 0) { // 取消停顿，从下一帧恢复移动
+              route.shift();
+              delete frag.pause;
+            }
           }
         } else {
-          this.map.removeUnit(inst);
-          const nodeType = 'enemy drop';
-          const nodeId = `${name}-${frag.id}`;
-          timeAxisUI.createAxisNode(nodeType, nodeId, name, currentTime);
+          const oldX = inst.position.x;
+          const oldZ = inst.position.y;
+          const newX = route[0].x + 0.5;
+          const newZ = route[0].z + 0.5;
 
-          this.activeEnemy.delete(frag);
-          this.enemyCount -= 1;
+          const moveSpd = inst.moveSpd * this.ctlData.moveSpdMulti;
+          let velocityX = moveSpd / Math.sqrt(((newZ - oldZ) / (newX - oldX)) ** 2 + 1);
+          velocityX = newX >= oldX ? velocityX : -velocityX;
+          let velocityZ = Math.abs(((newZ - oldZ) / (newX - oldX)) * velocityX);
+          velocityZ = newZ >= oldZ ? velocityZ : -velocityZ;
+
+          const stepX = interval * velocityX + oldX;
+          const stepZ = interval * velocityZ + oldZ;
+          inst.position = new Vector2(stepX, stepZ);
+          // this.placeEnemy(inst, stepX, stepZ);
+
+          const rotateDeg = Math.atan((newZ - oldZ) / (newX - oldX));
+          inst.mesh.rotation.y = Math.PI - rotateDeg; // 调整运动方向
+
+          const ifDeltaX = Math.abs(newX - stepX) <= Math.abs(interval * velocityX);
+          const ifDeltaZ = Math.abs(newZ - stepZ) <= Math.abs(interval * velocityZ);
+          if (ifDeltaX && ifDeltaZ) { route.shift(); } // 判定是否到达当前路径点，到达则移除当前路径点
         }
+      } else {
+        this.lifePoint -= 1;
+        this.map.removeUnit(inst);
+        this.activeEnemy.delete(frag);
+        this.enemyCount -= 1;
+
+        const nodeType = 'enemy drop';
+        const nodeId = `${name}-${frag.id}`;
+        timeAxisUI.createAxisNode(nodeType, nodeId, name, currentTime);
       }
     });
   }
@@ -139,14 +198,16 @@ class GameController {
    */
   reset(): void {
     this.activeOperator.forEach((opr) => {
-      this.map.removeUnit(opr);
+      this.map.removeUnit(opr); // 释放掉干员实体
       this.activeOperator.clear();
     });
     this.activeEnemy.forEach((enemy) => {
       this.map.removeUnit(enemy.inst); // 释放掉敌人实体
       this.activeEnemy.delete(enemy);
     });
-    this.enemyCount = this.map.data.enemyNum;
+    this.enemyCount = this.ctlData.enemyNum;
+    this.lifePoint = this.ctlData.maxLP;
+    this.gameCost = this.ctlData.initCost;
     this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
   }
 
@@ -158,9 +219,9 @@ class GameController {
    * @param data: 创建实例时所需的数据类
    */
   createEnemy(name: string, frag: Fragment, data: EnemyData): Enemy {
-    const { entity } = this.data.materials.resources.enemy[name]; // 读取敌人实体
+    const { entity } = this.matData.resources.enemy[name]; // 读取敌人实体
     if (entity === undefined) {
-      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources.enemy[name]);
+      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.matData.resources.enemy[name]);
     }
     const enemy = new Enemy(entity.clone(), data);
 
@@ -175,20 +236,31 @@ class GameController {
   }
 
   /**
-   * 创建干员实例，若成功返回创建的实例，若失败（超过上场数量限制）返回null
+   * 创建干员实例，若成功返回创建的实例，若失败返回null
    * @param name: 干员名称
    * @param data: 创建实例时所需的单位源数据OperatorData
    */
   createOperator(name: string, data: OperatorData): Operator | null {
-    const { entity } = this.data.materials.resources.operator[name]; // 读取敌人实体
+    const { entity } = this.matData.resources.operator[name]; // 读取敌人实体
     if (entity === undefined) {
-      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.data.materials.resources.operator[name]);
+      throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.matData.resources.operator[name]);
     }
 
     if (this.activeOperator.get(name) === undefined) {
       return new Operator(entity.clone(), data); // 克隆实体，以兼容后续添加召唤物等
     }
     return null;
+  }
+
+  /**
+   * 向控制器中添加活跃干员实例
+   * @param opr - 要添加的干员实例
+   * @return - 若添加后干员已达上限返回true, 否则返回false
+   */
+  addOperator(opr: Operator): boolean {
+    this.gameCost -= opr.cost;
+    this.activeOperator.set(opr.name, opr); // 添加干员到游戏控制器
+    return this.activeOperator.size === this.ctlData.oprLimit;
   }
 
   // /** TODO: 单位自动寻路

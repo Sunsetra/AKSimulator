@@ -98,7 +98,7 @@ export interface OperatorData extends UnitAbstractData {
 
 /* 敌方单位源数据接口 */
 export interface EnemyData extends UnitAbstractData {
-  moveSpd: number; // 移动速度
+  moveSpd: number; // 移动速度（是官方数据的二分之一）
   rangeRad: number; // 攻击范围半径
   sizeAlpha: number; // 模型尺寸系数
 }
@@ -112,11 +112,23 @@ export interface MapInfo {
   name: string; // 地图名称
   mapWidth: number; // 地图宽度格数
   mapHeight: number; // 地图高度格数
-  enemyNum: number; // 敌人总数量
+  ctlData: ControlData; // 游戏控制数据
   resources: ResourceInfo; // 地图所需资源信息
   blockInfo: BlockInfo[]; // 砖块信息列表
   light: LightInfo; // 光源信息
   waves: WaveInfo[]; // 波次信息
+}
+
+
+/* 游戏控制所需信息 */
+export interface ControlData {
+  enemyNum: number; // 敌人总数量
+  oprLimit: number; // 上场干员数量限制
+  maxLP: number; // 生命点数
+  initCost: number; // 初始cost
+  maxCost: number; // 最大cost
+  costInc: number; // cost每秒增速
+  moveSpdMulti: number; // 敌方移动速度倍率
 }
 
 
