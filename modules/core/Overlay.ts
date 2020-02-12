@@ -69,7 +69,9 @@ class Overlay {
    * @param y: 目标位置的Y坐标
    */
   has(x: number, y: number): boolean;
+
   has(x: Vector2): boolean;
+
   has(x: Vector2 | number, y?: number): boolean {
     const pos = x instanceof Vector2 ? x : new Vector2(x, y);
     for (let i = 0; i < this.enableArea.length; i += 1) {
@@ -92,6 +94,18 @@ class Overlay {
     }
   }
 
+  /**
+   * 以指定位置为原点，显示叠加层上的指定区域
+   * @param center: 区域的显示原点
+   * @param area: 区域指示列表
+   */
+  showArea(center: Vector2, area: Vector2[]): void {
+    area.forEach((point) => {
+      const newPos = new Vector2().addVectors(center, point);
+      this.setOverlayVisibility(newPos, true);
+    });
+  }
+
   /** 将所有可用叠加层设置为隐藏 */
   hide(): void {
     if (this.visible !== false) { // 仅当全显示或部分隐藏时隐藏
@@ -112,13 +126,9 @@ class Overlay {
    * @param b: 新可见性
    */
   setOverlayVisibility(a: Vector2, b: boolean): void;
-  /**
-   * 设定指定位置的叠加层的可见性，必须在可用区域内
-   * @param a: 叠加层所在X位置
-   * @param b: 叠加层所在Z位置
-   * @param c: 新可见性
-   */
+
   setOverlayVisibility(a: number, b: number, c: boolean): void;
+
   setOverlayVisibility(a: Vector2 | number, b: number | boolean, c?: boolean): void {
     /* 计算目标叠加层的位置 */
     let pos: Vector2;

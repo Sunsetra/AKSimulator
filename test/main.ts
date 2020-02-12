@@ -56,7 +56,8 @@ function main(mapInfo: MapInfo, data: Data): void {
       timeAxis.stop();
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
-      gameCtl.resetGame();
+      gameCtl.reset();
+      GameUIController.reset();
       map.hideOverlay();
     },
   };

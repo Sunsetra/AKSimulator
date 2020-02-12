@@ -422,19 +422,6 @@ class GameMap {
     }
   }
 
-  /**
-   * 以指定位置为原点，在指定叠加层上显示指定区域
-   * @param layer: 要显示区域的叠加层
-   * @param center: 区域的显示原点
-   * @param area: 区域指示列表
-   */
-  static showArea(layer: Overlay, center: Vector2, area: Vector2[]): void {
-    area.forEach((point) => {
-      const newPos = new Vector2().addVectors(center, point);
-      layer.setOverlayVisibility(newPos, true);
-    });
-  }
-
   /* ---------------------------------场景建筑相关操作--------------------------------- */
   /**
    * 创建建筑实例并向地图添加建筑绑定
@@ -620,7 +607,7 @@ class GameMap {
   }
 
   /**
-   * 追踪光标在指定叠加层上的位置
+   * 追踪并显示光标在指定叠加层上的位置
    * @param layer: 目标叠加层
    * @param area: 相对于中心坐标的Vector2偏移量数组
    */
@@ -637,7 +624,7 @@ class GameMap {
           if (layer.parent !== undefined) { return layer.parent.has(absPos); }
           return true;
         })()) { // 检查当前位置是否在父范围内
-          GameMap.showArea(layer, absPos, area);
+          layer.showArea(absPos, area);
         }
         this.tracker.lastPos = absPos;
       }

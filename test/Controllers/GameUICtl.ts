@@ -31,7 +31,7 @@ import GameController from './GameCtl.js';
 /* 定义角色卡所需的资源数据接口，值均为地址字符串 */
 interface CardData {
   icon: string;
-  class: string;
+  prof: string;
   cost: string;
   rarity: string;
 }
@@ -41,8 +41,6 @@ interface CardData {
  * UI控制类，用于构建游戏窗口中的UI，以及获取用户交互信息并传递给游戏控制类。
  */
 class GameUIController {
-  private cardChosen: boolean; // 干员卡选择状态，在点击后应设为true，取消状态后应设为false
-
   private readonly unitData: UnitData; // 单位名对应的单位数据
 
   private readonly matData: ResourceData; // 资源数据
@@ -55,7 +53,13 @@ class GameUIController {
 
   private readonly renderer: StaticRenderer; // 静态渲染器
 
-  private readonly mouseLayer: HTMLElement; // 跟随光标位置的叠加层元素
+  private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
+
+  private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
+
+  private readonly ctx: CanvasRenderingContext2D; // 画布上下文对象
+
+  private center: Vector2; // 干员位置中心坐标
 
   constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
@@ -64,11 +68,56 @@ class GameUIController {
     this.gameCtl = gameCtl;
     this.matData = data.materials;
     this.unitData = data.units;
-    this.cardChosen = false;
-    this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLElement;
+    this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
+    this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
+    this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
+    this.center = new Vector2(0, 0);
 
     /* 为画布（地面）上的点击事件绑定点击位置追踪函数 */
-    this.frame.addEventListener(this.frame.canvas, 'click', this.trackMousePosition);
+    this.frame.addEventListener(this.frame.canvas, 'click', () => {
+      const { pickPos } = this.map.tracker;
+      if (pickPos !== null) {
+        const absPos = realPosToAbsPos(pickPos, true);
+        const block = this.map.getBlock(absPos);
+        if (block !== null) {
+          /* 检查是否选中干员 */
+          this.gameCtl.activeOperator.forEach((opr) => {
+            if (absPos.equals(opr.position.floor())) {
+              this.selectLayer.style.display = 'block';
+              this.updateCenterPos(absPos);
+              this.drawSelectLayer();
+
+              const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
+              atkLayer.showArea(absPos, opr.atkArea);
+              this.renderer.requestRender();
+
+              /** 检查点击位置，在范围外则隐藏叠加层 */
+              const checkClickPos = (e: MouseEvent): void => {
+                const distX = e.clientX - this.center.x / 2;
+                const distY = e.clientY - this.center.y / 2;
+                const dist = Math.sqrt(distX ** 2 + distY ** 2);
+                const rad = this.selectLayer.width * 0.1; // 方向选择区半径
+                if (dist > rad / 2) {
+                  atkLayer.hide();
+                  this.selectLayer.style.display = 'none';
+                  this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
+                  this.renderer.requestRender();
+                }
+              };
+              this.frame.addEventListener(this.selectLayer, 'click', checkClickPos);
+            }
+          });
+        }
+      }
+    });
+  }
+
+  /** 重置角色卡 */
+  static reset(): void {
+    const oprCardNode = document.querySelector('#operator-card') as HTMLElement;
+    (oprCardNode.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
+      card.style.display = 'block';
+    });
   }
 
   /**
@@ -83,7 +132,7 @@ class GameUIController {
       const oprData = this.unitData.operator[opr];
       const cardData: CardData = {
         icon: this.matData.icons.operator[opr],
-        class: this.matData.icons.prof[oprData.prof],
+        prof: this.matData.icons.prof[oprData.prof.toLowerCase()],
         cost: oprData.cost.toString(),
         rarity: this.matData.icons.rarity[oprData.rarity],
       };
@@ -97,12 +146,12 @@ class GameUIController {
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
       oprNode.setAttribute('class', 'opr-card');
-      oprNode.dataset.class = cardData.class;
+      oprNode.dataset.class = cardData.prof;
       oprNode.dataset.cost = cardData.cost;
       oprNode.dataset.name = opr;
       oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];
       oprNode.style.background = `
-        url("${cardData.class}") no-repeat top left/25%,
+        url("${cardData.prof}") no-repeat top left/25%,
         url("${cardData.rarity}") no-repeat bottom right/45%,
         url("${cardData.icon}") no-repeat top left/cover`;
 
@@ -116,24 +165,52 @@ class GameUIController {
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
 
+      /**
+       * 当光标松开时的回调函数
+       * @param reset - 是否重置干员头像选择状态
+       */
+      const mouseupHandler = (reset = true): void => {
+        /* eslint-disable @typescript-eslint/no-use-before-define */
+        if (reset) {
+          const chosenCard = document.querySelector('#chosen') as HTMLElement;
+          chosenCard.removeAttribute('id'); // 当干员卡还存在（未放置）时恢复未选定状态
+        }
+        this.map.hideOverlay();
+        this.mouseLayer.style.left = '-1000px';
+        this.mouseLayer.style.top = '-1000px';
+        this.mouseLayer.childNodes.forEach((node) => { node.remove(); });
+        this.frame.removeEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
+        this.frame.removeEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
+        this.renderer.requestRender();
+        /* eslint-enable @typescript-eslint/no-use-before-define */
+      };
+
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
       const canvasMousemoveHandler = (): void => {
-        this.trackMouseOverlay();
+        if (this.map.tracker.pointerPos !== null) {
+          const imgRect = (this.mouseLayer.children.item(0) as HTMLElement).getBoundingClientRect();
+          this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x - imgRect.width / 2}px`;
+          this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
+        }
         this.map.trackOverlay(atkLayer, atkArea);
         this.renderer.requestRender();
       };
-      /** 当光标松开时的回调函数 */
-      const mouseupCallback = (): void => {
-        if (this.cardChosen) {
-          this.cardChosen = false;
-          this.map.hideOverlay();
 
-          const chosenCard = document.querySelector('#chosen');
-          if (chosenCard !== null) { chosenCard.removeAttribute('id'); } // 当干员卡还存在（未放置）时恢复未选定状态
-          this.removeFromMouseOverlay();
-          this.frame.removeEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-          this.renderer.requestRender();
+      /** 在画布元素上释放光标时的回调函数 */
+      const canvasMouseupHandler = (): void => {
+        if (this.map.tracker.pickPos !== null) { // 拖放位置不在地图上
+          const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
+          if (placeLayer.has(pos)) { // 拖放位置不在父区域中
+            const unit = this.gameCtl.createOperator(opr, oprData);
+            if (unit !== null) { // 防止重复创建干员
+              mouseupHandler(false); // 不重置干员头像的选择状态
+              this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
+              this.setDirection(unit);
+              return;
+            }
+          }
         }
+        mouseupHandler();
       };
 
       /* 绑定干员头像上的按下事件 */
@@ -142,9 +219,8 @@ class GameUIController {
         oprNode.setAttribute('id', 'chosen'); // 按下时进入选定状态
         placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
-        this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏上次显示的区域
+        this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏移动光标时显示的区域
         this.renderer.requestRender();
-        this.cardChosen = true;
 
         /* 添加干员图片到指针叠加层元素 */
         const oprRes = this.matData.resources.operator[opr];
@@ -152,32 +228,46 @@ class GameUIController {
         img.setAttribute('src', oprRes.url);
         this.mouseLayer.appendChild(img);
 
-        /* 绑定画布上的光标移动及抬起事件（单次） */
+        /* 绑定画布上的光标移动及抬起事件 */
         this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-        this.frame.canvas.addEventListener('mouseup', () => {
-          if (this.map.tracker.pickPos !== null) {
-            const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
-            if (placeLayer.has(pos)) {
-              const unit = this.gameCtl.createOperator(opr, oprData);
-              if (unit !== null) {
-                this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
-                this.setDirection(unit);
-                // this.removeOprCard(oprNode); // TODO: 上场后需要确认剩余数量后再决定是否删除节点
-              }
-            }
-          }
-          mouseupCallback();
-        }, { once: true });
+        this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
       });
 
-      /* 绑定干员头像上的抬起事件 */
-      oprNode.addEventListener('mouseup', mouseupCallback);
+      /* 绑定干员头像上的释放事件 */
+      oprNode.addEventListener('mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
     });
   }
 
-  // removeOprCard(card: HTMLElement): void {
-  //   card.remove();
-  // }
+  /**
+   * 根据砖块坐标计算更新叠加层中心坐标
+   * @param pos: 叠加层中心的砖块抽象坐标
+   */
+  private updateCenterPos(pos: Vector2): void {
+    const height = (this.map.getBlock(pos) as BlockInfo).size.y; // 点击处砖块高度
+    const realPos = absPosToRealPos(pos.x + 0.5, pos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
+    const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
+    const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width;
+    const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height;
+    this.center.set(centerX, centerY);
+  }
+
+  /** 绘制背景区域 */
+  private drawSelectLayer(): void {
+    this.ctx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    this.ctx.fillRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+
+    this.ctx.strokeStyle = 'white';
+    this.ctx.lineWidth = 10;
+    this.ctx.beginPath();
+    this.ctx.arc(this.center.x, this.center.y, this.selectLayer.width * 0.1, 0, 2 * Math.PI);
+    this.ctx.stroke();
+
+    this.ctx.globalCompositeOperation = 'destination-out';
+    this.ctx.fillStyle = 'blue';
+    this.ctx.fill();
+    this.ctx.globalCompositeOperation = 'source-over';
+  }
 
   // enableOprCard(card: HTMLElement): void {
   //   card.style.filter = '';
@@ -192,65 +282,43 @@ class GameUIController {
    * @param opr: 干员实例
    */
   private setDirection(opr: Operator): void {
+    const pickPos = realPosToAbsPos(this.map.tracker.pickPos as Vector2, true);
     const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
     atkLayer.hide();
-    const layer = document.querySelector('.select-overlay') as HTMLCanvasElement;
-    layer.width = this.frame.canvas.width;
-    layer.height = this.frame.canvas.height;
-
-    const ctx = layer.getContext('2d') as CanvasRenderingContext2D;
-
-    /* 叠加层定位 */
-    const pickPos = realPosToAbsPos(this.map.tracker.pickPos as Vector2, true); // 获取点击处的砖块抽象坐标
-    const height = (this.map.getBlock(pickPos) as BlockInfo).size.y; // 点击处砖块高度
-    const realPos = absPosToRealPos(pickPos.x + 0.5, pickPos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
-    const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
-    const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width; // 中心X坐标
-    const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height; // 中心Y坐标
-
     const aziAngle = this.frame.controls.getAzimuthalAngle(); // 镜头控制器的方位角 0.25-0.75在右侧 -0.25-0.25正面
-    const rad = layer.width * 0.1; // 方向选择区半径
     let newArea: Vector2[] = []; // 干员的新攻击范围
 
-    /** 绘制背景区域初始状态 */
-    const drawBackGround = (): void => {
-      ctx.clearRect(0, 0, layer.width, layer.height);
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-      ctx.fillRect(0, 0, layer.width, layer.height);
-
-      ctx.strokeStyle = 'white';
-      ctx.lineWidth = 10;
-      ctx.beginPath();
-      ctx.arc(centerX, centerY, rad, 0, 2 * Math.PI);
-      ctx.stroke();
-
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.fillStyle = 'blue';
-      ctx.fill();
-      ctx.globalCompositeOperation = 'source-over';
+    /** 窗口resize事件中重新计算叠加层定位 */
+    const recalculatePos = (): void => {
+      this.updateCenterPos(pickPos);
+      this.selectLayer.width = this.frame.canvas.width;
+      this.selectLayer.height = this.frame.canvas.height;
+      this.drawSelectLayer();
     };
 
     /** 动画渲染 */
     const drawSelector = (e: MouseEvent): void => {
       atkLayer.hide();
-      drawBackGround();
+      this.drawSelectLayer();
+
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - centerX / 2;
-      const distY = e.clientY - centerY / 2;
+      const distX = e.clientX - this.center.x / 2;
+      const distY = e.clientY - this.center.y / 2;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
+      const rad = this.selectLayer.width * 0.1; // 方向选择区半径
       if (dist < rad / 4) {
-        ctx.strokeStyle = 'white';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, rad / 2, 0, 2 * Math.PI);
-        ctx.stroke();
+        this.ctx.strokeStyle = 'white';
+        this.ctx.beginPath();
+        this.ctx.arc(this.center.x, this.center.y, rad / 2, 0, 2 * Math.PI);
+        this.ctx.stroke();
         atkLayer.hide();
       } else {
-        /* 绘制方向指示 */
+        /* 绘制方向指示器 */
         const theta = Math.atan2(distY, distX); // 与X方向夹角
-        ctx.strokeStyle = 'gold';
-        ctx.beginPath();
-        ctx.arc(centerX, centerY, rad + 20, theta - Math.PI / 4, theta + Math.PI / 4);
-        ctx.stroke();
+        this.ctx.strokeStyle = 'gold';
+        this.ctx.beginPath();
+        this.ctx.arc(this.center.x, this.center.y, rad + 20, theta - Math.PI / 4, theta + Math.PI / 4);
+        this.ctx.stroke();
 
         /* 判定镜头及光标方位，旋转模型及叠加层 */
         const tempAzi = aziAngle - 0.25 * Math.PI; // 重置方位角为四个象限
@@ -303,67 +371,39 @@ class GameUIController {
             newArea.push(new Vector2(area.y, -area.x));
           });
         }
-        GameMap.showArea(atkLayer, pickPos, newArea);
+        atkLayer.showArea(pickPos, newArea);
       }
       this.renderer.requestRender();
     };
 
-    /** 选择方向时的点击事件 */
-    const selectDirection = (e: MouseEvent): void => {
+    /* 关联选择方向时的点击事件（单次有效） */
+    this.selectLayer.addEventListener('click', (e) => {
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - centerX / 2;
-      const distY = e.clientY - centerY / 2;
+      const distX = e.clientX - this.center.x / 2;
+      const distY = e.clientY - this.center.y / 2;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
+      const rad = this.selectLayer.width * 0.1; // 方向选择区半径
+      const chosenCard = document.querySelector('#chosen') as HTMLElement;
+      chosenCard.removeAttribute('id'); // 恢复干员卡未选定状态
+
       if (dist > rad / 4) {
         opr.atkArea = newArea; // 更新攻击范围
         this.gameCtl.activeOperator.set(opr.name, opr); // 添加干员到游戏控制器
-      } else {
-        this.map.removeUnit(opr);
-      }
-      this.frame.removeEventListener(layer, 'mousemove', drawSelector);
-      this.frame.removeEventListener(layer, 'click', selectDirection);
+        chosenCard.style.display = 'none';
+      } else { this.map.removeUnit(opr); }
+
+      this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);
+      this.frame.removeEventListener(window, 'resize', recalculatePos);
       atkLayer.hide();
-      layer.style.display = 'none';
+      this.selectLayer.style.display = 'none';
       this.renderer.requestRender();
-    };
+    }, { once: true });
 
-    drawBackGround();
-    this.frame.addEventListener(layer, 'mousemove', drawSelector);
-    this.frame.addEventListener(layer, 'click', selectDirection);
-    layer.style.display = 'block';
+    recalculatePos();
+    this.frame.addEventListener(this.selectLayer, 'mousemove', drawSelector);
+    this.frame.addEventListener(window, 'resize', recalculatePos);
+    this.selectLayer.style.display = 'block';
   }
-
-  /** 移除光标叠加层元素中的子元素 */
-  private removeFromMouseOverlay(): void {
-    this.mouseLayer.style.left = '-1000px';
-    this.mouseLayer.style.top = '-1000px';
-    this.mouseLayer.childNodes.forEach((node) => { node.remove(); });
-  }
-
-  /** 追踪光标位置叠加层元素 */
-  private trackMouseOverlay(): void {
-    if (this.map.tracker.pointerPos !== null) {
-      const imgRect = (this.mouseLayer.children.item(0) as HTMLElement).getBoundingClientRect();
-      this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x - imgRect.width / 2}px`;
-      this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
-    }
-  }
-
-  /** 光标位置追踪回调 */
-  private trackMousePosition = (): void => {
-    const { pickPos } = this.map.tracker;
-    if (pickPos !== null) {
-      const absPos = realPosToAbsPos(pickPos, true);
-      const block = this.map.getBlock(absPos);
-      if (block !== null) {
-        this.gameCtl.activeOperator.forEach((opr) => {
-          if (absPos.equals(opr.position.floor())) {
-            console.log('选择干员', opr);
-          }
-        });
-      }
-    }
-  };
 }
 
 

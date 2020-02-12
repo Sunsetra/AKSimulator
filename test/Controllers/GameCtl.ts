@@ -137,7 +137,7 @@ class GameController {
   /**
    * 重置游戏：清空场上所有敌人并重置计数变量
    */
-  resetGame(): void {
+  reset(): void {
     this.activeOperator.forEach((opr) => {
       this.map.removeUnit(opr);
       this.activeOperator.clear();
