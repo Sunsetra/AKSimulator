@@ -93,6 +93,13 @@ export interface OperatorData extends UnitAbstractData {
   spRecoveryPerSec: number; // 每秒自回技力
   tauntLevel: number; // 嘲讽等级
   atkArea: [number, number][]; // 攻击范围
+  trackData: TrackData; // 追踪统计数据
+}
+
+
+/* 干员游戏数据追踪统计 */
+export interface TrackData {
+  withdrawCnt: number; // 撤退次数
 }
 
 

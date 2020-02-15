@@ -72,4 +72,4 @@ export enum GameStatus {
 
 
 export const BlockUnit = 10; // 砖块单位长度
-export const sizeAlpha = 0.9; // 干员单位尺寸系数
+export const sizeAlpha = 0.8; // 干员单位尺寸系数

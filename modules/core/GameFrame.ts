@@ -114,11 +114,12 @@ class GameFrame {
   /**
    * 向指定事件对象中添加事件监听器函数
    * 对于具名函数可以避免重复添加，对于匿名函数无法避免重复添加
-   * @param obj: 事件对象
-   * @param type: 事件种类
-   * @param handler: 事件监听器函数
+   * @param obj - 事件对象
+   * @param type - 事件种类
+   * @param handler - 事件监听器函数
+   * @param once - 单次触发事件
    */
-  addEventListener(obj: any, type: string, handler: (...args: any[]) => void): void {
+  addEventListener(obj: any, type: string, handler: (...args: any[]) => void, once = false): void {
     const target = this.listeners.get(obj);
     if (target === undefined) { // 首次为对象添加监听器函数
       const handlerObj = Object.defineProperty({}, type, {
@@ -137,7 +138,11 @@ class GameFrame {
         enumerable: true,
       });
     }
-    obj.addEventListener(type, handler);
+    if (once) {
+      obj.addEventListener(type, handler, { once: true });
+    } else {
+      obj.addEventListener(type, handler);
+    }
   }
 
   /**

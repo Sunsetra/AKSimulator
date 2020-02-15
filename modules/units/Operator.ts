@@ -7,7 +7,10 @@ import {
   Mesh,
   Vector2,
 } from '../../node_modules/three/build/three.module.js';
-import { OperatorData } from '../core/MapInfo.js';
+import {
+  OperatorData,
+  TrackData,
+} from '../core/MapInfo.js';
 import Unit from '../core/Unit.js';
 import { sizeAlpha } from '../others/constants.js';
 
@@ -20,7 +23,7 @@ class Operator extends Unit {
 
   readonly posType: string; // 干员可放置砖块类别，见BlockType常量
 
-  readonly cost: number; // 干员cost
+  cost: number; // 干员cost（随撤退次数改变）
 
   readonly block: number; // 阻挡数
 
@@ -32,6 +35,8 @@ class Operator extends Unit {
 
   atkArea: Vector2[]; // 攻击范围，可在选择干员朝向时设置
 
+  trackData: TrackData; // 追踪统计数据
+
   constructor(mesh: Mesh, data: OperatorData) {
     super(mesh, sizeAlpha, data);
 
@@ -42,6 +47,9 @@ class Operator extends Unit {
     this.respawnTime = data.respawnTime;
     this.spRecoveryPerSec = data.spRecoveryPerSec;
     this.tauntLevel = data.tauntLevel;
+    this.trackData = {
+      withdrawCnt: 0,
+    };
 
     /* 转译攻击范围为Vector2数组 */
     const atkArea: Vector2[] = [];

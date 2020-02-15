@@ -28,6 +28,7 @@
   </div>
 
   <div class="game-frame">
+    <!-- UI元素 -->
     <div class="ui-top">
       <div class="time-axis">
         <div id="axis"></div>
@@ -37,12 +38,24 @@
       </div>
     </div>
     <div class="ui-bottom">
-      <div id="operator-card"></div>
+      <div class="cost">
+        <span></span>
+        <div id="cost-bar">
+          <div id="cost-inner-bar"></div>
+        </div>
+      </div>
+      <div class="opr-limit"></div>
+      <div class="operator-card"></div>
     </div>
+    <img alt="撤离干员" class="ui-overlay" draggable="false" id="leave" src="res/img/misc/leave_icon.svg">
+
+    <!-- 主画布 -->
     <canvas>
       完蛋，浏览器不支持canvas元素呢！换最新的<a href="https://www.google.cn/intl/zh-CN/chrome/" target="_blank">Chrome</a>
       或者<a href="https://www.mozilla.org/zh-CN/firefox/new/" target="_blank">Firefox</a>试试呢？
     </canvas>
+
+    <!-- 叠加层元素 -->
     <div class="mouse-overlay"></div>
     <canvas class="select-overlay"></canvas>
   </div>

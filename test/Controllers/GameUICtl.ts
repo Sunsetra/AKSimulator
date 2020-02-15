@@ -59,7 +59,13 @@ class GameUIController {
 
   private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
 
-  private readonly ctx: CanvasRenderingContext2D; // 画布上下文对象
+  private readonly ctx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
+
+  private readonly costInnerBar: HTMLDivElement; // cost内部进度条
+
+  private readonly costTextNode: HTMLDivElement; // cost文字节点
+
+  private readonly oprLimitNode: HTMLDivElement; // 剩余单位数量节点
 
   private center: Vector2; // 干员位置中心坐标
 
@@ -73,9 +79,12 @@ class GameUIController {
     this.matData = data.materials;
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
-    this.oprCards = document.querySelector('#operator-card') as HTMLDivElement;
+    this.oprCards = document.querySelector('.operator-card') as HTMLDivElement;
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
+    this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
+    this.costInnerBar = document.querySelector('#cost-inner-bar') as HTMLDivElement;
+    this.oprLimitNode = document.querySelector('.opr-limit') as HTMLDivElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
     this.center = new Vector2(0, 0);
 
@@ -86,7 +95,7 @@ class GameUIController {
         const absPos = realPosToAbsPos(pickPos, true);
         const block = this.map.getBlock(absPos);
         if (block !== null) {
-          /* 检查是否选中干员 */
+          /* 遍历检查是否选中干员 */
           this.gameCtl.activeOperator.forEach((opr) => {
             if (absPos.equals(opr.position.floor())) {
               this.selectLayer.style.display = 'block';
@@ -97,19 +106,45 @@ class GameUIController {
               atkLayer.showArea(absPos, opr.atkArea);
               this.renderer.requestRender();
 
-              /** 检查点击位置，在范围外则隐藏叠加层 */
+              const rad = this.selectLayer.width * 0.1;
+              const delta = rad / Math.sqrt(2) / 2;
+              const leaveNode = document.querySelector('.ui-overlay#leave') as HTMLImageElement;
+              leaveNode.style.left = `${this.center.x / 2 - delta}px`;
+              leaveNode.style.top = `${this.center.y / 2 - delta}px`;
+              leaveNode.style.display = 'block';
+
+              /** 点击撤退按钮的回调 */
+              const withdrawCallback = (): void => {
+                this.map.removeUnit(opr);
+                const remain = this.gameCtl.removeOperator(opr.name);
+                this.oprLimitNode.textContent = remain.toString();
+
+                /* 撤退后更新cost */
+                this.cost = Math.floor(this.gameCtl.cost);
+                this.costTextNode.textContent = this.cost.toString(); // 仅作显示意义
+                const oprNode = document.querySelector(`#${opr.name}`) as HTMLDivElement;
+                oprNode.children[0].textContent = opr.cost.toString();
+                oprNode.dataset.cost = opr.cost.toString();
+                this.hideSelectLayer();
+                this.showOprCard(opr.name);
+                if (this.cost < Number(opr.cost)) { this.disableOprCard(opr.name); }
+                // eslint-disable-next-line @typescript-eslint/no-use-before-define
+                this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
+              };
+
+              /** 点击画布的回调，在范围外则隐藏叠加层 */
               const checkClickPos = (e: MouseEvent): void => {
                 const distX = e.clientX - this.center.x / 2;
                 const distY = e.clientY - this.center.y / 2;
                 const dist = Math.sqrt(distX ** 2 + distY ** 2);
-                const rad = this.selectLayer.width * 0.1; // 方向选择区半径
+
                 if (dist > rad / 2) {
-                  atkLayer.hide();
-                  this.selectLayer.style.display = 'none';
+                  this.frame.removeEventListener(leaveNode, 'click', withdrawCallback);
                   this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
-                  this.renderer.requestRender();
+                  this.hideSelectLayer();
                 }
               };
+              this.frame.addEventListener(leaveNode, 'click', withdrawCallback, true);
               this.frame.addEventListener(this.selectLayer, 'click', checkClickPos);
             }
           });
@@ -121,10 +156,20 @@ class GameUIController {
   /** 重置游戏UI */
   reset(): void {
     this.cost = Math.floor(this.gameCtl.cost);
-    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
-      card.style.display = 'block';
+    this.costInnerBar.style.width = '';
+    this.oprLimitNode.textContent = this.gameCtl.ctlData.oprLimit.toString();
+    this.costTextNode.textContent = this.cost.toString();
+
+    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+      const originCost = this.unitData.operator[child.id].cost;
+      child.dataset.cost = originCost.toString();
+      child.children[0].textContent = originCost.toString();
+      this.showOprCard();
+      /* 检查所有干员卡的可用性 */
+      if (this.cost >= originCost) {
+        this.enableOprCard(child);
+      } else { this.disableOprCard(child); }
     });
-    this.disableOprCard();
   }
 
   /**
@@ -132,8 +177,10 @@ class GameUIController {
    * @param cost - 游戏当前的Cost值
    */
   updateCost(cost: number): void {
-    if (Math.floor(cost) !== this.cost) {
+    this.costInnerBar.style.width = `${(cost - Math.floor(cost)) * 100}%`;
+    if (Math.floor(cost) !== this.cost) { // 仅在cost发生变化时执行
       this.cost = Math.floor(cost);
+      this.costTextNode.textContent = this.cost.toString();
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
         if (cost >= Number(child.dataset.cost)) {
           this.enableOprCard(child);
@@ -149,8 +196,9 @@ class GameUIController {
   addOprCard(oprList: string[]): void {
     this.oprCards.childNodes.forEach((node) => { node.remove(); });
     oprList.forEach((opr) => {
-      /* 收集干员信息 */
+      /* 收集干员信息并创建实例 */
       const oprData = this.unitData.operator[opr];
+      const unit = this.gameCtl.createOperator(opr, oprData);
       const cardData: CardData = {
         icon: this.matData.icons.operator[opr],
         prof: this.matData.icons.prof[oprData.prof.toLowerCase()],
@@ -167,9 +215,9 @@ class GameUIController {
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
       oprNode.setAttribute('class', 'opr-card');
+      oprNode.setAttribute('id', opr);
       oprNode.dataset.class = cardData.prof;
       oprNode.dataset.cost = cardData.cost;
-      oprNode.dataset.name = opr;
       oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];
       oprNode.style.background = `
         url("${cardData.prof}") no-repeat top left/25%,
@@ -193,8 +241,8 @@ class GameUIController {
       const mouseupHandler = (reset = true): void => {
         /* eslint-disable @typescript-eslint/no-use-before-define */
         if (reset) {
-          const chosenCard = document.querySelector('#chosen');
-          if (chosenCard !== null) { chosenCard.removeAttribute('id'); } // 当干员卡还存在（未放置）时恢复未选定状态
+          const chosenCard = document.querySelector('.chosen');
+          if (chosenCard !== null) { chosenCard.classList.remove('chosen'); } // 当干员卡还存在（未放置）时恢复未选定状态
         }
         this.map.hideOverlay();
         this.mouseLayer.style.left = '-1000px';
@@ -222,22 +270,19 @@ class GameUIController {
         if (this.map.tracker.pickPos !== null) { // 拖放位置不在地图上
           const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
           if (placeLayer.has(pos)) { // 拖放位置不在父区域中
-            const unit = this.gameCtl.createOperator(opr, oprData);
-            if (unit !== null) { // 防止重复创建干员
-              mouseupHandler(false); // 不重置干员头像的选择状态
-              this.map.addUnit(pos.x, pos.y, unit); // 仅当创建成功时添加至地图
-              this.setDirection(unit);
-              return;
-            }
+            mouseupHandler(false); // 不重置干员头像的选择状态
+            this.map.addUnit(pos.x, pos.y, unit); // 添加至地图
+            this.setDirection(unit);
+            return;
           }
         }
         mouseupHandler();
       };
 
       /* 绑定干员头像上的按下事件 */
-      oprNode.addEventListener('mousedown', () => {
+      this.frame.addEventListener(oprNode, 'mousedown', () => {
         /* 显示UI */
-        oprNode.setAttribute('id', 'chosen'); // 按下时进入选定状态
+        oprNode.classList.add('chosen'); // 按下时进入选定状态
         placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
         this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏移动光标时显示的区域
@@ -252,16 +297,15 @@ class GameUIController {
 
           /* 绑定画布上的光标移动及抬起事件 */
           this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-          this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
+          this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler, true);
         } else {
-          this.frame.canvas.addEventListener('mouseup', () => { mouseupHandler(); }, { once: true });
+          this.frame.addEventListener(this.frame.canvas, 'mouseup', () => { mouseupHandler(); }, true);
         }
       });
 
       /* 绑定干员头像上的释放事件 */
-      oprNode.addEventListener('mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
+      this.frame.addEventListener(oprNode, 'mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
     });
-    this.disableOprCard(); // 初始状态禁用所有干员卡
   }
 
   /**
@@ -277,7 +321,16 @@ class GameUIController {
     this.center.set(centerX, centerY);
   }
 
-  /** 绘制背景区域 */
+  /** 隐藏选择叠加层 */
+  private hideSelectLayer(): void {
+    this.map.hideOverlay();
+    this.selectLayer.style.display = 'none';
+    const overlayUI = document.querySelectorAll('.ui-overlay') as NodeListOf<HTMLElement>;
+    overlayUI.forEach((child) => { child.style.display = 'none'; });
+    this.renderer.requestRender();
+  }
+
+  /** 绘制选择叠加层 */
   private drawSelectLayer(): void {
     this.ctx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
@@ -313,17 +366,54 @@ class GameUIController {
 
   /**
    * 禁用指定干员卡，当省略参数时禁用所有卡
-   * @param card - 要禁用的干员卡
+   * @param card - 要禁用的干员卡元素或干员名称
    */
-  private disableOprCard(card?: HTMLElement): void {
+  private disableOprCard(card?: HTMLElement | string): void {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
         child.style.filter = 'brightness(50%)';
         child.dataset.status = 'disable';
       });
+    } else if (typeof card === 'string') {
+      const oprNode = document.querySelector(`#${card}`) as HTMLDivElement;
+      if (oprNode !== null) {
+        oprNode.style.filter = 'brightness(50%)';
+        oprNode.dataset.status = 'disable';
+      }
     } else {
       card.style.filter = 'brightness(50%)';
       card.dataset.status = 'disable';
+    }
+  }
+
+  /**
+   * 从干员卡列表中移除指定卡
+   * @param card - 要移除的干员卡
+   */
+  private hideOprCard(card: HTMLElement): void {
+    if (this.oprCards.children.length === 1) {
+      card.style.visibility = 'hidden'; // 最后一卡设为不可见以保持父元素高度
+    } else {
+      card.style.display = 'none';
+    }
+  }
+
+  /**
+   * 显示指定的干员卡
+   * @param oprName - 要显示的干员名称，缺省时显示所有干员卡
+   */
+  private showOprCard(oprName?: string): void {
+    if (oprName === undefined) {
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
+        card.style.visibility = '';
+        card.style.display = 'block';
+      });
+    } else {
+      const oprNode = document.querySelector(`#${oprName}`) as HTMLDivElement;
+      if (oprNode !== null) {
+        oprNode.style.visibility = '';
+        oprNode.style.display = 'block';
+      }
     }
   }
 
@@ -337,6 +427,11 @@ class GameUIController {
     atkLayer.hide();
     const aziAngle = this.frame.controls.getAzimuthalAngle(); // 镜头控制器的方位角 0.25-0.75在右侧 -0.25-0.25正面
     let newArea: Vector2[] = []; // 干员的新攻击范围
+    /* 转译攻击范围为Vector2数组 */
+    const originArea: Vector2[] = [];
+    this.unitData.operator[opr.name].atkArea.forEach((tuple) => {
+      originArea.push(new Vector2(tuple[0], tuple[1]));
+    });
 
     /** 窗口resize事件中重新计算叠加层定位 */
     const recalculatePos = (): void => {
@@ -392,14 +487,14 @@ class GameUIController {
           || (cosAzi && cosTheta && narrowBool)) {
           /* 正面向右 */
           opr.mesh.rotation.y = 0;
-          newArea = opr.atkArea;
+          newArea = originArea;
         } else if ((andAzi && sinTheta)
           || (sinAzi && tanTheta && narrowBool)
           || (tanAzi && cosTheta && narrowBool)
           || (cosAzi && andTheta)) {
           /* 正面向下 */
           opr.mesh.rotation.y = -0.5 * Math.PI;
-          opr.atkArea.forEach((area) => {
+          originArea.forEach((area) => {
             newArea.push(new Vector2(-area.y, area.x));
           });
         } else if ((andAzi && tanTheta)
@@ -408,7 +503,7 @@ class GameUIController {
           || (cosAzi && sinTheta)) {
           /* 正面向左 */
           opr.mesh.rotation.y = Math.PI;
-          opr.atkArea.forEach((area) => {
+          originArea.forEach((area) => {
             newArea.push(new Vector2(-area.x, -area.y));
           });
         } else if ((andAzi && cosTheta)
@@ -417,7 +512,7 @@ class GameUIController {
           || (cosAzi && tanTheta)) {
           /* 正面向上 */
           opr.mesh.rotation.y = 0.5 * Math.PI;
-          opr.atkArea.forEach((area) => {
+          originArea.forEach((area) => {
             newArea.push(new Vector2(area.y, -area.x));
           });
         }
@@ -427,28 +522,30 @@ class GameUIController {
     };
 
     /* 关联选择方向时的点击事件（单次有效） */
-    this.selectLayer.addEventListener('click', (e) => {
+    this.frame.addEventListener(this.selectLayer, 'click', (e) => {
       /* 判定光标位置是在中心还是在外部 */
       const distX = e.clientX - this.center.x / 2;
       const distY = e.clientY - this.center.y / 2;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
       const rad = this.selectLayer.width * 0.1; // 方向选择区半径
-      const chosenCard = document.querySelector('#chosen') as HTMLDivElement;
+      const chosenCard = document.querySelector('.chosen') as HTMLDivElement;
       if (chosenCard !== null) {
-        chosenCard.removeAttribute('id'); // 恢复干员卡未选定状态
+        chosenCard.classList.remove('chosen'); // 恢复干员卡未选定状态
         if (dist > rad / 4) {
+          /* 放置时更新cost */
           opr.atkArea = newArea; // 更新攻击范围
-          chosenCard.style.display = 'none';
-          if (this.gameCtl.addOperator(opr)) { this.disableOprCard(); } // 到达干员上限，禁用所有干员卡
+          this.hideOprCard(chosenCard); // 隐藏当前干员卡
+          const remain = this.gameCtl.addOperator(opr);
+          this.oprLimitNode.textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
+          this.cost = Math.floor(this.gameCtl.cost); // 更新本类中的cost
+          this.costTextNode.textContent = this.cost.toString(); // 仅作cost显示意义
+          if (remain === 0) { this.disableOprCard(); } // 到达干员上限，禁用所有干员卡
         } else { this.map.removeUnit(opr); }
       }
-
       this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);
       this.frame.removeEventListener(window, 'resize', recalculatePos);
-      atkLayer.hide();
-      this.selectLayer.style.display = 'none';
-      this.renderer.requestRender();
-    }, { once: true });
+      this.hideSelectLayer();
+    }, true);
 
     recalculatePos();
     this.frame.addEventListener(this.selectLayer, 'mousemove', drawSelector);

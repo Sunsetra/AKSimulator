@@ -14,7 +14,7 @@ import {
   ResourceData,
   UnitData,
   WaveInfo,
-} from '../../modules/core/MapInfo';
+} from '../../modules/core/MapInfo.js';
 import { GameStatus } from '../../modules/others/constants.js';
 import {
   DataError,
@@ -31,11 +31,17 @@ import TimeAxisUICtl from './TimeAxisUICtl.js';
  * 游戏控制类，用于管理游戏进行中敌人/干员单位的状态、位置等信息。
  */
 class GameController {
-  waves: WaveInfo[]; // 波次信息
-
   activeEnemy: Set<EnemyWrapper>; // 在场存活敌人集合
 
-  activeOperator: Map<string, Operator>; // 在场上的干员映射
+  activeOperator: Map<string, Operator>; // 在场的干员映射
+
+  allOperator: Map<string, Operator>; // 未上场的干员映射
+
+  cost: number; // 当前游戏cost
+
+  readonly ctlData: ControlData; // 游戏控制源数据
+
+  private waves: WaveInfo[]; // 波次信息
 
   private enemyCount: number; // 剩余敌人计数
 
@@ -45,15 +51,11 @@ class GameController {
 
   private stat: GameStatus.Standby | GameStatus.Running; // 游戏运行状态存储
 
-  private gameCost: number; // 当前游戏cost
-
   private readonly map: GameMap;
 
   private readonly unitData: UnitData; // 单位名对应的单位数据
 
   private readonly matData: ResourceData; // 资源数据
-
-  private readonly ctlData: ControlData; // 游戏控制数据
 
   constructor(map: GameMap, data: Data) {
     this.map = map;
@@ -64,21 +66,17 @@ class GameController {
 
     this.lifePoint = this.ctlData.maxLP;
     this.enemyCount = this.ctlData.enemyNum;
-    this.gameCost = this.ctlData.initCost;
+    this.cost = this.ctlData.initCost;
     this.activeEnemy = new Set();
     this.activeOperator = new Map<string, Operator>();
+    this.allOperator = new Map<string, Operator>();
     this.enemyId = 0;
     this.stat = GameStatus.Standby;
   }
 
-  /** 返回当前cost值，保证cost只读 */
-  get cost(): number {
-    return this.gameCost;
-  }
-
   /**
    * 设置游戏状态
-   * @param newStatus: 新状态只能是待机或运行中
+   * @param newStatus - 新状态只能是待机或运行中
    */
   setStatus(newStatus: GameStatus.Standby | GameStatus.Running): void {
     this.stat = newStatus;
@@ -101,15 +99,15 @@ class GameController {
    */
   updateCost(interval: number): number {
     if (this.cost <= this.ctlData.maxCost) {
-      this.gameCost += this.ctlData.costInc * interval;
+      this.cost += this.ctlData.costInc * interval;
     }
     return this.cost;
   }
 
   /**
    * 管理及更新敌人状态，包括创建敌人实例/时间轴节点/管理波次数据
-   * @param timeAxisUI: 时间轴控制器
-   * @param axisTime: 时间轴当前时间元组
+   * @param timeAxisUI - 时间轴控制器
+   * @param axisTime - 时间轴当前时间元组
    */
   updateEnemyStatus(timeAxisUI: TimeAxisUICtl, axisTime: [string, number]): void {
     if (this.waves.length) {
@@ -136,9 +134,9 @@ class GameController {
 
   /**
    * 更新维护所有在场敌人的位置变化
-   * @param timeAxisUI: 时间轴控制器
-   * @param interval: 本帧与前帧的时间间隔
-   * @param currentTime: 时间轴当前时间元组
+   * @param timeAxisUI - 时间轴控制器
+   * @param interval - 本帧与前帧的时间间隔
+   * @param currentTime - 时间轴当前时间元组
    */
   updateEnemyPosition(timeAxisUI: TimeAxisUICtl, interval: number, currentTime: [string, number]): void {
     this.activeEnemy.forEach((frag) => {
@@ -194,12 +192,20 @@ class GameController {
   }
 
   /**
-   * 重置游戏：清空场上所有敌人并重置计数变量
+   * 重置游戏
+   * 1. 清空场上所有敌人并重置计数变量
+   * 2. 重置干员实例变量，从活跃干员转移至全干员映射
    */
   reset(): void {
     this.activeOperator.forEach((opr) => {
       this.map.removeUnit(opr); // 释放掉干员实体
-      this.activeOperator.clear();
+      this.allOperator.set(opr.name, opr);
+    });
+    this.activeOperator.clear();
+
+    this.allOperator.forEach((opr) => {
+      opr.cost = this.unitData.operator[opr.name].cost;
+      opr.trackData.withdrawCnt = 0;
     });
     this.activeEnemy.forEach((enemy) => {
       this.map.removeUnit(enemy.inst); // 释放掉敌人实体
@@ -207,16 +213,16 @@ class GameController {
     });
     this.enemyCount = this.ctlData.enemyNum;
     this.lifePoint = this.ctlData.maxLP;
-    this.gameCost = this.ctlData.initCost;
+    this.cost = this.ctlData.initCost;
     this.waves = JSON.parse(JSON.stringify(this.map.data.waves));
   }
 
 
   /**
    * 创建敌人实例，并返回创建的实例
-   * @param name: 敌方单位名称
-   * @param frag: 敌方单位行动片段信息
-   * @param data: 创建实例时所需的数据类
+   * @param name - 敌方单位名称
+   * @param frag - 敌方单位行动片段信息
+   * @param data - 创建实例时所需的数据类
    */
   createEnemy(name: string, frag: Fragment, data: EnemyData): Enemy {
     const { entity } = this.matData.resources.enemy[name]; // 读取敌人实体
@@ -236,31 +242,59 @@ class GameController {
   }
 
   /**
-   * 创建干员实例，若成功返回创建的实例，若失败返回null
-   * @param name: 干员名称
-   * @param data: 创建实例时所需的单位源数据OperatorData
+   * 创建干员实例并添加至总干员映射，返回创建的实例
+   * @param name - 干员名称
+   * @param data - 创建实例时所需的单位源数据OperatorData
    */
-  createOperator(name: string, data: OperatorData): Operator | null {
+  createOperator(name: string, data: OperatorData): Operator {
     const { entity } = this.matData.resources.operator[name]; // 读取敌人实体
     if (entity === undefined) {
       throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.matData.resources.operator[name]);
     }
 
-    if (this.activeOperator.get(name) === undefined) {
-      return new Operator(entity.clone(), data); // 克隆实体，以兼容后续添加召唤物等
-    }
-    return null;
+    const opr = new Operator(entity.clone(), data); // 克隆实体，以兼容后续添加召唤物等
+    this.allOperator.set(name, opr);
+    return opr;
   }
 
   /**
    * 向控制器中添加活跃干员实例
    * @param opr - 要添加的干员实例
-   * @return - 若添加后干员已达上限返回true, 否则返回false
+   * @return - 返回剩余可添加的干员数
    */
-  addOperator(opr: Operator): boolean {
-    this.gameCost -= opr.cost;
-    this.activeOperator.set(opr.name, opr); // 添加干员到游戏控制器
-    return this.activeOperator.size === this.ctlData.oprLimit;
+  addOperator(opr: Operator): number {
+    this.cost -= opr.cost;
+    const inst = this.allOperator.get(opr.name);
+    if (inst !== undefined) {
+      this.activeOperator.set(inst.name, inst); // 添加干员到活跃干员组
+      this.allOperator.delete(opr.name);
+    }
+    return this.ctlData.oprLimit - this.activeOperator.size;
+  }
+
+  /**
+   * 移除指定的干员实例
+   * 部署费用变化：首次移除为原费用的1.5倍，第二次及以上为2倍
+   * 返还费用变化：每次均为本次部署费用/2
+   * 计算后均向下取整
+   * @param opr - 要移除的干员名称
+   * @return - 返回剩余可添加的干员数
+   */
+  removeOperator(opr: string): number {
+    const oprInst = this.activeOperator.get(opr);
+    if (oprInst !== undefined) {
+      const { cost } = this.unitData.operator[opr]; // 原始cost
+      this.cost += Math.floor(oprInst.cost / 2);
+      if (oprInst.trackData.withdrawCnt === 0) { // 首次撤退
+        oprInst.cost = Math.floor(cost * 1.5); // 新费用为原费用的1.5倍
+      } else if (oprInst.trackData.withdrawCnt === 1) { // 第二次撤退
+        oprInst.cost = cost * 2; // 新费用为原费用的2倍
+      }
+      oprInst.trackData.withdrawCnt += 1;
+      this.activeOperator.delete(opr);
+      this.allOperator.set(opr, oprInst);
+    }
+    return this.ctlData.oprLimit - this.activeOperator.size;
   }
 
   // /** TODO: 单位自动寻路
