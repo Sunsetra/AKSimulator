@@ -28,15 +28,6 @@ import {
 import GameController from './GameCtl.js';
 
 
-/* 定义角色卡所需的资源数据接口，值均为地址字符串 */
-interface CardData {
-  icon: string;
-  prof: string;
-  cost: string;
-  rarity: string;
-}
-
-
 /**
  * UI控制类，用于构建游戏窗口中的UI，以及获取用户交互信息并传递给游戏控制类。
  */
@@ -123,11 +114,14 @@ class GameUIController {
                 this.cost = Math.floor(this.gameCtl.cost);
                 this.costTextNode.textContent = this.cost.toString(); // 仅作显示意义
                 const oprNode = document.querySelector(`#${opr.name}`) as HTMLDivElement;
-                oprNode.children[0].textContent = opr.cost.toString();
-                oprNode.dataset.cost = opr.cost.toString();
+                const cdNode = oprNode.children[1] as HTMLDivElement;
+                cdNode.style.display = 'inline-block';
+                cdNode.textContent = opr.rspTime.toFixed(1);
+                oprNode.children[2].textContent = opr.cost.toString();
                 this.hideSelectLayer();
                 this.showOprCard(opr.name);
-                if (this.cost < Number(opr.cost)) { this.disableOprCard(opr.name); }
+                this.disableOprCard(opr.name); // 撤离后的卡片一定是不可用状态
+                oprNode.dataset.status = 'cd'; // 后设置cd状态以便隐藏计时时进行状态检查
                 // eslint-disable-next-line @typescript-eslint/no-use-before-define
                 this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
               };
@@ -161,9 +155,11 @@ class GameUIController {
     this.costTextNode.textContent = this.cost.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+      const cdNode = child.children[1] as HTMLDivElement;
+      cdNode.textContent = '';
+      cdNode.style.display = '';
       const originCost = this.unitData.operator[child.id].cost;
-      child.dataset.cost = originCost.toString();
-      child.children[0].textContent = originCost.toString();
+      child.children[2].textContent = originCost.toString();
       this.showOprCard();
       /* 检查所有干员卡的可用性 */
       if (this.cost >= originCost) {
@@ -176,17 +172,45 @@ class GameUIController {
    * 按cost更新UI状态
    * @param cost - 游戏当前的Cost值
    */
-  updateCost(cost: number): void {
+  updateUIStatus(cost: number): void {
     this.costInnerBar.style.width = `${(cost - Math.floor(cost)) * 100}%`;
+    /* 更新cost */
     if (Math.floor(cost) !== this.cost) { // 仅在cost发生变化时执行
       this.cost = Math.floor(cost);
       this.costTextNode.textContent = this.cost.toString();
+
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        if (cost >= Number(child.dataset.cost)) {
-          this.enableOprCard(child);
-        } else { this.disableOprCard(child); }
+        if (child.dataset.status !== 'cd') {
+          const opr = this.gameCtl.allOperator.get(child.id);
+          if (opr !== undefined && this.cost >= opr.cost) {
+            this.enableOprCard(child);
+          } else {
+            this.disableOprCard(child);
+          }
+        }
       });
     }
+
+    /* 检查冷却计时 */
+    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+      if (child.dataset.status === 'cd') {
+        const opr = this.gameCtl.allOperator.get(child.id);
+        if (opr !== undefined) {
+          const cdNode = child.children[1] as HTMLDivElement;
+          if (opr.rspTime > 0) {
+            cdNode.textContent = opr.rspTime.toFixed(1);
+          } else {
+            /* 冷却结束时隐藏计时并检查可用性 */
+            cdNode.style.display = '';
+            if (this.cost >= opr.cost) {
+              this.enableOprCard(child);
+            } else {
+              this.disableOprCard(child);
+            }
+          }
+        }
+      }
+    });
   }
 
   /**
@@ -199,12 +223,6 @@ class GameUIController {
       /* 收集干员信息并创建实例 */
       const oprData = this.unitData.operator[opr];
       const unit = this.gameCtl.createOperator(opr, oprData);
-      const cardData: CardData = {
-        icon: this.matData.icons.operator[opr],
-        prof: this.matData.icons.prof[oprData.prof.toLowerCase()],
-        cost: oprData.cost.toString(),
-        rarity: this.matData.icons.rarity[oprData.rarity],
-      };
 
       /* 转译攻击范围为Vector2数组 */
       const atkArea: Vector2[] = [];
@@ -216,18 +234,21 @@ class GameUIController {
       const oprNode = document.createElement('div');
       oprNode.setAttribute('class', 'opr-card');
       oprNode.setAttribute('id', opr);
-      oprNode.dataset.class = cardData.prof;
-      oprNode.dataset.cost = cardData.cost;
+      oprNode.dataset.class = oprData.prof;
       oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];
-      oprNode.style.background = `
-        url("${cardData.prof}") no-repeat top left/25%,
-        url("${cardData.rarity}") no-repeat bottom right/45%,
-        url("${cardData.icon}") no-repeat top left/cover`;
 
+      const oprIconNode = document.createElement('div');
+      oprIconNode.style.background = `
+        url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left/25%,
+        url("${this.matData.icons.rarity[oprData.rarity]}") no-repeat bottom right/45%,
+        url("${this.matData.icons.operator[opr]}") no-repeat top left/cover`;
+      const cdNode = document.createElement('div');
       const costNode = document.createElement('div');
-      const costText = document.createTextNode(cardData.cost);
-      costNode.setAttribute('class', 'opr-cost');
+      const costText = document.createTextNode(oprData.cost.toString());
       costNode.appendChild(costText);
+
+      oprNode.appendChild(oprIconNode);
+      oprNode.appendChild(cdNode);
       oprNode.appendChild(costNode);
       this.oprCards.appendChild(oprNode);
 
@@ -355,11 +376,11 @@ class GameUIController {
   private enableOprCard(card?: HTMLElement): void {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        child.style.filter = '';
+        (child.children[0] as HTMLDivElement).style.filter = '';
         child.dataset.status = 'enable';
       });
     } else {
-      card.style.filter = '';
+      (card.children[0] as HTMLDivElement).style.filter = '';
       card.dataset.status = 'enable';
     }
   }
@@ -371,17 +392,17 @@ class GameUIController {
   private disableOprCard(card?: HTMLElement | string): void {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        child.style.filter = 'brightness(50%)';
+        (child.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
         child.dataset.status = 'disable';
       });
     } else if (typeof card === 'string') {
       const oprNode = document.querySelector(`#${card}`) as HTMLDivElement;
       if (oprNode !== null) {
-        oprNode.style.filter = 'brightness(50%)';
+        (oprNode.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
         oprNode.dataset.status = 'disable';
       }
     } else {
-      card.style.filter = 'brightness(50%)';
+      (card.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
       card.dataset.status = 'disable';
     }
   }

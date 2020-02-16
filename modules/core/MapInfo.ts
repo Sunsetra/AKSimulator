@@ -89,7 +89,7 @@ export interface OperatorData extends UnitAbstractData {
   rarity: number; // 干员稀有度
   cost: number; // 干员cost
   block: number; // 阻挡数
-  respawnTime: number; // 再部署时间
+  rspTime: number; // 再部署时间
   spRecoveryPerSec: number; // 每秒自回技力
   tauntLevel: number; // 嘲讽等级
   atkArea: [number, number][]; // 攻击范围

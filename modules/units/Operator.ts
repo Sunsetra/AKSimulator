@@ -23,15 +23,15 @@ class Operator extends Unit {
 
   readonly posType: string; // 干员可放置砖块类别，见BlockType常量
 
-  cost: number; // 干员cost（随撤退次数改变）
-
   readonly block: number; // 阻挡数
-
-  readonly respawnTime: number; // 再部署时间
 
   readonly spRecoveryPerSec: number; // 每秒自回技力
 
   readonly tauntLevel: number; // 嘲讽等级
+
+  cost: number; // 干员cost（随撤退次数改变）
+
+  rspTime: number; // 再部署冷却时间
 
   atkArea: Vector2[]; // 攻击范围，可在选择干员朝向时设置
 
@@ -44,7 +44,7 @@ class Operator extends Unit {
     this.posType = data.posType;
     this.cost = data.cost;
     this.block = data.block;
-    this.respawnTime = data.respawnTime;
+    this.rspTime = 0;
     this.spRecoveryPerSec = data.spRecoveryPerSec;
     this.tauntLevel = data.tauntLevel;
     this.trackData = {

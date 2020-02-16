@@ -94,13 +94,18 @@ class GameController {
   }
 
   /**
-   * 更新并返回当前cost
-   * @param interval - 帧时间间隔
+   * 更新所有具有计时属性的属性值
+   * @param interval - 帧时间间隔（秒）
    */
-  updateCost(interval: number): number {
+  updateProperty(interval: number): number {
+    /* 更新Cost */
     if (this.cost <= this.ctlData.maxCost) {
       this.cost += this.ctlData.costInc * interval;
     }
+    /* 更新冷却时间 */
+    this.allOperator.forEach((opr) => {
+      if (opr.rspTime > 0) { opr.rspTime -= interval; }
+    });
     return this.cost;
   }
 
@@ -205,6 +210,7 @@ class GameController {
 
     this.allOperator.forEach((opr) => {
       opr.cost = this.unitData.operator[opr.name].cost;
+      opr.rspTime = 0;
       opr.trackData.withdrawCnt = 0;
     });
     this.activeEnemy.forEach((enemy) => {
@@ -283,6 +289,8 @@ class GameController {
   removeOperator(opr: string): number {
     const oprInst = this.activeOperator.get(opr);
     if (oprInst !== undefined) {
+      oprInst.rspTime = this.unitData.operator[opr].rspTime; // 设置部署冷却时间
+
       const { cost } = this.unitData.operator[opr]; // 原始cost
       this.cost += Math.floor(oprInst.cost / 2);
       if (oprInst.trackData.withdrawCnt === 0) { // 首次撤退
