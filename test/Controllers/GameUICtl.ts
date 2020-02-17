@@ -56,7 +56,7 @@ class GameUIController {
 
   private readonly costTextNode: HTMLDivElement; // cost文字节点
 
-  private readonly oprLimitNode: HTMLDivElement; // 剩余单位数量节点
+  private readonly bottomUI: HTMLDivElement; // 底部UI节点
 
   private center: Vector2; // 干员位置中心坐标
 
@@ -73,9 +73,9 @@ class GameUIController {
     this.oprCards = document.querySelector('.operator-card') as HTMLDivElement;
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
+    this.bottomUI = document.querySelector('.ui-bottom') as HTMLDivElement;
     this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
-    this.costInnerBar = document.querySelector('#cost-inner-bar') as HTMLDivElement;
-    this.oprLimitNode = document.querySelector('.opr-limit') as HTMLDivElement;
+    this.costInnerBar = document.querySelector('.cost-bar div') as HTMLDivElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
     this.center = new Vector2(0, 0);
 
@@ -108,7 +108,7 @@ class GameUIController {
               const withdrawCallback = (): void => {
                 this.map.removeUnit(opr);
                 const remain = this.gameCtl.removeOperator(opr.name);
-                this.oprLimitNode.textContent = remain.toString();
+                this.bottomUI.children[1].textContent = remain.toString();
 
                 /* 撤退后更新cost */
                 this.cost = Math.floor(this.gameCtl.cost);
@@ -151,7 +151,7 @@ class GameUIController {
   reset(): void {
     this.cost = Math.floor(this.gameCtl.cost);
     this.costInnerBar.style.width = '';
-    this.oprLimitNode.textContent = this.gameCtl.ctlData.oprLimit.toString();
+    this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
     this.costTextNode.textContent = this.cost.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
@@ -218,6 +218,32 @@ class GameUIController {
    * @param oprList: 干员名称列表
    */
   addOprCard(oprList: string[]): void {
+    /**
+     * 根据干员星级生成svg
+     * @param n: 干员星级
+     */
+    const drawStars = (n: number): string => {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', `${-150 * (n - 1)} 0 ${270 + (n - 1) * 146} 256`);
+
+      const stl = document.createElement('style');
+      stl.textContent = '.st0{fill:#F7DF42;stroke:#787878;stroke-width:2;stroke-linejoin:round;stroke-miterlimit:10;}';
+      svg.appendChild(stl);
+
+      for (let i = 0; i < n; i += 1) {
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('class', 'st0');
+        polygon.setAttribute('points',
+          `${156 - (n - 1) * 1.6 - 150 * i},39.3 ${156 - (n - 1) * 1.6 - 150 * i},107.5 
+                  ${220.8 - (n - 1) * 1.6 - 150 * i},128.5 ${156 - (n - 1) * 1.6 - 150 * i},149.5 
+                  ${156 - (n - 1) * 1.6 - 150 * i},217.7 ${116 - (n - 1) * 1.6 - 150 * i},162.6 
+                  ${51.2 - (n - 1) * 1.6 - 150 * i},183.6 ${91.2 - (n - 1) * 1.6 - 150 * i},128.5 
+                  ${51.2 - (n - 1) * 1.6 - 150 * i},73.4 ${116 - (n - 1) * 1.6 - 150 * i},94.4`);
+        svg.appendChild(polygon);
+      }
+      return `url(data:image/svg+xml;base64,${btoa(new XMLSerializer().serializeToString(svg))})`;
+    };
+
     this.oprCards.childNodes.forEach((node) => { node.remove(); });
     oprList.forEach((opr) => {
       /* 收集干员信息并创建实例 */
@@ -232,15 +258,15 @@ class GameUIController {
 
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
-      oprNode.setAttribute('class', 'opr-card');
+      oprNode.setAttribute('class', 'card');
       oprNode.setAttribute('id', opr);
       oprNode.dataset.class = oprData.prof;
       oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];
 
       const oprIconNode = document.createElement('div');
       oprIconNode.style.background = `
-        url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left/25%,
-        url("${this.matData.icons.rarity[oprData.rarity]}") no-repeat bottom right/45%,
+        url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left 35%/21%,
+        ${drawStars(oprData.rarity)} no-repeat bottom right/45%,
         url("${this.matData.icons.operator[opr]}") no-repeat top left/cover`;
       const cdNode = document.createElement('div');
       const costNode = document.createElement('div');
@@ -377,10 +403,12 @@ class GameUIController {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
         (child.children[0] as HTMLDivElement).style.filter = '';
+        (child.children[2] as HTMLDivElement).style.filter = '';
         child.dataset.status = 'enable';
       });
     } else {
       (card.children[0] as HTMLDivElement).style.filter = '';
+      (card.children[2] as HTMLDivElement).style.filter = '';
       card.dataset.status = 'enable';
     }
   }
@@ -393,16 +421,19 @@ class GameUIController {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
         (child.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
+        (child.children[2] as HTMLDivElement).style.filter = 'brightness(50%)';
         child.dataset.status = 'disable';
       });
     } else if (typeof card === 'string') {
       const oprNode = document.querySelector(`#${card}`) as HTMLDivElement;
       if (oprNode !== null) {
         (oprNode.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
+        (oprNode.children[2] as HTMLDivElement).style.filter = 'brightness(50%)';
         oprNode.dataset.status = 'disable';
       }
     } else {
       (card.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
+      (card.children[2] as HTMLDivElement).style.filter = 'brightness(50%)';
       card.dataset.status = 'disable';
     }
   }
@@ -557,7 +588,7 @@ class GameUIController {
           opr.atkArea = newArea; // 更新攻击范围
           this.hideOprCard(chosenCard); // 隐藏当前干员卡
           const remain = this.gameCtl.addOperator(opr);
-          this.oprLimitNode.textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
+          this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
           this.cost = Math.floor(this.gameCtl.cost); // 更新本类中的cost
           this.costTextNode.textContent = this.cost.toString(); // 仅作cost显示意义
           if (remain === 0) { this.disableOprCard(); } // 到达干员上限，禁用所有干员卡

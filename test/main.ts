@@ -44,8 +44,8 @@ function main(mapInfo: MapInfo, data: Data): void {
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
 
   /* 设置全局控制器 */
-  const gameCtl = new GameController(map, data); // 游戏控制器
-  const timeAxisUI = new TimeAxisUICtl(materials.resources);
+  const timeAxisUI = new TimeAxisUICtl(timeAxis, materials.resources);
+  const gameCtl = new GameController(map, data, timeAxisUI); // 游戏控制器
   const gameUICtl = new GameUIController(frame, map, gameCtl, staticRenderer, data);
   gameUICtl.addOprCard(['haze']);
 
@@ -73,14 +73,13 @@ function main(mapInfo: MapInfo, data: Data): void {
   /* 指定每帧渲染前需要执行的回调 */
   function frameCallback(rAFTime: number): void {
     /* 执行位置和状态更新 */
-    const currentTime = timeAxis.getCurrentTime(); // 当前帧时刻
     if (gameCtl.getStatus() === GameStatus.Running || gameCtl.getStatus() === GameStatus.Standby) {
       const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
       gameUICtl.updateUIStatus(gameCtl.updateProperty(interval));
-      gameCtl.updateEnemyStatus(timeAxisUI, currentTime);
-      gameCtl.updateEnemyPosition(timeAxisUI, interval, currentTime);
-      timeAxisUI.setTimer(currentTime[0]); // 更新计时器
-      timeAxisUI.updateAxisNodes(currentTime[1]); // 更新时间轴图标
+      gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
+      gameCtl.updateEnemyPosition(interval);
+      timeAxisUI.setTimer(); // 更新计时器
+      timeAxisUI.updateAxisNodes(); // 更新时间轴图标
     } else {
       dynamicRenderer.stopRender();
       renderCtl.stop(); // 游戏结束，需重置战场

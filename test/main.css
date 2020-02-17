@@ -228,7 +228,11 @@ canvas {
   background-color: orange;
 }
 
-.mark-icon > .operator { /* 蓝色节点表示干员 */
+.mark-icon > .operator { /* 绿色节点表示干员 */
+  background-color: LimeGreen;
+}
+
+.mark-icon > .operator.leave { /* 蓝色节点表示干员撤离 */
   background-color: dodgerblue;
 }
 
@@ -288,6 +292,57 @@ canvas {
   font-size: larger;
 }
 
+/* cost计数器元素 */
+.cost {
+  margin-left: auto;
+  color: white;
+  font-size: 2vw;
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.cost span {
+  margin-right: 0.5vw;
+}
+
+.cost::before {
+  content: "";
+  display: inline-block;
+  margin-left: 0.5vw;
+  width: 1.5vw;
+  height: 1.5vw;
+  background: no-repeat url("res/img/misc/cost_icon.svg");
+  background-size: contain;
+}
+
+/* cost进度条 */
+.cost-bar {
+  height: 0.3vw;
+  background-color: dimgrey;
+  box-shadow: inset 0 0 2px black;
+}
+
+/* 内层进度条 */
+.cost-bar > :nth-child(1) {
+  width: 0;
+  height: 100%;
+  background: white;
+  box-shadow: inset 0 0 1px black;
+}
+
+/* 剩余可部署单位数量 */
+.ui-bottom > :nth-child(2) {
+  margin-left: auto;
+  color: white;
+  padding: 0.3vw 1vw;
+  margin-bottom: 1vw;
+  font-size: 1vw;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.ui-bottom > :nth-child(2)::before {
+  content: "剩余可部署单位：";
+}
+
 /* 下方的干员图标UI */
 .ui-bottom {
   position: absolute;
@@ -306,7 +361,7 @@ canvas {
   justify-content: flex-end;
 }
 
-.opr-card {
+.operator-card .card {
   position: relative;
   /* 等比调整宽度和padding-bottom以调整图标尺寸 */
   width: 8%;
@@ -320,19 +375,19 @@ canvas {
   transition: transform 0.2s;
 }
 
-.opr-card.chosen {
+.operator-card .card.chosen {
   transform: translateY(-10%);
 }
 
 /* 干员卡的背景图元素 */
-.opr-card :first-child {
+.operator-card .card :first-child {
   width: 100%;
   height: 100%;
   position: absolute;
 }
 
 /* 再部署冷却倒计时元素 */
-.opr-card :nth-child(2) {
+.operator-card .card :nth-child(2) {
   position: absolute;
   display: none;
   top: 50%;
@@ -344,62 +399,14 @@ canvas {
 }
 
 /* 干员cost元素 */
-.opr-card :last-child {
+.operator-card .card :last-child {
   top: 0;
-  right: 0;
+  right: 30%;
   position: absolute;
-  border-radius: 0 0 0 1px;
-  background-color: white;
-  font-size: 1.4vw;
+  color: white;
+  background-color: black;
+  font-size: 1.5vw;
   user-select: none;
-}
-
-.cost {
-  margin-left: auto;
-  color: white;
-  font-size: 2vw;
-  background: rgba(0, 0, 0, 0.8);
-}
-
-.cost span {
-  margin-right: 0.5vw;
-}
-
-.cost::before {
-  content: " ";
-  display: inline-block;
-  margin-left: 0.5vw;
-  width: 1.5vw;
-  height: 1.5vw;
-  background: no-repeat url("res/img/misc/cost_icon.svg");
-  background-size: contain;
-}
-
-#cost-bar {
-  color: white;
-  height: 0.3vw;
-  background-color: dimgrey;
-  box-shadow: inset 0 0 2px black;
-}
-
-#cost-inner-bar {
-  width: 0;
-  height: 100%;
-  background: white;
-  box-shadow: inset 0 0 1px black;
-}
-
-.opr-limit {
-  margin-left: auto;
-  color: white;
-  padding: 0.3vw 1vw;
-  margin-bottom: 1vw;
-  font-size: 1vw;
-  background-color: rgba(0, 0, 0, 0.5);
-}
-
-.opr-limit::before {
-  content: "剩余可部署单位：";
 }
 
 .ui-overlay#leave {

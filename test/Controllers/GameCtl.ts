@@ -57,12 +57,15 @@ class GameController {
 
   private readonly matData: ResourceData; // 资源数据
 
-  constructor(map: GameMap, data: Data) {
+  private readonly timeAxisUI: TimeAxisUICtl; // 时间轴UI控制器
+
+  constructor(map: GameMap, data: Data, timeAxisUI: TimeAxisUICtl) {
     this.map = map;
     this.ctlData = map.data.ctlData;
     this.matData = data.materials;
     this.unitData = data.units;
     this.waves = JSON.parse(JSON.stringify(map.data.waves));
+    this.timeAxisUI = timeAxisUI;
 
     this.lifePoint = this.ctlData.maxLP;
     this.enemyCount = this.ctlData.enemyNum;
@@ -111,10 +114,9 @@ class GameController {
 
   /**
    * 管理及更新敌人状态，包括创建敌人实例/时间轴节点/管理波次数据
-   * @param timeAxisUI - 时间轴控制器
    * @param axisTime - 时间轴当前时间元组
    */
-  updateEnemyStatus(timeAxisUI: TimeAxisUICtl, axisTime: [string, number]): void {
+  updateEnemyStatus(axisTime: [string, number]): void {
     if (this.waves.length) {
       const { fragments } = this.waves[0]; // 当前波次的敌人列表
       const thisFrag = fragments[0];
@@ -126,9 +128,8 @@ class GameController {
         const { x, z } = route[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
-        const nodeType = 'enemy create';
         const nodeId = `${name}-${thisFrag.id}`;
-        timeAxisUI.createAxisNode(nodeType, nodeId, name, axisTime);
+        this.timeAxisUI.createAxisNode('enemy create', nodeId, name);
 
         route.shift(); // 删除首个路径点
         fragments.shift(); // 从当前波次中删除该敌人
@@ -139,11 +140,9 @@ class GameController {
 
   /**
    * 更新维护所有在场敌人的位置变化
-   * @param timeAxisUI - 时间轴控制器
    * @param interval - 本帧与前帧的时间间隔
-   * @param currentTime - 时间轴当前时间元组
    */
-  updateEnemyPosition(timeAxisUI: TimeAxisUICtl, interval: number, currentTime: [string, number]): void {
+  updateEnemyPosition(interval: number): void {
     this.activeEnemy.forEach((frag) => {
       const { route, name, inst } = frag;
       if (inst === undefined) {
@@ -191,7 +190,7 @@ class GameController {
 
         const nodeType = 'enemy drop';
         const nodeId = `${name}-${frag.id}`;
-        timeAxisUI.createAxisNode(nodeType, nodeId, name, currentTime);
+        this.timeAxisUI.createAxisNode(nodeType, nodeId, name);
       }
     });
   }
@@ -274,6 +273,7 @@ class GameController {
     if (inst !== undefined) {
       this.activeOperator.set(inst.name, inst); // 添加干员到活跃干员组
       this.allOperator.delete(opr.name);
+      this.timeAxisUI.createAxisNode('operator create', opr.name, opr.name);
     }
     return this.ctlData.oprLimit - this.activeOperator.size;
   }
@@ -301,6 +301,7 @@ class GameController {
       oprInst.trackData.withdrawCnt += 1;
       this.activeOperator.delete(opr);
       this.allOperator.set(opr, oprInst);
+      this.timeAxisUI.createAxisNode('operator leave', opr, opr);
     }
     return this.ctlData.oprLimit - this.activeOperator.size;
   }
