@@ -59,13 +59,13 @@ function main(mapInfo: MapInfo, data: Data): void {
     continue: (): void => timeAxis.continue(),
     stop: (): void => timeAxis.stop(),
     reset: (): void => {
+      gameCtl.reset();
+      gameUICtl.reset();
+      gameCtl.setStatus(GameStatus.Standby);
       timeAxis.stop();
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
       map.hideOverlay();
-      gameCtl.setStatus(GameStatus.Standby);
-      gameCtl.reset();
-      gameUICtl.reset();
     },
   };
   renderCtl.reset();

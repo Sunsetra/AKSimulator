@@ -23,8 +23,9 @@ class TimeAxisUICtl {
   constructor(timeAxis: TimeAxis, resList: ResourcesList) {
     this.timeAxis = timeAxis;
     this.resList = resList;
-    this.timeAxisNode = document.querySelector('#axis') as HTMLElement;
-    this.timer = document.querySelector('#timer') as HTMLElement; // 计时器
+    const axisNode = document.querySelector('.time-axis') as HTMLDivElement;
+    this.timeAxisNode = axisNode.children[0] as HTMLDivElement;
+    this.timer = axisNode.children[1] as HTMLDivElement; // 计时器
   }
 
   /**
@@ -43,8 +44,9 @@ class TimeAxisUICtl {
     const [nodeTime, createTime] = this.timeAxis.getCurrentTime();
 
     const node = document.createElement('div'); // 创建容器节点
-    node.dataset.createTime = createTime.toFixed(4); // 在节点的数据属性中记录出现时间
+    node.dataset.createTime = createTime.toFixed(3); // 在节点的数据属性中记录出现时间
     node.setAttribute('class', `mark-icon ${id}`);
+    node.style.left = '100%';
 
     node.addEventListener('mouseover', () => {
       const nodes = this.timeAxisNode.querySelectorAll(`.${id}`);
@@ -119,7 +121,7 @@ class TimeAxisUICtl {
 
   /** 更新子节点在时间轴上的位置 */
   updateAxisNodes(): void {
-    this.timeAxisNode.childNodes.forEach((child: Node) => {
+    this.timeAxisNode.childNodes.forEach((child) => {
       const { style, dataset } = child as HTMLElement;
       const createTime = Number(dataset.createTime);
       const pos = ((createTime / this.timeAxis.getCurrentTime()[1]) * 100).toFixed(2);

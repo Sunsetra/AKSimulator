@@ -201,6 +201,11 @@ class GameController {
    * 2. 重置干员实例变量，从活跃干员转移至全干员映射
    */
   reset(): void {
+    this.activeEnemy.forEach((enemy) => {
+      this.map.removeUnit(enemy.inst); // 释放掉敌人实体
+      this.activeEnemy.delete(enemy);
+    });
+
     this.activeOperator.forEach((opr) => {
       this.map.removeUnit(opr); // 释放掉干员实体
       this.allOperator.set(opr.name, opr);
@@ -212,10 +217,7 @@ class GameController {
       opr.rspTime = 0;
       opr.trackData.withdrawCnt = 0;
     });
-    this.activeEnemy.forEach((enemy) => {
-      this.map.removeUnit(enemy.inst); // 释放掉敌人实体
-      this.activeEnemy.delete(enemy);
-    });
+
     this.enemyCount = this.ctlData.enemyNum;
     this.lifePoint = this.ctlData.maxLP;
     this.cost = this.ctlData.initCost;
@@ -241,8 +243,8 @@ class GameController {
       id: { value: this.enemyId, enumerable: true },
       inst: { value: enemy, enumerable: true },
     });
-    this.enemyId += 1;
     this.activeEnemy.add(wrapper); // 新增活跃敌人，数据类型为Fragment
+    this.enemyId += 1;
     return enemy;
   }
 

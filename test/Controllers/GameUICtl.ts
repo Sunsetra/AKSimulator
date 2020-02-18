@@ -70,10 +70,10 @@ class GameUIController {
     this.matData = data.materials;
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
-    this.oprCards = document.querySelector('.operator-card') as HTMLDivElement;
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.bottomUI = document.querySelector('.ui-bottom') as HTMLDivElement;
+    this.oprCards = this.bottomUI.children[2] as HTMLDivElement;
     this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
     this.costInnerBar = document.querySelector('.cost-bar div') as HTMLDivElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
@@ -258,7 +258,6 @@ class GameUIController {
 
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
-      oprNode.setAttribute('class', 'card');
       oprNode.setAttribute('id', opr);
       oprNode.dataset.class = oprData.prof;
       oprNode.style.borderBottomColor = RarityColor[Number(oprData.rarity)];

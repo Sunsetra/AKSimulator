@@ -33,7 +33,7 @@ main {
   z-index: 1;
 }
 
-.map-select #hide-title {
+.map-select > :first-child {
   display: none;
 }
 
@@ -130,26 +130,22 @@ main {
   transform: translateX(0);
 }
 
-.map-select.side-bar #hide-title {
+/* 隐藏渐显标题侧边说明 */
+.map-select.side-bar > :first-child {
   position: absolute;
   display: block;
-  right: 0;
+  right: 2%;
   top: 15%;
-  width: 10%;
   opacity: 1;
   transition: opacity 0.4s, top 0.4s;
-}
-
-.map-select.side-bar:hover #hide-title {
-  top: 10%;
-  opacity: 0;
-}
-
-.map-select.side-bar #hide-title div {
-  display: inline-block;
   writing-mode: vertical-lr;
   letter-spacing: 1.5rem;
   font-size: large;
+}
+
+.map-select.side-bar:hover > :first-child {
+  top: 10%;
+  opacity: 0;
 }
 
 .map-select.side-bar .chapter {
@@ -202,7 +198,7 @@ canvas {
   align-items: center;
 }
 
-#axis {
+.time-axis > :first-child {
   position: relative;
   height: 1rem;
   width: 75%;
@@ -281,7 +277,7 @@ canvas {
   display: none;
 }
 
-#timer {
+.time-axis > :nth-child(2) {
   margin: 0 auto;
   color: white;
 }
@@ -361,7 +357,7 @@ canvas {
   justify-content: flex-end;
 }
 
-.operator-card .card {
+.operator-card > div {
   position: relative;
   /* 等比调整宽度和padding-bottom以调整图标尺寸 */
   width: 8%;
@@ -375,19 +371,19 @@ canvas {
   transition: transform 0.2s;
 }
 
-.operator-card .card.chosen {
+.operator-card > div.chosen {
   transform: translateY(-10%);
 }
 
 /* 干员卡的背景图元素 */
-.operator-card .card :first-child {
+.operator-card > div :first-child {
   width: 100%;
   height: 100%;
   position: absolute;
 }
 
 /* 再部署冷却倒计时元素 */
-.operator-card .card :nth-child(2) {
+.operator-card > div :nth-child(2) {
   position: absolute;
   display: none;
   top: 50%;
@@ -399,7 +395,7 @@ canvas {
 }
 
 /* 干员cost元素 */
-.operator-card .card :last-child {
+.operator-card > div :last-child {
   top: 0;
   right: 30%;
   position: absolute;
