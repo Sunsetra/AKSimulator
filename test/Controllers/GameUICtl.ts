@@ -120,8 +120,8 @@ class GameUIController {
                 oprNode.children[2].textContent = opr.cost.toString();
                 this.hideSelectLayer();
                 this.showOprCard(opr.name);
-                this.disableOprCard(opr.name); // 撤离后的卡片一定是不可用状态
-                oprNode.dataset.status = 'cd'; // 后设置cd状态以便隐藏计时时进行状态检查
+                oprNode.dataset.status = 'cd'; // 设置cd状态以便进行状态检查
+                this.updateCardStatus();
                 // eslint-disable-next-line @typescript-eslint/no-use-before-define
                 this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
               };
@@ -160,12 +160,10 @@ class GameUIController {
       cdNode.style.display = '';
       const originCost = this.unitData.operator[child.id].cost;
       child.children[2].textContent = originCost.toString();
+      child.dataset.status = ''; // 清除状态标志以便更新卡片状态
       this.showOprCard();
-      /* 检查所有干员卡的可用性 */
-      if (this.cost >= originCost) {
-        this.enableOprCard(child);
-      } else { this.disableOprCard(child); }
     });
+    this.updateCardStatus();
   }
 
   /**
@@ -178,17 +176,7 @@ class GameUIController {
     if (Math.floor(cost) !== this.cost) { // 仅在cost发生变化时执行
       this.cost = Math.floor(cost);
       this.costTextNode.textContent = this.cost.toString();
-
-      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        if (child.dataset.status !== 'cd') {
-          const opr = this.gameCtl.allOperator.get(child.id);
-          if (opr !== undefined && this.cost >= opr.cost) {
-            this.enableOprCard(child);
-          } else {
-            this.disableOprCard(child);
-          }
-        }
-      });
+      this.updateCardStatus();
     }
 
     /* 检查冷却计时 */
@@ -200,7 +188,7 @@ class GameUIController {
           if (opr.rspTime > 0) {
             cdNode.textContent = opr.rspTime.toFixed(1);
           } else {
-            /* 冷却结束时隐藏计时并检查可用性 */
+            /* 冷却结束时隐藏计时并检查该卡片的可用性 */
             cdNode.style.display = '';
             if (this.cost >= opr.cost) {
               this.enableOprCard(child);
@@ -244,8 +232,47 @@ class GameUIController {
       return `url(data:image/svg+xml;base64,${btoa(new XMLSerializer().serializeToString(svg))})`;
     };
 
-    this.oprCards.childNodes.forEach((node) => { node.remove(); });
-    oprList.forEach((opr) => {
+    type costDict = { name: string; cost: number };
+    /**
+     * 维护大顶堆顺序
+     * @param list: 大顶堆数组
+     * @param i: 当前节点的索引
+     */
+    const swapNode = (list: costDict[], i: number): void => {
+      const [lIndex, rIndex] = [2 * i + 1, 2 * i + 2];
+      if (list[lIndex] === undefined) { return; } // 左子节点不存在则直接返回
+      if (list[rIndex] === undefined) {
+        if (list[i].cost < list[lIndex].cost) { [list[i], list[lIndex]] = [list[lIndex], list[i]]; } // 右子节点不存在则仅比较左子节点
+        return;
+      }
+      [lIndex, rIndex].forEach((index) => {
+        if (list[i].cost < list[index].cost) {
+          [list[i], list[index]] = [list[index], list[i]];
+          swapNode(list, index); // 当前节点交换后递归排列当前节点的子孙节点
+        }
+      });
+    };
+
+    /** 按cost排序干员列表（堆排序） */
+    const sortOpr = (): string[] => {
+      const costDict: costDict[] = [];
+      const result: string[] = [];
+      /* 构建初始排序字典 */
+      oprList.forEach((opr) => { costDict.push({ name: opr, cost: this.unitData.operator[opr].cost }); });
+
+      while (costDict.length > 0) {
+        for (let m = Math.floor(costDict.length / 2 - 1); m >= 0; m -= 1) {
+          swapNode(costDict, m);
+        }
+        [costDict[0], costDict[costDict.length - 1]] = [costDict[costDict.length - 1], costDict[0]];
+        result.unshift((costDict.pop() as costDict).name);
+      }
+      return result;
+    };
+
+    while (this.oprCards.childNodes.length) { this.oprCards.childNodes[0].remove(); }
+    const sortedOpr = sortOpr();
+    sortedOpr.forEach((opr) => {
       /* 收集干员信息并创建实例 */
       const oprData = this.unitData.operator[opr];
       const unit = this.gameCtl.createOperator(opr, oprData);
@@ -264,9 +291,9 @@ class GameUIController {
 
       const oprIconNode = document.createElement('div');
       oprIconNode.style.background = `
-        url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left 35%/21%,
-        ${drawStars(oprData.rarity)} no-repeat bottom right/45%,
-        url("${this.matData.icons.operator[opr]}") no-repeat top left/cover`;
+        url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left 35% / 21%,
+        ${drawStars(oprData.rarity)} no-repeat bottom right / auto 17%,
+        url("${this.matData.icons.operator[opr]}") no-repeat top left / cover`;
       const cdNode = document.createElement('div');
       const costNode = document.createElement('div');
       const costText = document.createTextNode(oprData.cost.toString());
@@ -293,7 +320,7 @@ class GameUIController {
         this.map.hideOverlay();
         this.mouseLayer.style.left = '-1000px';
         this.mouseLayer.style.top = '-1000px';
-        this.mouseLayer.childNodes.forEach((node) => { node.remove(); });
+        while (this.mouseLayer.childNodes.length) { this.mouseLayer.childNodes[0].remove(); }
         this.frame.removeEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
         this.frame.removeEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
         this.renderer.requestRender();
@@ -352,6 +379,22 @@ class GameUIController {
       /* 绑定干员头像上的释放事件 */
       this.frame.addEventListener(oprNode, 'mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
     });
+  }
+
+  /** 仅当未达到干员放置上限时，遍历更新所有干员卡状态 */
+  private updateCardStatus(): void {
+    if (this.gameCtl.ctlData.oprLimit - this.gameCtl.activeOperator.size > 0) {
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+        if (child.dataset.status !== 'cd') {
+          const opr = this.gameCtl.allOperator.get(child.id);
+          if (opr !== undefined && this.cost >= opr.cost) {
+            this.enableOprCard(child);
+          } else {
+            this.disableOprCard(child);
+          }
+        }
+      });
+    }
   }
 
   /**
@@ -586,11 +629,17 @@ class GameUIController {
           /* 放置时更新cost */
           opr.atkArea = newArea; // 更新攻击范围
           this.hideOprCard(chosenCard); // 隐藏当前干员卡
+
           const remain = this.gameCtl.addOperator(opr);
           this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
           this.cost = Math.floor(this.gameCtl.cost); // 更新本类中的cost
           this.costTextNode.textContent = this.cost.toString(); // 仅作cost显示意义
-          if (remain === 0) { this.disableOprCard(); } // 到达干员上限，禁用所有干员卡
+
+          if (remain === 0) {
+            this.disableOprCard(); // 到达干员上限，禁用所有干员卡
+          } else {
+            this.updateCardStatus(); // 没到达上限就更新干员卡状态
+          }
         } else { this.map.removeUnit(opr); }
       }
       this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);

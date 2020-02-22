@@ -14,13 +14,6 @@ export enum BlockType {
 }
 
 
-/* 单位类型常量定义 */
-// export enum UnitType {
-//   Enemy = 'ENEMY',
-//   Operator = 'OPERATOR',
-// }
-
-
 /* 单位放置类型定义 */
 export enum PositionType {
   Melee = 'MELEE',
@@ -42,21 +35,21 @@ export enum RarityColor {
   GreenYellow,
   DeepSkyBlue,
   MediumSlateBlue,
-  Gold,
+  Yellow,
   Orange,
 }
 
 
 /* 单位职业常量定义 */
 export enum Profession {
-  Warrior = 'WARRIOR',
+  Guard = 'GUARD',
   Caster = 'CASTER',
-  Pioneer = 'PIONEER',
+  Vanguard = 'VANGUARD',
   Medic = 'MEDIC',
-  Tank = 'TANK',
+  Defender = 'DEFENDER',
   Sniper = 'SNIPER',
-  Support = 'SUPPORT',
-  Special = 'SPECIAL',
+  Supporter = 'SUPPORTER',
+  Specialist = 'SPECIALIST',
   Token = 'TOKEN',
   Trap = 'TRAP',
 }
@@ -72,4 +65,3 @@ export enum GameStatus {
 
 
 export const BlockUnit = 10; // 砖块单位长度
-export const sizeAlpha = 0.8; // 干员单位尺寸系数

@@ -46,7 +46,7 @@ class TimeAxisUICtl {
     const node = document.createElement('div'); // 创建容器节点
     node.dataset.createTime = createTime.toFixed(3); // 在节点的数据属性中记录出现时间
     node.setAttribute('class', `mark-icon ${id}`);
-    node.style.left = '100%';
+    if (createTime) { node.style.left = '100%'; }
 
     node.addEventListener('mouseover', () => {
       const nodes = this.timeAxisNode.querySelectorAll(`.${id}`);

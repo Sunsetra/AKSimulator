@@ -203,8 +203,8 @@ class GameController {
   reset(): void {
     this.activeEnemy.forEach((enemy) => {
       this.map.removeUnit(enemy.inst); // 释放掉敌人实体
-      this.activeEnemy.delete(enemy);
     });
+    this.activeEnemy.clear();
 
     this.activeOperator.forEach((opr) => {
       this.map.removeUnit(opr); // 释放掉干员实体
@@ -212,10 +212,13 @@ class GameController {
     });
     this.activeOperator.clear();
 
+    /* allOperator映射在创建干员卡时填充。
+     * 切换地图时会创建新的游戏控制器，点击重置按钮时无需清空该映射，只需要释放资源即可。 */
     this.allOperator.forEach((opr) => {
       opr.cost = this.unitData.operator[opr.name].cost;
       opr.rspTime = 0;
       opr.trackData.withdrawCnt = 0;
+      this.map.removeUnit(opr);
     });
 
     this.enemyCount = this.ctlData.enemyNum;
@@ -232,11 +235,11 @@ class GameController {
    * @param data - 创建实例时所需的数据类
    */
   createEnemy(name: string, frag: Fragment, data: EnemyData): Enemy {
-    const { entity } = this.matData.resources.enemy[name]; // 读取敌人实体
+    const { sizeAlpha, entity } = this.matData.resources.enemy[name]; // 读取敌人实体
     if (entity === undefined) {
       throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.matData.resources.enemy[name]);
     }
-    const enemy = new Enemy(entity.clone(), data);
+    const enemy = new Enemy(entity.clone(), sizeAlpha, data);
 
     /* 以敌人分段信息为基础，完善单位总信息对象EnemyWrapper */
     const wrapper: EnemyWrapper = Object.defineProperties(frag, {
@@ -254,12 +257,12 @@ class GameController {
    * @param data - 创建实例时所需的单位源数据OperatorData
    */
   createOperator(name: string, data: OperatorData): Operator {
-    const { entity } = this.matData.resources.operator[name]; // 读取敌人实体
+    const { sizeAlpha, entity } = this.matData.resources.operator[name]; // 读取敌人实体
     if (entity === undefined) {
       throw new ResourcesUnavailableError(`未找到${name}单位实体:`, this.matData.resources.operator[name]);
     }
 
-    const opr = new Operator(entity.clone(), data); // 克隆实体，以兼容后续添加召唤物等
+    const opr = new Operator(entity.clone(), sizeAlpha, data); // 克隆实体，以兼容后续添加召唤物等
     this.allOperator.set(name, opr);
     return opr;
   }

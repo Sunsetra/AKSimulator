@@ -47,7 +47,9 @@ function main(mapInfo: MapInfo, data: Data): void {
   const timeAxisUI = new TimeAxisUICtl(timeAxis, materials.resources);
   const gameCtl = new GameController(map, data, timeAxisUI); // 游戏控制器
   const gameUICtl = new GameUIController(frame, map, gameCtl, staticRenderer, data);
-  gameUICtl.addOprCard(['haze']);
+  gameUICtl.addOprCard([
+    'blaze', 'cardigan', 'ceylon', 'durin', 'haze', 'kroos',
+    'lancet2', 'reed', 'rope', 'silverash', 'sora', 'vermeil']);
 
   /* 指定渲染控制回调 */
   renderCtl.callbacks = {
@@ -62,7 +64,7 @@ function main(mapInfo: MapInfo, data: Data): void {
       gameCtl.reset();
       gameUICtl.reset();
       gameCtl.setStatus(GameStatus.Standby);
-      timeAxis.stop();
+      timeAxis.reset();
       timeAxisUI.clearNodes();
       timeAxisUI.resetTimer();
       map.hideOverlay();

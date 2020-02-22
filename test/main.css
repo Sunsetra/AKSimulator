@@ -352,26 +352,34 @@ canvas {
   pointer-events: none;
 }
 
+/* 干员卡栏 */
 .operator-card {
+  width: 90%;
+  margin-left: auto;
   display: flex;
   justify-content: flex-end;
 }
 
+/* 每张干员卡 */
 .operator-card > div {
   position: relative;
   /* 等比调整宽度和padding-bottom以调整图标尺寸 */
   width: 8%;
   /* padding-bottom是相对ui-bottom的宽度确定的 */
   padding-bottom: 8%;
-  border: 1px solid white;
+  box-sizing: border-box;
   box-shadow: inset 0 0 10px white;
-  border-bottom: 4px solid;
+  border-bottom: 0.3vw solid;
   pointer-events: auto;
   cursor: pointer;
   transition: transform 0.2s;
 }
 
 .operator-card > div.chosen {
+  border-left: 1px solid white;
+  border-top: 1px solid white;
+  border-right: 1px solid white;
+  padding-bottom: calc(8% - 1px);
   transform: translateY(-10%);
 }
 
@@ -396,13 +404,16 @@ canvas {
 
 /* 干员cost元素 */
 .operator-card > div :last-child {
+  position: absolute;
   top: 0;
   right: 30%;
-  position: absolute;
+  width: 22%;
+  height: 21%;
   color: white;
   background-color: black;
-  font-size: 1.5vw;
+  font-size: 1.3vw;
   user-select: none;
+  text-align: center;
 }
 
 .ui-overlay#leave {

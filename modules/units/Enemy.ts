@@ -16,11 +16,14 @@ class Enemy extends Unit {
 
   readonly rangeRad: number; // 攻击范围半径
 
-  constructor(mesh: Mesh, data: EnemyData) {
-    super(mesh, data.sizeAlpha, data);
+  readonly massLv: number; // 单位重量等级
+
+  constructor(mesh: Mesh, sizeAlpha: number, data: EnemyData) {
+    super(mesh, sizeAlpha, data);
 
     this.moveSpd = data.moveSpd;
     this.rangeRad = data.rangeRad;
+    this.massLv = data.massLv;
   }
 }
 

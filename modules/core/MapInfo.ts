@@ -59,6 +59,7 @@ export interface ResourcesList {
 /* 单个资源对象 */
 export interface Resource {
   url: string; // 资源URL
+  sizeAlpha: number; // 模型资源尺寸系数
   tex?: Texture; // 贴图型资源
   geo?: BufferGeometry; // 资源几何体
   mat?: Material | Material[]; // 资源材质
@@ -75,7 +76,6 @@ export interface UnitAbstractData {
   resist: number; // 法术抗性
   atkTime: number; // 攻击速度（间隔？）
   hpRecoveryPerSec: number; // 每秒自回血量
-  massLevel: number; // 重量等级
   stunImmune: boolean; // 眩晕抗性
   silenceImmune: boolean; // 沉默抗性
   skills: []; // TODO: 单位技能组
@@ -105,6 +105,7 @@ export interface TrackData {
 
 /* 敌方单位源数据接口 */
 export interface EnemyData extends UnitAbstractData {
+  massLv: number; // 重量等级
   moveSpd: number; // 移动速度（是官方数据的二分之一）
   rangeRad: number; // 攻击范围半径
   sizeAlpha: number; // 模型尺寸系数

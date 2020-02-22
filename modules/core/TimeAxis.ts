@@ -30,6 +30,12 @@ class TimeAxis extends Clock {
       this.elapsedTime = elapsedTime;
     }
   }
+
+  /** 重置时间轴时间 */
+  reset(): void {
+    this.stop();
+    this.elapsedTime = 0;
+  }
 }
 
 

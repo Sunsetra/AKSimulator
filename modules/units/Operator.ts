@@ -12,7 +12,6 @@ import {
   TrackData,
 } from '../core/MapInfo.js';
 import Unit from '../core/Unit.js';
-import { sizeAlpha } from '../others/constants.js';
 
 
 /**
@@ -37,7 +36,7 @@ class Operator extends Unit {
 
   trackData: TrackData; // 追踪统计数据
 
-  constructor(mesh: Mesh, data: OperatorData) {
+  constructor(mesh: Mesh, sizeAlpha: number, data: OperatorData) {
     super(mesh, sizeAlpha, data);
 
     this.prof = data.prof;

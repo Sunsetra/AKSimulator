@@ -45,8 +45,6 @@ abstract class Unit {
 
   readonly hpRecoveryPerSec: number; // 每秒自回血量
 
-  readonly massLevel: number; // 重量等级
-
   readonly stunImmune: boolean; // 眩晕抗性
 
   readonly silenceImmune: boolean; // 沉默抗性
@@ -76,7 +74,6 @@ abstract class Unit {
     this.resist = data.resist;
     this.atkTime = data.atkTime;
     this.hpRecoveryPerSec = data.hpRecoveryPerSec;
-    this.massLevel = data.massLevel;
     this.stunImmune = data.stunImmune;
     this.silenceImmune = data.silenceImmune;
   }
