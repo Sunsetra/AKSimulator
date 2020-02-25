@@ -52,9 +52,7 @@ class GameUIController {
 
   private readonly ctx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
 
-  private readonly costInnerBar: HTMLDivElement; // cost内部进度条
-
-  private readonly costTextNode: HTMLDivElement; // cost文字节点
+  private readonly costInnerBar: HTMLDivElement; // cost内部进度条引用，优化速度用
 
   private readonly bottomUI: HTMLDivElement; // 底部UI节点
 
@@ -74,72 +72,70 @@ class GameUIController {
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.bottomUI = document.querySelector('.ui-bottom') as HTMLDivElement;
     this.oprCards = this.bottomUI.children[2] as HTMLDivElement;
-    this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
     this.costInnerBar = document.querySelector('.cost-bar div') as HTMLDivElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
     this.center = new Vector2(0, 0);
 
-    /* 为画布（地面）上的点击事件绑定点击位置追踪函数 */
-    this.frame.addEventListener(this.frame.canvas, 'click', () => {
+
+    /* 以下为画布及撤退按钮关联点击事件 */
+    let selectedOpr: Operator | null; // 记录当前选择的干员
+    let clickPos: Vector2 | null; // 记录点击坐标
+
+    /* 撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
+    const withdrawNode = document.querySelector('.ui-overlay#withdraw') as HTMLImageElement;
+    this.frame.addEventListener(withdrawNode, 'click', (): void => {
+      this.withdrawOperator(selectedOpr as Operator); // 绘制叠加层前选择的Operator一定存在
+      this.frame.removeEventListener(this.selectLayer, 'click'); // 移除叠加层上的所有点击回调
+    });
+
+    /* 光标在画布上按下时记录点击坐标 */
+    this.frame.addEventListener(this.frame.canvas, 'mousedown', () => {
       const { pickPos } = this.map.tracker;
-      if (pickPos !== null) {
+      clickPos = pickPos === null ? null : pickPos;
+    });
+
+    /* 光标在画布上松开时，若与按下时位置相同才视为一次点击 */
+    this.frame.addEventListener(this.frame.canvas, 'mouseup', () => {
+      const { pickPos } = this.map.tracker;
+      if (pickPos !== null && clickPos === pickPos) {
         const absPos = realPosToAbsPos(pickPos, true);
-        const block = this.map.getBlock(absPos);
-        if (block !== null) {
+        if (this.map.getBlock(absPos) !== null) {
           /* 遍历检查是否选中干员 */
           this.gameCtl.activeOperator.forEach((opr) => {
             if (absPos.equals(opr.position.floor())) {
+              selectedOpr = opr;
+
+              /** 计算并放置各操作按钮的位置 */
+              const calcIconsPos = (): void => {
+                const rad = this.selectLayer.width * 0.1;
+                const delta = rad / Math.sqrt(2) / 2;
+                withdrawNode.style.left = `${this.center.x / 2 - delta}px`;
+                withdrawNode.style.top = `${this.center.y / 2 - delta}px`;
+              };
+
+              /** 窗口resize事件中重新计算叠加层定位 */
+              const resizeSelectLayer = (): void => {
+                this.selectLayer.width = this.frame.canvas.width;
+                this.selectLayer.height = this.frame.canvas.height;
+                this.drawSelectLayer(absPos);
+                calcIconsPos(); // 要先重设中心点位坐标再定位图标
+              };
+
+              /* 绘制UI */
               this.selectLayer.style.display = 'block';
-              this.updateCenterPos(absPos);
-              this.drawSelectLayer();
+              withdrawNode.style.display = 'block';
+              resizeSelectLayer();
 
               const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
               atkLayer.showArea(absPos, opr.atkArea);
               this.renderer.requestRender();
 
-              const rad = this.selectLayer.width * 0.1;
-              const delta = rad / Math.sqrt(2) / 2;
-              const leaveNode = document.querySelector('.ui-overlay#leave') as HTMLImageElement;
-              leaveNode.style.left = `${this.center.x / 2 - delta}px`;
-              leaveNode.style.top = `${this.center.y / 2 - delta}px`;
-              leaveNode.style.display = 'block';
-
-              /** 点击撤退按钮的回调 */
-              const withdrawCallback = (): void => {
-                this.map.removeUnit(opr);
-                const remain = this.gameCtl.removeOperator(opr.name);
-                this.bottomUI.children[1].textContent = remain.toString();
-
-                /* 撤退后更新cost */
-                this.cost = Math.floor(this.gameCtl.cost);
-                this.costTextNode.textContent = this.cost.toString(); // 仅作显示意义
-                const oprNode = document.querySelector(`#${opr.name}`) as HTMLDivElement;
-                const cdNode = oprNode.children[1] as HTMLDivElement;
-                cdNode.style.display = 'inline-block';
-                cdNode.textContent = opr.rspTime.toFixed(1);
-                oprNode.children[2].textContent = opr.cost.toString();
+              /* 关联叠加层上点击时隐藏叠加层，以及窗口resize事件 */
+              this.frame.addEventListener(this.selectLayer, 'click', () => {
+                this.frame.removeEventListener(window, 'resize', resizeSelectLayer);
                 this.hideSelectLayer();
-                this.showOprCard(opr.name);
-                oprNode.dataset.status = 'cd'; // 设置cd状态以便进行状态检查
-                this.updateCardStatus();
-                // eslint-disable-next-line @typescript-eslint/no-use-before-define
-                this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
-              };
-
-              /** 点击画布的回调，在范围外则隐藏叠加层 */
-              const checkClickPos = (e: MouseEvent): void => {
-                const distX = e.clientX - this.center.x / 2;
-                const distY = e.clientY - this.center.y / 2;
-                const dist = Math.sqrt(distX ** 2 + distY ** 2);
-
-                if (dist > rad / 2) {
-                  this.frame.removeEventListener(leaveNode, 'click', withdrawCallback);
-                  this.frame.removeEventListener(this.selectLayer, 'click', checkClickPos);
-                  this.hideSelectLayer();
-                }
-              };
-              this.frame.addEventListener(leaveNode, 'click', withdrawCallback, true);
-              this.frame.addEventListener(this.selectLayer, 'click', checkClickPos);
+              }, true);
+              this.frame.addEventListener(window, 'resize', resizeSelectLayer);
             }
           });
         }
@@ -149,10 +145,9 @@ class GameUIController {
 
   /** 重置游戏UI */
   reset(): void {
-    this.cost = Math.floor(this.gameCtl.cost);
+    this.updateCost();
     this.costInnerBar.style.width = '';
     this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
-    this.costTextNode.textContent = this.cost.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
       const cdNode = child.children[1] as HTMLDivElement;
@@ -161,40 +156,35 @@ class GameUIController {
       const originCost = this.unitData.operator[child.id].cost;
       child.children[2].textContent = originCost.toString();
       child.dataset.status = ''; // 清除状态标志以便更新卡片状态
-      this.showOprCard();
     });
+    this.showOprCard();
     this.updateCardStatus();
   }
 
-  /**
-   * 按cost更新UI状态
-   * @param cost - 游戏当前的Cost值
-   */
-  updateUIStatus(cost: number): void {
-    this.costInnerBar.style.width = `${(cost - Math.floor(cost)) * 100}%`;
-    /* 更新cost */
-    if (Math.floor(cost) !== this.cost) { // 仅在cost发生变化时执行
-      this.cost = Math.floor(cost);
-      this.costTextNode.textContent = this.cost.toString();
+  /** 按cost更新UI状态（每帧执行） */
+  updateUIStatus(): void {
+    const intCost = Math.floor(this.gameCtl.cost);
+    this.costInnerBar.style.width = `${(this.gameCtl.cost - intCost) * 100}%`;
+    /* 当cost发生变化时更新cost */
+    if (intCost !== this.cost) {
+      this.updateCost();
       this.updateCardStatus();
     }
 
     /* 检查冷却计时 */
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
       if (child.dataset.status === 'cd') {
-        const opr = this.gameCtl.allOperator.get(child.id);
-        if (opr !== undefined) {
-          const cdNode = child.children[1] as HTMLDivElement;
-          if (opr.rspTime > 0) {
-            cdNode.textContent = opr.rspTime.toFixed(1);
+        const opr = this.gameCtl.allOperator.get(child.id) as Operator; // 通过遍历干员卡不可能获取到不在全干员集合中的实例
+        const cdNode = child.children[1] as HTMLDivElement;
+        if (opr.rspTime > 0) {
+          cdNode.textContent = opr.rspTime.toFixed(1);
+        } else {
+          /* 冷却结束时隐藏计时并检查该卡片的可用性 */
+          cdNode.style.display = '';
+          if (this.cost >= opr.cost) {
+            this.enableOprCard(child);
           } else {
-            /* 冷却结束时隐藏计时并检查该卡片的可用性 */
-            cdNode.style.display = '';
-            if (this.cost >= opr.cost) {
-              this.enableOprCard(child);
-            } else {
-              this.disableOprCard(child);
-            }
+            this.disableOprCard(child);
           }
         }
       }
@@ -203,12 +193,13 @@ class GameUIController {
 
   /**
    * 按指定的干员名称列表创建干员头像卡
-   * @param oprList: 干员名称列表
+   * @param oprList - 干员名称列表
    */
   addOprCard(oprList: string[]): void {
     /**
      * 根据干员星级生成svg
-     * @param n: 干员星级
+     * @param n - 干员星级
+     * @return - 返回生成的svg对象
      */
     const drawStars = (n: number): string => {
       const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
@@ -235,8 +226,8 @@ class GameUIController {
     type costDict = { name: string; cost: number };
     /**
      * 维护大顶堆顺序
-     * @param list: 大顶堆数组
-     * @param i: 当前节点的索引
+     * @param list - 大顶堆数组
+     * @param i - 当前节点的索引
      */
     const swapNode = (list: costDict[], i: number): void => {
       const [lIndex, rIndex] = [2 * i + 1, 2 * i + 2];
@@ -261,16 +252,15 @@ class GameUIController {
       oprList.forEach((opr) => { costDict.push({ name: opr, cost: this.unitData.operator[opr].cost }); });
 
       while (costDict.length > 0) {
-        for (let m = Math.floor(costDict.length / 2 - 1); m >= 0; m -= 1) {
-          swapNode(costDict, m);
-        }
+        for (let m = Math.floor(costDict.length / 2 - 1); m >= 0; m -= 1) { swapNode(costDict, m); }
         [costDict[0], costDict[costDict.length - 1]] = [costDict[costDict.length - 1], costDict[0]];
         result.unshift((costDict.pop() as costDict).name);
       }
       return result;
     };
 
-    while (this.oprCards.childNodes.length) { this.oprCards.childNodes[0].remove(); }
+    while (this.oprCards.childNodes.length) { this.oprCards.childNodes[0].remove(); } // 移除所有原干员卡节点
+
     const sortedOpr = sortOpr();
     sortedOpr.forEach((opr) => {
       /* 收集干员信息并创建实例 */
@@ -308,29 +298,24 @@ class GameUIController {
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
 
       /**
-       * 当光标松开时的回调函数
+       * 当释放光标时的回调函数：重置干员卡选择状态，隐藏叠加层
        * @param reset - 是否重置干员头像选择状态
        */
       const mouseupHandler = (reset = true): void => {
-        /* eslint-disable @typescript-eslint/no-use-before-define */
         if (reset) {
           const chosenCard = document.querySelector('.chosen');
           if (chosenCard !== null) { chosenCard.classList.remove('chosen'); } // 当干员卡还存在（未放置）时恢复未选定状态
         }
+        this.mouseLayer.style.display = '';
         this.map.hideOverlay();
-        this.mouseLayer.style.left = '-1000px';
-        this.mouseLayer.style.top = '-1000px';
-        while (this.mouseLayer.childNodes.length) { this.mouseLayer.childNodes[0].remove(); }
-        this.frame.removeEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-        this.frame.removeEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler);
         this.renderer.requestRender();
-        /* eslint-enable @typescript-eslint/no-use-before-define */
       };
 
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
-      const canvasMousemoveHandler = (): void => {
+      const onMousemove = (): void => {
         if (this.map.tracker.pointerPos !== null) {
-          const imgRect = (this.mouseLayer.children.item(0) as HTMLElement).getBoundingClientRect();
+          this.mouseLayer.style.display = 'block';
+          const imgRect = this.mouseLayer.children[0].getBoundingClientRect();
           this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x - imgRect.width / 2}px`;
           this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
         }
@@ -339,46 +324,78 @@ class GameUIController {
       };
 
       /** 在画布元素上释放光标时的回调函数 */
-      const canvasMouseupHandler = (): void => {
-        if (this.map.tracker.pickPos !== null) { // 拖放位置不在地图上
+      const onMouseup = (): void => {
+        if (this.map.tracker.pickPos !== null) { // 拖放位置在地面上
           const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
-          if (placeLayer.has(pos)) { // 拖放位置不在父区域中
+          if (placeLayer.has(pos)) { // 拖放位置在父区域中
+            this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
             mouseupHandler(false); // 不重置干员头像的选择状态
             this.map.addUnit(pos.x, pos.y, unit); // 添加至地图
             this.setDirection(unit);
             return;
           }
         }
+        this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
         mouseupHandler();
       };
 
       /* 绑定干员头像上的按下事件 */
       this.frame.addEventListener(oprNode, 'mousedown', () => {
-        /* 显示UI */
+        /* 显示区域叠加层 */
         oprNode.classList.add('chosen'); // 按下时进入选定状态
         placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
-        this.map.getOverlay(OverlayType.AttackLayer).hide(); // 隐藏移动光标时显示的区域
         this.renderer.requestRender();
 
         if (oprNode.dataset.status === 'enable') {
           /* 添加干员图片到指针叠加层元素 */
           const oprRes = this.matData.resources.operator[opr];
-          const img = document.createElement('img');
-          img.setAttribute('src', oprRes.url);
-          this.mouseLayer.appendChild(img);
+          this.mouseLayer.children[0].setAttribute('src', oprRes.url);
 
           /* 绑定画布上的光标移动及抬起事件 */
-          this.frame.addEventListener(this.frame.canvas, 'mousemove', canvasMousemoveHandler);
-          this.frame.addEventListener(this.frame.canvas, 'mouseup', canvasMouseupHandler, true);
+          this.frame.addEventListener(this.frame.canvas, 'mousemove', onMousemove);
+          this.frame.addEventListener(this.frame.canvas, 'mouseup', onMouseup, true);
         } else {
-          this.frame.addEventListener(this.frame.canvas, 'mouseup', () => { mouseupHandler(); }, true);
+          this.frame.addEventListener(this.frame.canvas, 'mouseup', () => mouseupHandler(), true);
         }
       });
 
       /* 绑定干员头像上的释放事件 */
-      this.frame.addEventListener(oprNode, 'mouseup', () => { mouseupHandler(); }); // 干员头像卡节点会被删除，无需解绑该事件
+      this.frame.addEventListener(oprNode, 'mouseup', () => {
+        mouseupHandler();
+        this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
+        this.frame.removeEventListener(this.frame.canvas, 'mouseup', onMouseup);
+      }); // 干员头像卡节点会被删除，无需解绑该事件
     });
+  }
+
+  /** 用控制类中的cost更新本类中的整数cost */
+  private updateCost(): void {
+    this.cost = Math.floor(this.gameCtl.cost);
+    const costTextNode = document.querySelector('.cost span') as HTMLDivElement;
+    costTextNode.textContent = this.cost.toString(); // 仅作显示意义
+  }
+
+  /**
+   * 撤退指定干员
+   * @param opr - 要撤退的干员实例
+   */
+  private withdrawOperator(opr: Operator): void {
+    this.map.removeUnit(opr);
+    const remain = this.gameCtl.removeOperator(opr.name);
+    this.bottomUI.children[1].textContent = remain.toString();
+
+    /* 撤退后更新cost */
+    this.updateCost();
+    const oprNode = document.querySelector(`#${opr.name}`) as HTMLDivElement;
+    const cdNode = oprNode.children[1] as HTMLDivElement;
+    cdNode.style.display = 'inline-block';
+    cdNode.textContent = opr.rspTime.toFixed(1);
+    oprNode.children[2].textContent = opr.cost.toString();
+    this.hideSelectLayer();
+    this.showOprCard(opr.name);
+    oprNode.dataset.status = 'cd'; // 设置cd状态以便进行状态检查
+    this.updateCardStatus();
   }
 
   /** 仅当未达到干员放置上限时，遍历更新所有干员卡状态 */
@@ -397,19 +414,6 @@ class GameUIController {
     }
   }
 
-  /**
-   * 根据砖块坐标计算更新叠加层中心坐标
-   * @param pos: 叠加层中心的砖块抽象坐标
-   */
-  private updateCenterPos(pos: Vector2): void {
-    const height = (this.map.getBlock(pos) as BlockInfo).size.y; // 点击处砖块高度
-    const realPos = absPosToRealPos(pos.x + 0.5, pos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
-    const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
-    const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width;
-    const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height;
-    this.center.set(centerX, centerY);
-  }
-
   /** 隐藏选择叠加层 */
   private hideSelectLayer(): void {
     this.map.hideOverlay();
@@ -419,8 +423,21 @@ class GameUIController {
     this.renderer.requestRender();
   }
 
-  /** 绘制选择叠加层 */
-  private drawSelectLayer(): void {
+  /**
+   * 绘制选择叠加层。
+   * 当传入叠加层中心砖块抽象坐标时，以该坐标值重设当前中心变量。
+   * @param pos - 叠加层中心的砖块抽象坐标
+   */
+  private drawSelectLayer(pos?: Vector2): void {
+    if (pos !== undefined) {
+      const height = (this.map.getBlock(pos) as BlockInfo).size.y; // 点击处砖块高度
+      const realPos = absPosToRealPos(pos.x + 0.5, pos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
+      const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
+      const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width;
+      const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height;
+      this.center.set(centerX, centerY);
+    }
+
     this.ctx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
     this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
     this.ctx.fillRect(0, 0, this.selectLayer.width, this.selectLayer.height);
@@ -467,11 +484,11 @@ class GameUIController {
         child.dataset.status = 'disable';
       });
     } else if (typeof card === 'string') {
-      const oprNode = document.querySelector(`#${card}`) as HTMLDivElement;
+      const oprNode = document.querySelector(`#${card}`);
       if (oprNode !== null) {
         (oprNode.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
         (oprNode.children[2] as HTMLDivElement).style.filter = 'brightness(50%)';
-        oprNode.dataset.status = 'disable';
+        (oprNode as HTMLElement).dataset.status = 'disable';
       }
     } else {
       (card.children[0] as HTMLDivElement).style.filter = 'brightness(50%)';
@@ -500,13 +517,13 @@ class GameUIController {
     if (oprName === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
         card.style.visibility = '';
-        card.style.display = 'block';
+        card.style.display = '';
       });
     } else {
       const oprNode = document.querySelector(`#${oprName}`) as HTMLDivElement;
       if (oprNode !== null) {
         oprNode.style.visibility = '';
-        oprNode.style.display = 'block';
+        oprNode.style.display = '';
       }
     }
   }
@@ -516,11 +533,12 @@ class GameUIController {
    * @param opr: 干员实例
    */
   private setDirection(opr: Operator): void {
-    const pickPos = realPosToAbsPos(this.map.tracker.pickPos as Vector2, true);
+    const absPos = realPosToAbsPos(this.map.tracker.pickPos as Vector2, true);
     const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
     atkLayer.hide();
     const aziAngle = this.frame.controls.getAzimuthalAngle(); // 镜头控制器的方位角 0.25-0.75在右侧 -0.25-0.25正面
     let newArea: Vector2[] = []; // 干员的新攻击范围
+
     /* 转译攻击范围为Vector2数组 */
     const originArea: Vector2[] = [];
     this.unitData.operator[opr.name].atkArea.forEach((tuple) => {
@@ -528,11 +546,10 @@ class GameUIController {
     });
 
     /** 窗口resize事件中重新计算叠加层定位 */
-    const recalculatePos = (): void => {
-      this.updateCenterPos(pickPos);
+    const resizeSelectLayer = (): void => {
       this.selectLayer.width = this.frame.canvas.width;
       this.selectLayer.height = this.frame.canvas.height;
-      this.drawSelectLayer();
+      this.drawSelectLayer(absPos);
     };
 
     /** 动画渲染 */
@@ -610,7 +627,7 @@ class GameUIController {
             newArea.push(new Vector2(area.y, -area.x));
           });
         }
-        atkLayer.showArea(pickPos, newArea);
+        atkLayer.showArea(absPos, newArea);
       }
       this.renderer.requestRender();
     };
@@ -632,8 +649,7 @@ class GameUIController {
 
           const remain = this.gameCtl.addOperator(opr);
           this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
-          this.cost = Math.floor(this.gameCtl.cost); // 更新本类中的cost
-          this.costTextNode.textContent = this.cost.toString(); // 仅作cost显示意义
+          this.updateCost();
 
           if (remain === 0) {
             this.disableOprCard(); // 到达干员上限，禁用所有干员卡
@@ -643,13 +659,13 @@ class GameUIController {
         } else { this.map.removeUnit(opr); }
       }
       this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);
-      this.frame.removeEventListener(window, 'resize', recalculatePos);
+      this.frame.removeEventListener(window, 'resize', resizeSelectLayer);
       this.hideSelectLayer();
     }, true);
 
-    recalculatePos();
+    resizeSelectLayer();
     this.frame.addEventListener(this.selectLayer, 'mousemove', drawSelector);
-    this.frame.addEventListener(window, 'resize', recalculatePos);
+    this.frame.addEventListener(window, 'resize', resizeSelectLayer);
     this.selectLayer.style.display = 'block';
   }
 }

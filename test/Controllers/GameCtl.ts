@@ -100,16 +100,15 @@ class GameController {
    * 更新所有具有计时属性的属性值
    * @param interval - 帧时间间隔（秒）
    */
-  updateProperty(interval: number): number {
+  updateProperty(interval: number): void {
     /* 更新Cost */
-    if (this.cost <= this.ctlData.maxCost) {
-      this.cost += this.ctlData.costInc * interval;
-    }
+    const newCost = this.cost + this.ctlData.costInc * interval;
+    this.cost = newCost > this.ctlData.maxCost ? this.ctlData.maxCost : newCost;
+
     /* 更新冷却时间 */
     this.allOperator.forEach((opr) => {
       if (opr.rspTime > 0) { opr.rspTime -= interval; }
     });
-    return this.cost;
   }
 
   /**
@@ -297,12 +296,15 @@ class GameController {
       oprInst.rspTime = this.unitData.operator[opr].rspTime; // 设置部署冷却时间
 
       const { cost } = this.unitData.operator[opr]; // 原始cost
-      this.cost += Math.floor(oprInst.cost / 2);
+      const newCost = this.cost + Math.floor(oprInst.cost / 2); // 撤退回复后的cost
+      this.cost = newCost > this.ctlData.maxCost ? this.ctlData.maxCost : newCost;
+
       if (oprInst.trackData.withdrawCnt === 0) { // 首次撤退
         oprInst.cost = Math.floor(cost * 1.5); // 新费用为原费用的1.5倍
       } else if (oprInst.trackData.withdrawCnt === 1) { // 第二次撤退
         oprInst.cost = cost * 2; // 新费用为原费用的2倍
       }
+
       oprInst.trackData.withdrawCnt += 1;
       this.activeOperator.delete(opr);
       this.allOperator.set(opr, oprInst);

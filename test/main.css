@@ -416,7 +416,7 @@ canvas {
   text-align: center;
 }
 
-.ui-overlay#leave {
+.ui-overlay#withdraw {
   display: none;
   position: absolute;
   transform: translate(-50%, -50%);
@@ -427,6 +427,7 @@ canvas {
 
 /* 光标叠加层 */
 .mouse-overlay {
+  display: none;
   position: absolute;
   width: 5%;
   pointer-events: none;

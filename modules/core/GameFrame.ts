@@ -129,8 +129,8 @@ class GameFrame {
       });
       this.listeners.set(obj, handlerObj);
     } else if (Object.prototype.hasOwnProperty.call(target, type)) { // 多次为对象添加指定事件
-      if (target[type].has(handler)) { return; } // 重复添加事件监听器时返回
-      target[type].add(handler);
+      if (!once && target[type].has(handler)) { return; } // 重复添加事件监听器时返回
+      target[type].add(handler); // 但单次生效的事件无此限制
     } else { // 首次为对象添加指定事件
       Object.defineProperty(target, type, {
         value: new Set([handler]),

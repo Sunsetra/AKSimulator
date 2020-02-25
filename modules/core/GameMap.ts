@@ -33,6 +33,7 @@ import {
   disposeResources,
   realPosToAbsPos,
 } from '../others/utils.js';
+import Operator from '../units/Operator.js';
 import GameFrame from './GameFrame.js';
 import {
   BlockInfo,
@@ -49,8 +50,6 @@ import Unit from './Unit.js';
  * 地图管理类，包括地图构造、地图数据获取，叠加层设置及管理
  */
 class GameMap {
-  overlay: Map<number, Overlay>; // 地图中的叠加层映射
-
   readonly name: string; // 地图名称
 
   readonly width: number; // 地图宽度格数
@@ -62,6 +61,8 @@ class GameMap {
   readonly mesh: Mesh; // 地图网格体
 
   readonly tracker: Tracker; // 光标位置追踪器
+
+  private readonly overlay: Map<number, Overlay>; // 地图中的叠加层映射
 
   private readonly blockData: Array<BlockInfo | null>; // 砖块信息列表
 
@@ -398,9 +399,8 @@ class GameMap {
     const area: Vector2[] = [];
     this.blockData.forEach((block) => {
       if (block !== null) {
-        if (type === undefined) {
-          area.push(new Vector2(block.x, block.z));
-        } else if (block.placeable && (type === block.blockType || type === BlockType.PlaceableBlock)) {
+        if (type === undefined
+          || (block.placeable && (type === block.blockType || type === BlockType.PlaceableBlock))) {
           area.push(new Vector2(block.x, block.z));
         }
       }
@@ -419,8 +419,9 @@ class GameMap {
     if (thisBlock !== null) {
       const y = thisBlock.size.y + unit.height / 2;
       unit.setY(y);
-      unit.position = new Vector2(x + 0.5, z + 0.5); // 敌人初始放置
+      unit.position = new Vector2(x + 0.5, z + 0.5);
       this.frame.scene.add(unit.mesh); // 添加单位到地图
+      if (unit instanceof Operator) { thisBlock.placeable = false; }
     }
   }
 
@@ -600,10 +601,14 @@ class GameMap {
   }
 
   /**
-   * 从地图中移除指定单位实例
+   * 从地图中移除指定单位实例，若是干员则将当前位置砖块设置为可放置
    * @param unit: 要移除的单位
    */
   removeUnit(unit: Unit): void {
+    if (unit instanceof Operator) {
+      const block = this.getBlock(unit.position.floor());
+      (block as BlockInfo).placeable = true;
+    }
     this.frame.scene.remove(unit.mesh);
     disposeResources(unit.mesh);
   }

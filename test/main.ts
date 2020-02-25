@@ -77,7 +77,8 @@ function main(mapInfo: MapInfo, data: Data): void {
     /* 执行位置和状态更新 */
     if (gameCtl.getStatus() === GameStatus.Running || gameCtl.getStatus() === GameStatus.Standby) {
       const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
-      gameUICtl.updateUIStatus(gameCtl.updateProperty(interval));
+      gameCtl.updateProperty(interval);
+      gameUICtl.updateUIStatus();
       gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
       gameCtl.updateEnemyPosition(interval);
       timeAxisUI.setTimer(); // 更新计时器
