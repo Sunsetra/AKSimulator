@@ -50,11 +50,13 @@ class GameUIController {
 
   private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
 
-  private readonly ctx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
-
   private readonly costInnerBar: HTMLDivElement; // cost内部进度条引用，优化速度用
 
   private readonly bottomUI: HTMLDivElement; // 底部UI节点
+
+  private readonly ctx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
+
+  private readonly devicePixelRatio: number; // 设备像素比
 
   private center: Vector2; // 干员位置中心坐标
 
@@ -75,6 +77,7 @@ class GameUIController {
     this.costInnerBar = document.querySelector('.cost-bar div') as HTMLDivElement;
     this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
     this.center = new Vector2(0, 0);
+    this.devicePixelRatio = this.frame.renderer.getPixelRatio();
 
 
     /* 以下为画布及撤退按钮关联点击事件 */
@@ -109,8 +112,8 @@ class GameUIController {
               const calcIconsPos = (): void => {
                 const rad = this.selectLayer.width * 0.1;
                 const delta = rad / Math.sqrt(2) / 2;
-                withdrawNode.style.left = `${this.center.x / 2 - delta}px`;
-                withdrawNode.style.top = `${this.center.y / 2 - delta}px`;
+                withdrawNode.style.left = `${this.center.x / this.devicePixelRatio - delta}px`;
+                withdrawNode.style.top = `${this.center.y / this.devicePixelRatio - delta}px`;
               };
 
               /** 窗口resize事件中重新计算叠加层定位 */
@@ -558,14 +561,14 @@ class GameUIController {
       this.drawSelectLayer();
 
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - this.center.x / 2;
-      const distY = e.clientY - this.center.y / 2;
+      const distX = e.clientX - this.center.x / this.devicePixelRatio;
+      const distY = e.clientY - this.center.y / this.devicePixelRatio;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
-      const rad = this.selectLayer.width * 0.1; // 方向选择区半径
-      if (dist < rad / 4) {
+      const diam = this.selectLayer.width * 0.1; // 方向选择区直径
+      if (dist < diam / 4) {
         this.ctx.strokeStyle = 'white';
         this.ctx.beginPath();
-        this.ctx.arc(this.center.x, this.center.y, rad / 2, 0, 2 * Math.PI);
+        this.ctx.arc(this.center.x, this.center.y, diam / 2, 0, 2 * Math.PI);
         this.ctx.stroke();
         atkLayer.hide();
       } else {
@@ -573,7 +576,7 @@ class GameUIController {
         const theta = Math.atan2(distY, distX); // 与X方向夹角
         this.ctx.strokeStyle = 'gold';
         this.ctx.beginPath();
-        this.ctx.arc(this.center.x, this.center.y, rad + 20, theta - Math.PI / 4, theta + Math.PI / 4);
+        this.ctx.arc(this.center.x, this.center.y, diam + 20, theta - Math.PI / 4, theta + Math.PI / 4);
         this.ctx.stroke();
 
         /* 判定镜头及光标方位，旋转模型及叠加层 */
@@ -635,14 +638,14 @@ class GameUIController {
     /* 关联选择方向时的点击事件（单次有效） */
     this.frame.addEventListener(this.selectLayer, 'click', (e) => {
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - this.center.x / 2;
-      const distY = e.clientY - this.center.y / 2;
+      const distX = e.clientX - this.center.x / this.devicePixelRatio;
+      const distY = e.clientY - this.center.y / this.devicePixelRatio;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
-      const rad = this.selectLayer.width * 0.1; // 方向选择区半径
+      const diam = this.selectLayer.width * 0.1; // 方向选择区直径
       const chosenCard = document.querySelector('.chosen') as HTMLDivElement;
       if (chosenCard !== null) {
         chosenCard.classList.remove('chosen'); // 恢复干员卡未选定状态
-        if (dist > rad / 4) {
+        if (dist > diam / 4) {
           /* 放置时更新cost */
           opr.atkArea = newArea; // 更新攻击范围
           this.hideOprCard(chosenCard); // 隐藏当前干员卡

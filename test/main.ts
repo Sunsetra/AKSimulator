@@ -18,11 +18,11 @@ import {
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
 import StaticRenderer from '../modules/renderers/StaticRenderer.js';
-import GameController from './Controllers/GameCtl.js';
-import GameUIController from './Controllers/GameUICtl.js';
-import LoadingUICtl from './Controllers/LoadingUICtl.js';
-import RenderController from './Controllers/RenderCtl.js';
-import TimeAxisUICtl from './Controllers/TimeAxisUICtl.js';
+import GameController from './controllers/GameCtl.js';
+import GameUIController from './controllers/GameUICtl.js';
+import LoadingUICtl from './controllers/LoadingUICtl.js';
+import RenderController from './controllers/RenderCtl.js';
+import TimeAxisUICtl from './controllers/TimeAxisUICtl.js';
 
 
 const canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -70,10 +70,9 @@ function main(mapInfo: MapInfo, data: Data): void {
       map.hideOverlay();
     },
   };
-  renderCtl.reset();
 
   /* 指定每帧渲染前需要执行的回调 */
-  function frameCallback(rAFTime: number): void {
+  dynamicRenderer.callback = (rAFTime: number): void => {
     /* 执行位置和状态更新 */
     if (gameCtl.getStatus() === GameStatus.Running || gameCtl.getStatus() === GameStatus.Standby) {
       const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
@@ -87,14 +86,17 @@ function main(mapInfo: MapInfo, data: Data): void {
       dynamicRenderer.stopRender();
       renderCtl.stop(); // 游戏结束，需重置战场
     }
-  }
-
-  dynamicRenderer.callback = frameCallback;
+  };
 
   /* 切换标签页时暂停动画 */
   frame.addEventListener(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') { renderCtl.pause(); }
   });
+  /* 视窗缩放时重新渲染 */
+  frame.addEventListener(window, 'resize', () => staticRenderer.checkResize());
+
+  renderCtl.reset();
+  staticRenderer.checkResize();
 }
 
 /** 重置游戏框架 */

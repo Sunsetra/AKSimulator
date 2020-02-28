@@ -123,7 +123,7 @@ class TimeAxisUICtl {
   updateAxisNodes(): void {
     this.timeAxisNode.childNodes.forEach((child) => {
       const { style, dataset } = child as HTMLElement;
-      const createTime = Number(dataset.createTime);
+      const createTime = parseFloat(dataset.createTime as string); // 加入时间轴的节点均有创建时间数据属性
       const pos = ((createTime / this.timeAxis.getCurrentTime()[1]) * 100).toFixed(2);
       style.left = `${pos}%`;
     });

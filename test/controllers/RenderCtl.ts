@@ -56,7 +56,6 @@ class RenderController {
     this.frame.removeEventListener(this.startBtn, 'click', this.start);
     this.frame.addEventListener(this.startBtn, 'click', this.pause);
     this.frame.removeEventListener(this.frame.controls, 'change', this.staticRender);
-    this.frame.removeEventListener(window, 'resize', this.staticRender);
 
     if (this.callbacks !== undefined && this.callbacks.start !== undefined) { this.callbacks.start(); }
     this.dRenderer.requestRender();
@@ -73,7 +72,6 @@ class RenderController {
     this.frame.addEventListener(this.startBtn, 'click', this.continue);
     this.frame.removeEventListener(this.startBtn, 'click', this.pause);
     this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
-    this.frame.addEventListener(window, 'resize', this.staticRender);
   };
 
   /**
@@ -84,7 +82,6 @@ class RenderController {
     this.frame.removeEventListener(this.startBtn, 'click', this.continue);
     this.frame.addEventListener(this.startBtn, 'click', this.pause);
     this.frame.removeEventListener(this.frame.controls, 'change', this.staticRender);
-    this.frame.removeEventListener(window, 'resize', this.staticRender);
 
     if (this.callbacks !== undefined && this.callbacks.continue !== undefined) { this.callbacks.continue(); }
     this.dRenderer.requestRender();
@@ -100,7 +97,6 @@ class RenderController {
     this.startBtn.textContent = '▶';
     this.frame.removeEventListener(this.startBtn, 'click', this.pause);
     this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
-    this.frame.addEventListener(window, 'resize', this.staticRender);
   };
 
   /**
@@ -116,7 +112,6 @@ class RenderController {
     this.frame.addEventListener(this.startBtn, 'click', this.start);
     this.frame.addEventListener(this.resetBtn, 'click', this.reset);
     this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
-    this.frame.addEventListener(window, 'resize', this.staticRender);
 
     this.sRenderer.requestRender();
   };

@@ -30,6 +30,7 @@ main {
   transform: translateX(-50%) translateY(-50%);
   transition: all 0.5s cubic-bezier(.17, .84, .44, 1), opacity 0.5s linear;
   user-select: none;
+  -webkit-user-select: none;
   z-index: 1;
 }
 
@@ -350,6 +351,8 @@ canvas {
   justify-content: flex-end;
   transform: translateX(-50%);
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* 干员卡栏 */
@@ -412,7 +415,6 @@ canvas {
   color: white;
   background-color: black;
   font-size: 1.3vw;
-  user-select: none;
   text-align: center;
 }
 
@@ -468,6 +470,7 @@ canvas {
   margin-bottom: 10%;
   background-color: yellow;
   user-select: none;
+  -webkit-user-select: none;
 }
 
 #bar {

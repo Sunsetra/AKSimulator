@@ -28,7 +28,6 @@ class StaticRenderer extends Render {
   protected render(rAFTime: number): void {
     // console.log('静态渲染');
     if (this.callback) { this.callback(rAFTime); }
-    this.checkResize();
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
     this.frame.renderer.render(this.frame.scene, this.frame.camera);
