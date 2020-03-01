@@ -24,9 +24,9 @@ class RenderController {
 
   lastTime: number; // 上次进行渲染时的rAF时刻
 
-  private readonly startBtn: HTMLElement;
+  private readonly startBtn: HTMLButtonElement;
 
-  private readonly resetBtn: HTMLElement;
+  private readonly resetBtn: HTMLButtonElement;
 
   private readonly frame: GameFrame; // 地图框架类
 
@@ -44,8 +44,8 @@ class RenderController {
     this.dRenderer = dRenderer;
     this.staticRender = this.sRenderer.requestRender.bind(this.sRenderer);
 
-    this.startBtn = document.querySelector('#starter') as HTMLElement;
-    this.resetBtn = document.querySelector('#reset') as HTMLElement;
+    this.startBtn = document.querySelector('#starter') as HTMLButtonElement;
+    this.resetBtn = document.querySelector('#reset') as HTMLButtonElement;
   }
 
   /**
@@ -95,6 +95,7 @@ class RenderController {
     if (this.callbacks !== undefined && this.callbacks.stop !== undefined) { this.callbacks.stop(); }
 
     this.startBtn.textContent = '▶';
+    this.startBtn.disabled = true;
     this.frame.removeEventListener(this.startBtn, 'click', this.pause);
     this.frame.addEventListener(this.frame.controls, 'change', this.staticRender);
   };
@@ -107,6 +108,7 @@ class RenderController {
     if (this.callbacks !== undefined && this.callbacks.reset !== undefined) { this.callbacks.reset(); }
 
     this.startBtn.textContent = '▶';
+    this.startBtn.disabled = false;
     this.frame.removeEventListener(this.startBtn, 'click', this.pause);
     this.frame.removeEventListener(this.startBtn, 'click', this.continue);
     this.frame.addEventListener(this.startBtn, 'click', this.start);

@@ -166,7 +166,8 @@ class GameMap {
           const thisBlock = this.getBlock(xNum, zNum);
           if (thisBlock === null) { // 该处无方块时加入空元组占位
             sideGroup.push([0, 0]);
-          } else { // 该处有方块（不为null）才构造几何
+          } else {
+            /* 构造地形几何 */
             const thisHeight = thisBlock.heightAlpha;
 
             faces.forEach(({ corners, normal }) => {
@@ -191,19 +192,19 @@ class GameMap {
           }
         }
       }
-      const mapGeometry = new BufferGeometry();
-      mapGeometry.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
-      mapGeometry.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
-      mapGeometry.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
-      mapGeometry.setIndex(indices);
+      const mapGeo = new BufferGeometry();
+      mapGeo.setAttribute('position', new BufferAttribute(new Float32Array(positions), 3));
+      mapGeo.setAttribute('normal', new BufferAttribute(new Float32Array(normals), 3));
+      mapGeo.setAttribute('uv', new BufferAttribute(new Float32Array(uvs), 2));
+      mapGeo.setIndex(indices);
 
-      const materialList: Material[] = []; // 创建所需的所有砖块表面贴图材质
-      const materialMap: { [matType: string]: number } = {}; // 材质类型在材质列表中的索引
+      const matList: Material[] = []; // 创建所需的所有砖块表面贴图材质
+      const matMap: { [matType: string]: number } = {}; // 材质类型在材质列表中的索引
       data.resources.block.forEach((type) => {
         const res = resList.block[type];
         if (res.mat && res.mat instanceof Material) {
-          materialList.push(res.mat);
-          materialMap[type] = materialList.length - 1;
+          matList.push(res.mat);
+          matMap[type] = matList.length - 1;
         } else {
           throw new ResourcesUnavailableError('材质资源不存在', res);
         }
@@ -217,18 +218,18 @@ class GameMap {
           const bottom = texture.bottom ? texture.bottom : 'bottomDefault';
           const [s, c] = sideGroup[ndx]; // 每组的开始索引和计数
 
-          mapGeometry.addGroup(s + c + 6, 6, materialMap[top]); // 顶面组
-          mapGeometry.addGroup(s + c, 6, materialMap[bottom]); // 底面组
-          if (count) { mapGeometry.addGroup(s, c, materialMap[side]); } // 侧面需要建面时添加侧面组
+          mapGeo.addGroup(s + c + 6, 6, matMap[top]); // 顶面组
+          mapGeo.addGroup(s + c, 6, matMap[bottom]); // 底面组
+          if (count) { mapGeo.addGroup(s, c, matMap[side]); } // 侧面需要建面时添加侧面组
         }
       });
 
-      this.mesh = new Mesh(mapGeometry, materialList);
+      this.mesh = new Mesh(mapGeo, matList);
       this.mesh.castShadow = true;
       this.mesh.receiveShadow = true;
     }
 
-    /** 构造地图几何数据及贴图映射数据 */
+    /* 构造地图几何数据及贴图映射数据 */
     {
       const maxSize = Math.max(this.width, this.height) * BlockUnit; // 地图最长尺寸
       const centerX = (this.width * BlockUnit) / 2; // 地图X向中心
