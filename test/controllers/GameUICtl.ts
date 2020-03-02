@@ -14,6 +14,7 @@ import {
 import {
   OverlayType,
   RarityColor,
+  RenderType,
 } from '../../modules/others/constants.js';
 import {
   absPosToRealPos,
@@ -94,10 +95,10 @@ class GameUIController {
     /* 光标在画布上按下时记录点击坐标 */
     this.frame.addEventListener(this.frame.canvas, 'mousedown', () => {
       const { pickPos } = this.map.tracker;
-      clickPos = pickPos === null ? null : pickPos;
+      clickPos = pickPos;
     });
 
-    /* 光标在画布上松开时，若与按下时位置相同才视为一次点击 */
+    /* 光标在画布上松开时：若与按下时位置相同才视为一次点击 */
     this.frame.addEventListener(this.frame.canvas, 'mouseup', () => {
       const { pickPos } = this.map.tracker;
       if (pickPos !== null && clickPos === pickPos) {
@@ -131,7 +132,7 @@ class GameUIController {
 
               const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
               atkLayer.showArea(absPos, opr.atkArea);
-              this.renderer.requestRender();
+              if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
 
               /* 关联叠加层上点击时隐藏叠加层，以及窗口resize事件 */
               this.frame.addEventListener(this.selectLayer, 'click', () => {
@@ -149,7 +150,7 @@ class GameUIController {
   /** 重置游戏UI */
   reset(): void {
     this.updateCost();
-    this.costInnerBar.style.width = '';
+    this.costInnerBar.style.transform = '';
     this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
@@ -167,7 +168,9 @@ class GameUIController {
   /** 按cost更新UI状态（每帧执行） */
   updateUIStatus(): void {
     const intCost = Math.floor(this.gameCtl.cost);
-    this.costInnerBar.style.width = `${(this.gameCtl.cost - intCost) * 100}%`;
+    const scale = this.gameCtl.cost - intCost;
+    const moveX = ((1 - scale) * 50) / scale;
+    this.costInnerBar.style.transform = `scaleX(${scale}) translateX(-${moveX}%)`;
     /* 当cost发生变化时更新cost */
     if (intCost !== this.cost) {
       this.updateCost();
@@ -311,7 +314,7 @@ class GameUIController {
         }
         this.mouseLayer.style.display = '';
         this.map.hideOverlay();
-        this.renderer.requestRender();
+        if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
       };
 
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
@@ -323,7 +326,7 @@ class GameUIController {
           this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
         }
         this.map.trackOverlay(atkLayer, atkArea);
-        this.renderer.requestRender();
+        if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
       };
 
       /** 在画布元素上释放光标时的回调函数 */
@@ -348,7 +351,7 @@ class GameUIController {
         oprNode.classList.add('chosen'); // 按下时进入选定状态
         placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
         placeLayer.show(); // 设置总放置叠加层的可用区域并显示
-        this.renderer.requestRender();
+        if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
 
         if (oprNode.dataset.status === 'enable') {
           /* 添加干员图片到指针叠加层元素 */
@@ -423,7 +426,7 @@ class GameUIController {
     this.selectLayer.style.display = 'none';
     const overlayUI = document.querySelectorAll('.ui-overlay') as NodeListOf<HTMLElement>;
     overlayUI.forEach((child) => { child.style.display = 'none'; });
-    this.renderer.requestRender();
+    if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
   }
 
   /**
@@ -632,7 +635,7 @@ class GameUIController {
         }
         atkLayer.showArea(absPos, newArea);
       }
-      this.renderer.requestRender();
+      if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
     };
 
     /* 关联选择方向时的点击事件（单次有效） */

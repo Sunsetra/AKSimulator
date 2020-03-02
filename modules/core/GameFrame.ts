@@ -16,9 +16,15 @@ import {
 
 import { OrbitControls } from '../../node_modules/three/examples/jsm/controls/OrbitControls.js';
 import { WEBGL } from '../../node_modules/three/examples/jsm/WebGL.js';
+import { RenderType } from '../others/constants.js';
 
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+interface GameStatus {
+  renderType: RenderType;
+}
+
 
 /**
  * 游戏基础框架类
@@ -40,6 +46,8 @@ class GameFrame {
   scene: Scene;
 
   renderer: WebGLRenderer;
+
+  status: GameStatus; // 游戏状态信息
 
   private listeners: Map<EventTarget, { [type: string]: Set<(...args: any[]) => void> }>; // 事件监听函数收集器
 
@@ -81,6 +89,10 @@ class GameFrame {
     this.renderer.setPixelRatio(window.devicePixelRatio);
     this.renderer.outputEncoding = GammaEncoding; // 伽玛输出
     this.renderer.physicallyCorrectLights = true; // 开启物理修正模式
+
+    this.status = {
+      renderType: RenderType.StaticRender,
+    };
   }
 
   /**

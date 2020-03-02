@@ -13,7 +13,7 @@ import TimeAxis from '../../modules/core/TimeAxis.js';
 class TimeAxisUICtl {
   private readonly timeAxisNode: HTMLElement; // 时间轴元素
 
-  private readonly timer: HTMLElement; // 计时器UI
+  private readonly timer: Text; // 计时器的文本节点
 
   private readonly resList: ResourcesList; // 资源列表
 
@@ -25,7 +25,7 @@ class TimeAxisUICtl {
     this.resList = resList;
     const axisNode = document.querySelector('.time-axis') as HTMLDivElement;
     this.timeAxisNode = axisNode.children[0] as HTMLDivElement;
-    this.timer = axisNode.children[1] as HTMLDivElement; // 计时器
+    this.timer = axisNode.children[1].childNodes[0] as Text; // 计时器
   }
 
   /**
@@ -56,11 +56,8 @@ class TimeAxisUICtl {
         const arrow = item.children[3] as HTMLDivElement;
 
         if (icon && detail && arrow) {
-          if (window.getComputedStyle(icon).filter === 'none') { // 在原样式基础上增加光标高亮行为
-            icon.style.filter = 'brightness(200%)';
-          } else {
-            icon.style.filter = `${window.getComputedStyle(icon).filter} brightness(2)`;
-          }
+          const { filter } = window.getComputedStyle(icon);
+          icon.style.filter = filter === 'none' ? 'brightness(2)' : `${filter} brightness(2)`; // 在原样式基础上增加光标高亮行为
           icon.style.zIndex = '2';
 
           detail.style.display = 'block';
@@ -132,7 +129,7 @@ class TimeAxisUICtl {
 
   /** 设置计时器时间 */
   setTimer(): void {
-    [this.timer.textContent] = this.timeAxis.getCurrentTime();
+    [this.timer.nodeValue] = this.timeAxis.getCurrentTime();
   }
 
   /** 重置计时器 */

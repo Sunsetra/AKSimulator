@@ -6,6 +6,13 @@ export enum WebGLAvailability {
 }
 
 
+/* 渲染类型常量 */
+export enum RenderType {
+  StaticRender = 'STATIC',
+  DynamicRender = 'DYNAMIC',
+}
+
+
 /* 砖块类型常量 */
 export enum BlockType {
   PlaceableBlock = 'ALL',

@@ -34,6 +34,7 @@ class DynamicRenderer extends Render {
 
   protected render(rAFTime: number): void {
     // console.log('动态渲染');
+    // console.log(this.frame.status.renderType);
     if (this.callback !== undefined) { this.callback(rAFTime); } // 运行回调
     this.lastTime = rAFTime;
     this.frame.controls.update();

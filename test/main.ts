@@ -30,9 +30,11 @@ const frame = new GameFrame(canvas);
 
 const timeAxis = new TimeAxis();
 
-const staticRenderer = new StaticRenderer(frame); // 静态渲染器
-const dynamicRenderer = new DynamicRenderer(frame); // 动态渲染器
-const renderCtl = new RenderController(frame, staticRenderer, dynamicRenderer);
+const render = {
+  static: new StaticRenderer(frame), // 静态渲染器
+  dynamic: new DynamicRenderer(frame), // 动态渲染器
+};
+const renderCtl = new RenderController(frame, render);
 
 /**
  * 游戏主函数，在资源加载完成后执行
@@ -46,7 +48,7 @@ function main(mapInfo: MapInfo, data: Data): void {
   /* 设置全局控制器 */
   const timeAxisUI = new TimeAxisUICtl(timeAxis, materials.resources);
   const gameCtl = new GameController(map, data, timeAxisUI); // 游戏控制器
-  const gameUICtl = new GameUIController(frame, map, gameCtl, staticRenderer, data);
+  const gameUICtl = new GameUIController(frame, map, gameCtl, render.static, data);
   gameUICtl.addOprCard([
     'blaze', 'cardigan', 'ceylon', 'durin', 'haze', 'kroos',
     'lancet2', 'reed', 'rope', 'silverash', 'sora', 'vermeil']);
@@ -72,10 +74,10 @@ function main(mapInfo: MapInfo, data: Data): void {
   };
 
   /* 指定每帧渲染前需要执行的回调 */
-  dynamicRenderer.callback = (rAFTime: number): void => {
+  render.dynamic.callback = (rAFTime: number): void => {
     /* 执行位置和状态更新 */
     if (gameCtl.getStatus() === GameStatus.Running || gameCtl.getStatus() === GameStatus.Standby) {
-      const interval = (rAFTime - dynamicRenderer.lastTime) / 1000;
+      const interval = (rAFTime - render.dynamic.lastTime) / 1000;
       gameCtl.updateProperty(interval);
       gameUICtl.updateUIStatus();
       gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
@@ -83,7 +85,7 @@ function main(mapInfo: MapInfo, data: Data): void {
       timeAxisUI.setTimer(); // 更新计时器
       timeAxisUI.updateAxisNodes(); // 更新时间轴图标
     } else {
-      dynamicRenderer.stopRender();
+      render.dynamic.stopRender();
       renderCtl.stop(); // 游戏结束，需重置战场
     }
   };
@@ -93,10 +95,10 @@ function main(mapInfo: MapInfo, data: Data): void {
     if (document.visibilityState === 'hidden') { renderCtl.pause(); }
   });
   /* 视窗缩放时重新渲染 */
-  frame.addEventListener(window, 'resize', () => staticRenderer.checkResize());
+  frame.addEventListener(window, 'resize', () => render.static.checkResize());
 
   renderCtl.reset();
-  staticRenderer.checkResize();
+  render.static.checkResize();
 }
 
 /** 重置游戏框架 */

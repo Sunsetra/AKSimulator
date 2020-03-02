@@ -207,6 +207,12 @@ canvas {
   border-radius: 0.2rem;
 }
 
+.time-axis > :nth-child(2) {
+  overflow: hidden;
+  margin: 0 auto;
+  color: white;
+}
+
 .mark-icon {
   position: absolute;
   height: 100%;
@@ -278,11 +284,6 @@ canvas {
   display: none;
 }
 
-.time-axis > :nth-child(2) {
-  margin: 0 auto;
-  color: white;
-}
-
 .time-axis-controller {
   padding: 0 0.3rem;
   margin: 0 auto;
@@ -320,10 +321,12 @@ canvas {
 
 /* 内层进度条 */
 .cost-bar > :nth-child(1) {
-  width: 0;
+  width: 100%;
   height: 100%;
   background: white;
   box-shadow: inset 0 0 1px black;
+  transform: scaleX(0) translateX(-100%);
+  will-change: transform;
 }
 
 /* 剩余可部署单位数量 */

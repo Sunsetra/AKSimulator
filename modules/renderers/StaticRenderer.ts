@@ -27,6 +27,7 @@ class StaticRenderer extends Render {
   /** 静态动画循环 */
   protected render(rAFTime: number): void {
     // console.log('静态渲染');
+    // console.log(this.frame.status.renderType);
     if (this.callback) { this.callback(rAFTime); }
     this.needRender = false;
     this.frame.controls.update(); // 开启阻尼惯性时需调用
