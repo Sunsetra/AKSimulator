@@ -51,11 +51,15 @@ class GameUIController {
 
   private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
 
-  private readonly costInnerBar: HTMLDivElement; // cost内部进度条引用，优化速度用
+  private readonly costTextNode: HTMLDivElement; // cost计数
+
+  private readonly costBar: HTMLCanvasElement; // cost内部进度条引用，优化速度用
+
+  private readonly costBarCtx: CanvasRenderingContext2D; // cost内部进度条上下文
 
   private readonly bottomUI: HTMLDivElement; // 底部UI节点
 
-  private readonly ctx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
+  private readonly selectCtx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
 
   private readonly devicePixelRatio: number; // 设备像素比
 
@@ -72,14 +76,28 @@ class GameUIController {
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
-    this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.bottomUI = document.querySelector('.ui-bottom') as HTMLDivElement;
     this.oprCards = this.bottomUI.children[2] as HTMLDivElement;
-    this.costInnerBar = document.querySelector('.cost-bar div') as HTMLDivElement;
-    this.ctx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
     this.center = new Vector2(0, 0);
     this.devicePixelRatio = this.frame.renderer.getPixelRatio();
 
+    /* 选择角色叠加层相关 */
+    this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
+    this.selectCtx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
+
+    /* cost计数器相关 */
+    this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
+    this.costBar = document.querySelector('.cost-bar') as HTMLCanvasElement;
+    this.costBar.width = 150;
+    this.costBar.height = 10;
+    this.costBarCtx = this.costBar.getContext('2d') as CanvasRenderingContext2D;
+    const gradient = this.costBarCtx.createLinearGradient(0, 0, 0, 10);
+    gradient.addColorStop(0, 'dimgrey');
+    gradient.addColorStop(0.15, 'white');
+    gradient.addColorStop(0.75, 'white');
+    gradient.addColorStop(1, 'dimgrey');
+    this.costBarCtx.strokeStyle = gradient;
+    this.costBarCtx.lineWidth = 20;
 
     /* 以下为画布及撤退按钮关联点击事件 */
     let selectedOpr: Operator | null; // 记录当前选择的干员
@@ -150,7 +168,7 @@ class GameUIController {
   /** 重置游戏UI */
   reset(): void {
     this.updateCost();
-    this.costInnerBar.style.transform = '';
+    this.costBarCtx.clearRect(0, 0, this.costBar.width, this.costBar.height);
     this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
@@ -169,12 +187,11 @@ class GameUIController {
   updateUIStatus(): void {
     const intCost = Math.floor(this.gameCtl.cost);
     const scale = this.gameCtl.cost - intCost;
-    const moveX = ((1 - scale) * 50) / scale;
-    this.costInnerBar.style.transform = `scaleX(${scale}) translateX(-${moveX}%)`;
     /* 当cost发生变化时更新cost */
-    if (intCost !== this.cost) {
+    if (intCost === this.cost) { this.drawCostBar(scale); } else {
       this.updateCost();
       this.updateCardStatus();
+      this.drawCostBar(scale, true);
     }
 
     /* 检查冷却计时 */
@@ -375,11 +392,26 @@ class GameUIController {
     });
   }
 
+  /**
+   * 绘制cost进度指示条
+   * @param pct - 进度条宽度（百分比）
+   * @param isClear - 是否清空进度条，默认为false
+   */
+  private drawCostBar(pct: number, isClear = false): void {
+    const width = this.costBar.width * pct;
+    if (isClear) {
+      this.costBarCtx.clearRect(0, 0, this.costBar.width, this.costBar.height);
+      this.costBarCtx.beginPath();
+      this.costBarCtx.moveTo(0, 0);
+    }
+    this.costBarCtx.lineTo(width, 0);
+    this.costBarCtx.stroke();
+  }
+
   /** 用控制类中的cost更新本类中的整数cost */
   private updateCost(): void {
     this.cost = Math.floor(this.gameCtl.cost);
-    const costTextNode = document.querySelector('.cost span') as HTMLDivElement;
-    costTextNode.textContent = this.cost.toString(); // 仅作显示意义
+    this.costTextNode.textContent = this.cost.toString(); // 仅作显示意义
   }
 
   /**
@@ -444,20 +476,20 @@ class GameUIController {
       this.center.set(centerX, centerY);
     }
 
-    this.ctx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
-    this.ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    this.ctx.fillRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+    this.selectCtx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+    this.selectCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+    this.selectCtx.fillRect(0, 0, this.selectLayer.width, this.selectLayer.height);
 
-    this.ctx.strokeStyle = 'white';
-    this.ctx.lineWidth = 10;
-    this.ctx.beginPath();
-    this.ctx.arc(this.center.x, this.center.y, this.selectLayer.width * 0.1, 0, 2 * Math.PI);
-    this.ctx.stroke();
+    this.selectCtx.strokeStyle = 'white';
+    this.selectCtx.lineWidth = 10;
+    this.selectCtx.beginPath();
+    this.selectCtx.arc(this.center.x, this.center.y, this.selectLayer.width * 0.1, 0, 2 * Math.PI);
+    this.selectCtx.stroke();
 
-    this.ctx.globalCompositeOperation = 'destination-out';
-    this.ctx.fillStyle = 'blue';
-    this.ctx.fill();
-    this.ctx.globalCompositeOperation = 'source-over';
+    this.selectCtx.globalCompositeOperation = 'destination-out';
+    this.selectCtx.fillStyle = 'blue';
+    this.selectCtx.fill();
+    this.selectCtx.globalCompositeOperation = 'source-over';
   }
 
   /**
@@ -569,18 +601,18 @@ class GameUIController {
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
       const diam = this.selectLayer.width * 0.1; // 方向选择区直径
       if (dist < diam / 4) {
-        this.ctx.strokeStyle = 'white';
-        this.ctx.beginPath();
-        this.ctx.arc(this.center.x, this.center.y, diam / 2, 0, 2 * Math.PI);
-        this.ctx.stroke();
+        this.selectCtx.strokeStyle = 'white';
+        this.selectCtx.beginPath();
+        this.selectCtx.arc(this.center.x, this.center.y, diam / 2, 0, 2 * Math.PI);
+        this.selectCtx.stroke();
         atkLayer.hide();
       } else {
         /* 绘制方向指示器 */
         const theta = Math.atan2(distY, distX); // 与X方向夹角
-        this.ctx.strokeStyle = 'gold';
-        this.ctx.beginPath();
-        this.ctx.arc(this.center.x, this.center.y, diam + 20, theta - Math.PI / 4, theta + Math.PI / 4);
-        this.ctx.stroke();
+        this.selectCtx.strokeStyle = 'gold';
+        this.selectCtx.beginPath();
+        this.selectCtx.arc(this.center.x, this.center.y, diam + 20, theta - Math.PI / 4, theta + Math.PI / 4);
+        this.selectCtx.stroke();
 
         /* 判定镜头及光标方位，旋转模型及叠加层 */
         const tempAzi = aziAngle - 0.25 * Math.PI; // 重置方位角为四个象限

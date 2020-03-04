@@ -115,6 +115,13 @@ main {
   font-size: smaller;
 }
 
+.map-select::after {
+  content: "Ver.0.7.7";
+  margin-top: auto;
+  margin-bottom: 2%;
+  font-size: small;
+}
+
 /* 地图选取窗口状态B：左侧边栏 */
 
 .map-select.side-bar {
@@ -180,7 +187,8 @@ main {
   transition: opacity 1s;
 }
 
-canvas {
+/* 画布规格 */
+.main, .select-overlay {
   width: 100%;
   height: 100%;
 }
@@ -292,6 +300,7 @@ canvas {
 
 /* cost计数器元素 */
 .cost {
+  width: 6.2%;
   margin-left: auto;
   color: white;
   font-size: 2vw;
@@ -299,7 +308,9 @@ canvas {
 }
 
 .cost span {
-  margin-right: 0.5vw;
+  display: inline-block;
+  width: 60%;
+  text-align: center;
 }
 
 .cost::before {
@@ -312,8 +323,10 @@ canvas {
   background-size: contain;
 }
 
-/* cost进度条 */
+/* cost进度条画布 */
 .cost-bar {
+  display: block;
+  width: 100%;
   height: 0.3vw;
   background-color: dimgrey;
   box-shadow: inset 0 0 2px black;
@@ -359,7 +372,7 @@ canvas {
 }
 
 /* 干员卡栏 */
-.operator-card {
+.operator-cards {
   width: 90%;
   margin-left: auto;
   display: flex;
@@ -367,7 +380,7 @@ canvas {
 }
 
 /* 每张干员卡 */
-.operator-card > div {
+.operator-cards > div {
   position: relative;
   /* 等比调整宽度和padding-bottom以调整图标尺寸 */
   width: 8%;
@@ -381,7 +394,7 @@ canvas {
   transition: transform 0.2s;
 }
 
-.operator-card > div.chosen {
+.operator-cards > div.chosen {
   border-left: 1px solid white;
   border-top: 1px solid white;
   border-right: 1px solid white;
@@ -390,14 +403,14 @@ canvas {
 }
 
 /* 干员卡的背景图元素 */
-.operator-card > div :first-child {
+.operator-cards > div :first-child {
   width: 100%;
   height: 100%;
   position: absolute;
 }
 
 /* 再部署冷却倒计时元素 */
-.operator-card > div :nth-child(2) {
+.operator-cards > div :nth-child(2) {
   position: absolute;
   display: none;
   top: 50%;
@@ -409,7 +422,7 @@ canvas {
 }
 
 /* 干员cost元素 */
-.operator-card > div :last-child {
+.operator-cards > div :last-child {
   position: absolute;
   top: 0;
   right: 30%;

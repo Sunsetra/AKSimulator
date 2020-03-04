@@ -25,7 +25,7 @@ import RenderController from './controllers/RenderCtl.js';
 import TimeAxisUICtl from './controllers/TimeAxisUICtl.js';
 
 
-const canvas = document.querySelector('canvas') as HTMLCanvasElement;
+const canvas = document.querySelector('.main') as HTMLCanvasElement;
 const frame = new GameFrame(canvas);
 
 const timeAxis = new TimeAxis();
