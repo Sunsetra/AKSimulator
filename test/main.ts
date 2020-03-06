@@ -66,9 +66,7 @@ function main(mapInfo: MapInfo, data: Data): void {
       gameCtl.reset();
       gameUICtl.reset();
       gameCtl.setStatus(GameStatus.Standby);
-      timeAxis.reset();
-      timeAxisUI.clearNodes();
-      timeAxisUI.resetTimer();
+      timeAxisUI.reset();
       map.hideOverlay();
     },
   };
@@ -82,8 +80,7 @@ function main(mapInfo: MapInfo, data: Data): void {
       gameUICtl.updateUIStatus();
       gameCtl.updateEnemyStatus(timeAxis.getCurrentTime());
       gameCtl.updateEnemyPosition(interval);
-      timeAxisUI.setTimer(); // 更新计时器
-      timeAxisUI.updateAxisNodes(); // 更新时间轴图标
+      timeAxisUI.update();
     } else {
       render.dynamic.stopRender();
       renderCtl.stop(); // 游戏结束，需重置战场
@@ -144,7 +141,7 @@ if (checkWebGLVersion() === WebGLAvailability.Unavailable) {
       const loadingError = (url: string): void => {
         if (!errorCounter) { LoadingUICtl.updateTip(''); } // 出现第一个错误时清除原信息，后面追加信息
         errorCounter += 1;
-        LoadingUICtl.updateTip(`加载${url}时发生错误`, true);
+        LoadingUICtl.updateTip(`加载${url}时发生错误\n`, true);
         throw new LoadingError(`加载${url}时发生错误`);
       };
 

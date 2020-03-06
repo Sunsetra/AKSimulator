@@ -193,83 +193,41 @@ main {
   height: 100%;
 }
 
-/* 上方的时间轴UI */
+/* 顶部UI */
 .ui-top {
   position: absolute;
   top: 6%;
   left: 50%;
-  width: 60%;
+  width: 100%;
   transform: translateX(-50%);
+  pointer-events: none;
 }
 
+/* 时间轴UI相关 */
 .time-axis {
+  width: 60%;
+  min-width: 30rem;
+  margin: 0 auto;
   display: flex;
   align-items: center;
+  pointer-events: auto;
 }
 
-.time-axis > :first-child {
+.time-axis canvas {
   position: relative;
-  height: 1rem;
-  width: 75%;
-  background-color: white;
-  border-radius: 0.2rem;
+  height: 3rem;
+  width: 85%;
 }
 
-.time-axis > :nth-child(2) {
-  overflow: hidden;
-  margin: 0 auto;
-  color: white;
-}
-
-.mark-icon {
+/*.mark-icon {
   position: absolute;
   height: 100%;
   width: 0.5%;
   max-width: 4px;
   min-width: 2px;
-}
+}*/
 
-/* 动态添加的时间轴标记，为axis轴的子元素 */
-.mark {
-  height: 100%;
-  transform: translateX(-50%); /* 匹配图标居中 */
-}
-
-.mark-icon > .enemy { /* 橙色节点表示敌人 */
-  background-color: orange;
-}
-
-.mark-icon > .operator { /* 绿色节点表示干员 */
-  background-color: LimeGreen;
-}
-
-.mark-icon > .operator.leave { /* 蓝色节点表示干员撤离 */
-  background-color: dodgerblue;
-}
-
-.mark-icon > .enemy.drop { /* 红色节点表示漏怪 */
-  background-color: red;
-}
-
-.mark-icon > .dead { /* 灰度节点表示死亡 */
-  filter: grayscale(1);
-}
-
-.icon {
-  position: relative;
-  height: 1.5rem;
-  width: 1.5rem;
-  top: 0.3rem;
-  transform: translateX(-50%); /* 匹配标记刻线居中 */
-  background-size: contain;
-  background-repeat: no-repeat;
-}
-
-.mark-icon > .dead + .icon { /* 灰度节点表示死亡 */
-  filter: grayscale(1);
-}
-
-.detail {
+/*.detail {
   position: relative;
   top: -3.8rem;
   width: 4rem;
@@ -290,8 +248,9 @@ main {
   transform: translateX(-50%) rotate(45deg);
   top: -4.2rem;
   display: none;
-}
+}*/
 
+/* 时间轴按钮样式 */
 .time-axis-controller {
   padding: 0 0.3rem;
   margin: 0 auto;
