@@ -5,7 +5,7 @@
 
 import { ResourcesList } from '../../modules/core/MapInfo.js';
 import TimeAxis from '../../modules/core/TimeAxis.js';
-import { Vector2 } from '../../node_modules/three/build/three.module.js';
+import { addEvListener } from '../../modules/others/utils.js';
 
 
 /* 时间轴上的节点对象 */
@@ -43,8 +43,6 @@ class TimeAxisUICtl {
 
   private readonly unitColor: { [type: string]: UnitColor }; // 单位配色常量定义
 
-  private readonly size: Vector2; // 画布尺寸
-
   /** 时间轴UI控制 */
   constructor(timeAxis: TimeAxis, resList: ResourcesList) {
     this.timeAxis = timeAxis;
@@ -62,23 +60,20 @@ class TimeAxisUICtl {
       },
     };
     this.nodes = new Set<UnitNode>();
-    this.size = new Vector2();
 
     this.cvsNode = document.querySelector('.time-axis canvas') as HTMLCanvasElement;
     this.ctx = this.cvsNode.getContext('2d') as CanvasRenderingContext2D;
     this.ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
 
     /* 关联resize事件，resize后重新计算画布的宽度，同时更新size属性 */
-    window.addEventListener('resize', () => {
+    addEvListener(window, 'resize', () => {
       const { width, height } = this.cvsNode.getBoundingClientRect();
       this.cvsNode.width = width * window.devicePixelRatio;
       this.cvsNode.height = height * window.devicePixelRatio;
-      this.size.set(this.cvsNode.width, this.cvsNode.height);
+      this.ctx.fillStyle = 'white';
       this.ctx.font = `${this.cvsNode.height / 3}px sans-serif`;
       this.update();
     });
-
-    window.dispatchEvent(new Event('resize'));
   }
 
   /**
@@ -105,9 +100,8 @@ class TimeAxisUICtl {
 
   /** 更新并重绘时间轴画布 */
   update(): void {
-    const { width, height } = this.size;
+    const { width, height } = this.cvsNode;
     this.ctx.clearRect(0, 0, width, height);
-    this.ctx.fillStyle = 'white';
     this.ctx.fillRect(0, height / 3, width * 0.85, height / 3);
     this.ctx.fill();
 

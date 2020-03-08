@@ -8,6 +8,7 @@ import {
   Raycaster,
   Vector2,
 } from '../../node_modules/three/build/three.module.js';
+import { addEvListener } from '../others/utils.js';
 
 import GameFrame from './GameFrame.js';
 
@@ -36,8 +37,8 @@ class Tracker {
     this.pointerPos = null;
     this.pickPos = null;
     this.lastPos = null;
-    this.frame.addEventListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
-    this.frame.addEventListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    addEvListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+    addEvListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
   }
 
   /**

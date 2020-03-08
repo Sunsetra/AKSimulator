@@ -13,7 +13,9 @@ import {
 } from '../modules/others/constants.js';
 import { LoadingError } from '../modules/others/exceptions.js';
 import {
+  addEvListener,
   checkWebGLVersion,
+  clearEvListener,
   disposeResources,
 } from '../modules/others/utils.js';
 import DynamicRenderer from '../modules/renderers/DynamicRender.js';
@@ -88,13 +90,14 @@ function main(mapInfo: MapInfo, data: Data): void {
   };
 
   /* 切换标签页时暂停动画 */
-  frame.addEventListener(document, 'visibilitychange', () => {
+  addEvListener(document, 'visibilitychange', () => {
     if (document.visibilityState === 'hidden') { renderCtl.pause(); }
   });
   /* 视窗缩放时重新渲染 */
-  frame.addEventListener(window, 'resize', () => render.static.checkResize());
+  addEvListener(window, 'resize', () => render.static.checkResize());
 
   renderCtl.reset();
+  window.dispatchEvent(new Event('resize')); // 触发各模块的resize事件以重新计算各元素尺寸
   render.static.checkResize();
 }
 
@@ -103,7 +106,7 @@ function resetGameFrame(): void {
   renderCtl.reset(); // 重置渲染及时间轴
   disposeResources(frame.scene); // 废弃原地图中的资源
   frame.scene.dispose(); // 清除场景对象中的其余资源
-  frame.clearEventListener(); // 清空监听器
+  clearEvListener(); // 清空监听器
 }
 
 /** 异步获取所需的数据文件 */

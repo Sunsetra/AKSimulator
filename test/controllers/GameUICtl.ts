@@ -18,7 +18,9 @@ import {
 } from '../../modules/others/constants.js';
 import {
   absPosToRealPos,
+  addEvListener,
   realPosToAbsPos,
+  removeEvListener,
 } from '../../modules/others/utils.js';
 import StaticRenderer from '../../modules/renderers/StaticRenderer.js';
 import Operator from '../../modules/units/Operator.js';
@@ -33,13 +35,17 @@ import GameController from './GameCtl.js';
  * UI控制类，用于构建游戏窗口中的UI，以及获取用户交互信息并传递给游戏控制类。
  */
 class GameUIController {
+  private center: Vector2; // 干员位置中心坐标
+
+  private cost: number; // UI显示的cost（整数）
+
   private readonly unitData: UnitData; // 单位名对应的单位数据
 
   private readonly matData: ResourceData; // 资源数据
 
   private readonly map: GameMap; // 地图对象
 
-  private readonly frame: GameFrame; // 游戏框架，用于管理事件监听
+  private readonly frame: GameFrame; // 游戏框架
 
   private readonly gameCtl: GameController; // 游戏控制器
 
@@ -47,25 +53,22 @@ class GameUIController {
 
   private readonly oprCards: HTMLDivElement; // 干员头像卡节点
 
+  private readonly devicePixelRatio: number; // 设备像素比
+
+
   private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
 
   private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
 
-  private readonly costTextNode: HTMLDivElement; // cost计数
+  private readonly selectCtx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
+
+  private readonly costCounter: HTMLCanvasElement; // cost计数器区域
+
+  private readonly costCounterCtx: CanvasRenderingContext2D; // cost计数器上下文
 
   private readonly costBar: HTMLCanvasElement; // cost内部进度条引用，优化速度用
 
   private readonly costBarCtx: CanvasRenderingContext2D; // cost内部进度条上下文
-
-  private readonly bottomUI: HTMLDivElement; // 底部UI节点
-
-  private readonly selectCtx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
-
-  private readonly devicePixelRatio: number; // 设备像素比
-
-  private center: Vector2; // 干员位置中心坐标
-
-  private cost: number; // UI显示的cost（整数）
 
   constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
@@ -76,28 +79,52 @@ class GameUIController {
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
-    this.bottomUI = document.querySelector('.ui-bottom') as HTMLDivElement;
-    this.oprCards = this.bottomUI.children[2] as HTMLDivElement;
     this.center = new Vector2(0, 0);
     this.devicePixelRatio = this.frame.renderer.getPixelRatio();
+
+    this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
+    this.oprCards = document.querySelector('.operator-cards') as HTMLDivElement;
 
     /* 选择角色叠加层相关 */
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.selectCtx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
 
-    /* cost计数器相关 */
-    this.costTextNode = document.querySelector('.cost span') as HTMLDivElement;
+    /* cost计数器 */
+    this.costCounter = document.querySelector('.cost-counter') as HTMLCanvasElement;
+    this.costCounterCtx = this.costCounter.getContext('2d') as CanvasRenderingContext2D;
+    this.costCounterCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+
+    /* cost进度条相关 */
     this.costBar = document.querySelector('.cost-bar') as HTMLCanvasElement;
-    this.costBar.width = 150;
-    this.costBar.height = 10;
     this.costBarCtx = this.costBar.getContext('2d') as CanvasRenderingContext2D;
-    const gradient = this.costBarCtx.createLinearGradient(0, 0, 0, 10);
-    gradient.addColorStop(0, 'dimgrey');
-    gradient.addColorStop(0.15, 'white');
-    gradient.addColorStop(0.75, 'white');
-    gradient.addColorStop(1, 'dimgrey');
-    this.costBarCtx.strokeStyle = gradient;
-    this.costBarCtx.lineWidth = 20;
+    this.costBarCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+
+    addEvListener(window, 'resize', () => {
+      /* 重新计算cost计数器的尺寸 */
+      const costRect = this.costCounter.getBoundingClientRect();
+      this.costCounter.width = costRect.width * this.devicePixelRatio;
+      this.costCounter.height = costRect.height * this.devicePixelRatio;
+      this.costCounterCtx.textAlign = 'center';
+      this.costCounterCtx.textBaseline = 'middle';
+      this.costCounterCtx.fillStyle = 'white';
+      this.costCounterCtx.font = `${this.costCounter.height}px sans-serif`;
+
+      /* 重新计算cost进度条的尺寸 */
+      const barRect = this.costBar.getBoundingClientRect();
+      this.costBar.width = barRect.width * this.devicePixelRatio;
+      this.costBar.height = barRect.height * this.devicePixelRatio;
+      this.costBarCtx.lineWidth = this.costBar.height;
+
+      const gradient = this.costBarCtx.createLinearGradient(0, 0, 0, this.costBar.height);
+      gradient.addColorStop(0, 'dimgrey');
+      gradient.addColorStop(0.25, 'white');
+      gradient.addColorStop(0.75, 'white');
+      gradient.addColorStop(1, 'dimgrey');
+      this.costBarCtx.strokeStyle = gradient;
+
+      this.updateUIStatus();
+      this.updateCost();
+    });
 
     /* 以下为画布及撤退按钮关联点击事件 */
     let selectedOpr: Operator | null; // 记录当前选择的干员
@@ -105,19 +132,19 @@ class GameUIController {
 
     /* 撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
     const withdrawNode = document.querySelector('.ui-overlay#withdraw') as HTMLImageElement;
-    this.frame.addEventListener(withdrawNode, 'click', (): void => {
+    addEvListener(withdrawNode, 'click', (): void => {
       this.withdrawOperator(selectedOpr as Operator); // 绘制叠加层前选择的Operator一定存在
-      this.frame.removeEventListener(this.selectLayer, 'click'); // 移除叠加层上的所有点击回调
+      removeEvListener(this.selectLayer, 'click'); // 移除叠加层上的所有点击回调
     });
 
     /* 光标在画布上按下时记录点击坐标 */
-    this.frame.addEventListener(this.frame.canvas, 'mousedown', () => {
+    addEvListener(this.frame.canvas, 'mousedown', () => {
       const { pickPos } = this.map.tracker;
       clickPos = pickPos;
     });
 
     /* 光标在画布上松开时：若与按下时位置相同才视为一次点击 */
-    this.frame.addEventListener(this.frame.canvas, 'mouseup', () => {
+    addEvListener(this.frame.canvas, 'mouseup', () => {
       const { pickPos } = this.map.tracker;
       if (pickPos !== null && clickPos === pickPos) {
         const absPos = realPosToAbsPos(pickPos, true);
@@ -153,11 +180,11 @@ class GameUIController {
               if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
 
               /* 关联叠加层上点击时隐藏叠加层，以及窗口resize事件 */
-              this.frame.addEventListener(this.selectLayer, 'click', () => {
-                this.frame.removeEventListener(window, 'resize', resizeSelectLayer);
+              addEvListener(this.selectLayer, 'click', () => {
+                removeEvListener(window, 'resize', resizeSelectLayer);
                 this.hideSelectLayer();
               }, true);
-              this.frame.addEventListener(window, 'resize', resizeSelectLayer);
+              addEvListener(window, 'resize', resizeSelectLayer);
             }
           });
         }
@@ -169,7 +196,7 @@ class GameUIController {
   reset(): void {
     this.updateCost();
     this.costBarCtx.clearRect(0, 0, this.costBar.width, this.costBar.height);
-    this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
+    // this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
       const cdNode = child.children[1] as HTMLDivElement;
@@ -351,19 +378,19 @@ class GameUIController {
         if (this.map.tracker.pickPos !== null) { // 拖放位置在地面上
           const pos = realPosToAbsPos(this.map.tracker.pickPos, true);
           if (placeLayer.has(pos)) { // 拖放位置在父区域中
-            this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
+            removeEvListener(this.frame.canvas, 'mousemove', onMousemove);
             mouseupHandler(false); // 不重置干员头像的选择状态
             this.map.addUnit(pos.x, pos.y, unit); // 添加至地图
             this.setDirection(unit);
             return;
           }
         }
-        this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
+        removeEvListener(this.frame.canvas, 'mousemove', onMousemove);
         mouseupHandler();
       };
 
       /* 绑定干员头像上的按下事件 */
-      this.frame.addEventListener(oprNode, 'mousedown', () => {
+      addEvListener(oprNode, 'mousedown', () => {
         /* 显示区域叠加层 */
         oprNode.classList.add('chosen'); // 按下时进入选定状态
         placeLayer.setEnableArea(this.map.getPlaceableArea(oprData.posType));
@@ -376,18 +403,18 @@ class GameUIController {
           this.mouseLayer.children[0].setAttribute('src', oprRes.url);
 
           /* 绑定画布上的光标移动及抬起事件 */
-          this.frame.addEventListener(this.frame.canvas, 'mousemove', onMousemove);
-          this.frame.addEventListener(this.frame.canvas, 'mouseup', onMouseup, true);
+          addEvListener(this.frame.canvas, 'mousemove', onMousemove);
+          addEvListener(this.frame.canvas, 'mouseup', onMouseup, true);
         } else {
-          this.frame.addEventListener(this.frame.canvas, 'mouseup', () => mouseupHandler(), true);
+          addEvListener(this.frame.canvas, 'mouseup', () => mouseupHandler(), true);
         }
       });
 
       /* 绑定干员头像上的释放事件 */
-      this.frame.addEventListener(oprNode, 'mouseup', () => {
+      addEvListener(oprNode, 'mouseup', () => {
         mouseupHandler();
-        this.frame.removeEventListener(this.frame.canvas, 'mousemove', onMousemove);
-        this.frame.removeEventListener(this.frame.canvas, 'mouseup', onMouseup);
+        removeEvListener(this.frame.canvas, 'mousemove', onMousemove);
+        removeEvListener(this.frame.canvas, 'mouseup', onMouseup);
       }); // 干员头像卡节点会被删除，无需解绑该事件
     });
   }
@@ -398,20 +425,23 @@ class GameUIController {
    * @param isClear - 是否清空进度条，默认为false
    */
   private drawCostBar(pct: number, isClear = false): void {
-    const width = this.costBar.width * pct;
+    const { width, height } = this.costBar;
     if (isClear) {
-      this.costBarCtx.clearRect(0, 0, this.costBar.width, this.costBar.height);
+      this.costBarCtx.clearRect(0, 0, width, height);
       this.costBarCtx.beginPath();
-      this.costBarCtx.moveTo(0, 0);
     }
-    this.costBarCtx.lineTo(width, 0);
+    this.costBarCtx.moveTo(0, height / 2);
+    this.costBarCtx.lineTo(width * pct, height / 2);
     this.costBarCtx.stroke();
   }
 
-  /** 用控制类中的cost更新本类中的整数cost */
+  /** 用控制类中的cost更新本类中的整数cost并绘制cost计数器 */
   private updateCost(): void {
     this.cost = Math.floor(this.gameCtl.cost);
-    this.costTextNode.textContent = this.cost.toString(); // 仅作显示意义
+
+    const { width, height } = this.costCounter;
+    this.costCounterCtx.clearRect(0, 0, width, height);
+    this.costCounterCtx.fillText(this.cost.toString(), width / 2, height / 1.5);
   }
 
   /**
@@ -421,7 +451,7 @@ class GameUIController {
   private withdrawOperator(opr: Operator): void {
     this.map.removeUnit(opr);
     const remain = this.gameCtl.removeOperator(opr.name);
-    this.bottomUI.children[1].textContent = remain.toString();
+    // this.bottomUI.children[1].textContent = remain.toString();
 
     /* 撤退后更新cost */
     this.updateCost();
@@ -671,7 +701,7 @@ class GameUIController {
     };
 
     /* 关联选择方向时的点击事件（单次有效） */
-    this.frame.addEventListener(this.selectLayer, 'click', (e) => {
+    addEvListener(this.selectLayer, 'click', (e) => {
       /* 判定光标位置是在中心还是在外部 */
       const distX = e.clientX - this.center.x / this.devicePixelRatio;
       const distY = e.clientY - this.center.y / this.devicePixelRatio;
@@ -686,7 +716,7 @@ class GameUIController {
           this.hideOprCard(chosenCard); // 隐藏当前干员卡
 
           const remain = this.gameCtl.addOperator(opr);
-          this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
+          // this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
           this.updateCost();
 
           if (remain === 0) {
@@ -696,14 +726,14 @@ class GameUIController {
           }
         } else { this.map.removeUnit(opr); }
       }
-      this.frame.removeEventListener(this.selectLayer, 'mousemove', drawSelector);
-      this.frame.removeEventListener(window, 'resize', resizeSelectLayer);
+      removeEvListener(this.selectLayer, 'mousemove', drawSelector);
+      removeEvListener(window, 'resize', resizeSelectLayer);
       this.hideSelectLayer();
     }, true);
 
     resizeSelectLayer();
-    this.frame.addEventListener(this.selectLayer, 'mousemove', drawSelector);
-    this.frame.addEventListener(window, 'resize', resizeSelectLayer);
+    addEvListener(this.selectLayer, 'mousemove', drawSelector);
+    addEvListener(window, 'resize', resizeSelectLayer);
     this.selectLayer.style.display = 'block';
   }
 }
