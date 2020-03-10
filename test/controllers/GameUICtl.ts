@@ -58,17 +58,25 @@ class GameUIController {
 
   private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
 
-  private readonly selectLayer: HTMLCanvasElement; // 放置/选择干员时的画布叠加层元素
+  /* 放置/选择干员时的画布叠加层元素 */
+  private readonly selectLayer: HTMLCanvasElement;
 
-  private readonly selectCtx: CanvasRenderingContext2D; // 选择方向的画布上下文对象
+  private readonly selectCtx: CanvasRenderingContext2D;
 
-  private readonly costCounter: HTMLCanvasElement; // cost计数器区域
+  /* cost计数器区域 */
+  private readonly costCounter: HTMLCanvasElement;
 
-  private readonly costCounterCtx: CanvasRenderingContext2D; // cost计数器上下文
+  private readonly costCounterCtx: CanvasRenderingContext2D;
 
-  private readonly costBar: HTMLCanvasElement; // cost内部进度条引用，优化速度用
+  /* cost内部进度条引用，优化速度用 */
+  private readonly costBar: HTMLCanvasElement;
 
-  private readonly costBarCtx: CanvasRenderingContext2D; // cost内部进度条上下文
+  private readonly costBarCtx: CanvasRenderingContext2D;
+
+  /* 干员计数画布元素 */
+  private readonly oprCounter: HTMLCanvasElement;
+
+  private readonly oprCounterCtx: CanvasRenderingContext2D;
 
   constructor(frame: GameFrame, map: GameMap, gameCtl: GameController, renderer: StaticRenderer, data: Data) {
     this.frame = frame;
@@ -78,16 +86,16 @@ class GameUIController {
     this.matData = data.materials;
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
-    this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.center = new Vector2(0, 0);
     this.devicePixelRatio = this.frame.renderer.getPixelRatio();
 
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.oprCards = document.querySelector('.operator-cards') as HTMLDivElement;
 
-    /* 选择角色叠加层相关 */
+    /* 放置/选择干员叠加层相关 */
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.selectCtx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
+    this.selectCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
 
     /* cost计数器 */
     this.costCounter = document.querySelector('.cost-counter') as HTMLCanvasElement;
@@ -98,6 +106,11 @@ class GameUIController {
     this.costBar = document.querySelector('.cost-bar') as HTMLCanvasElement;
     this.costBarCtx = this.costBar.getContext('2d') as CanvasRenderingContext2D;
     this.costBarCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+
+    /* 干员计数 */
+    this.oprCounter = document.querySelector('.operator-counter canvas') as HTMLCanvasElement;
+    this.oprCounterCtx = this.oprCounter.getContext('2d') as CanvasRenderingContext2D;
+    this.oprCounterCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
 
     addEvListener(window, 'resize', () => {
       /* 重新计算cost计数器的尺寸 */
@@ -122,8 +135,17 @@ class GameUIController {
       gradient.addColorStop(1, 'dimgrey');
       this.costBarCtx.strokeStyle = gradient;
 
-      this.updateUIStatus();
+      /* 重新计算干员计数器的尺寸 */
+      const oprCounterRect = this.oprCounter.getBoundingClientRect();
+      this.oprCounter.width = oprCounterRect.width * this.devicePixelRatio;
+      this.oprCounter.height = oprCounterRect.height * this.devicePixelRatio;
+      this.oprCounterCtx.fillStyle = 'white';
+      this.oprCounterCtx.textBaseline = 'middle';
+      this.oprCounterCtx.font = `${this.oprCounter.height}px sans-serif`;
+
       this.updateCost();
+      this.drawCostBar(this.gameCtl.cost - this.cost);
+      this.drawOprCount(this.gameCtl.ctlData.oprLimit - this.gameCtl.activeOperator.size);
     });
 
     /* 以下为画布及撤退按钮关联点击事件 */
@@ -164,8 +186,9 @@ class GameUIController {
 
               /** 窗口resize事件中重新计算叠加层定位 */
               const resizeSelectLayer = (): void => {
-                this.selectLayer.width = this.frame.canvas.width;
-                this.selectLayer.height = this.frame.canvas.height;
+                const selectLayerRect = this.selectLayer.getBoundingClientRect();
+                this.selectLayer.width = selectLayerRect.width * this.devicePixelRatio;
+                this.selectLayer.height = selectLayerRect.height * this.devicePixelRatio;
                 this.drawSelectLayer(absPos);
                 calcIconsPos(); // 要先重设中心点位坐标再定位图标
               };
@@ -195,8 +218,8 @@ class GameUIController {
   /** 重置游戏UI */
   reset(): void {
     this.updateCost();
-    this.costBarCtx.clearRect(0, 0, this.costBar.width, this.costBar.height);
-    // this.bottomUI.children[1].textContent = this.gameCtl.ctlData.oprLimit.toString();
+    this.drawCostBar(0, true);
+    this.drawOprCount(this.gameCtl.ctlData.oprLimit);
 
     (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
       const cdNode = child.children[1] as HTMLDivElement;
@@ -246,6 +269,7 @@ class GameUIController {
    * @param oprList - 干员名称列表
    */
   addOprCard(oprList: string[]): void {
+    type costDict = { name: string; cost: number };
     /**
      * 根据干员星级生成svg
      * @param n - 干员星级
@@ -273,7 +297,6 @@ class GameUIController {
       return `url(data:image/svg+xml;base64,${btoa(new XMLSerializer().serializeToString(svg))})`;
     };
 
-    type costDict = { name: string; cost: number };
     /**
      * 维护大顶堆顺序
      * @param list - 大顶堆数组
@@ -311,8 +334,7 @@ class GameUIController {
 
     while (this.oprCards.childNodes.length) { this.oprCards.childNodes[0].remove(); } // 移除所有原干员卡节点
 
-    const sortedOpr = sortOpr();
-    sortedOpr.forEach((opr) => {
+    sortOpr().forEach((opr) => {
       /* 收集干员信息并创建实例 */
       const oprData = this.unitData.operator[opr];
       const unit = this.gameCtl.createOperator(opr, oprData);
@@ -419,6 +441,15 @@ class GameUIController {
     });
   }
 
+  /** 用控制类中的cost更新本类中的整数cost并绘制cost计数器 */
+  private updateCost(): void {
+    this.cost = Math.floor(this.gameCtl.cost);
+
+    const { width, height } = this.costCounter;
+    this.costCounterCtx.clearRect(0, 0, width, height);
+    this.costCounterCtx.fillText(this.cost.toString(), width / 2, height / 1.5);
+  }
+
   /**
    * 绘制cost进度指示条
    * @param pct - 进度条宽度（百分比）
@@ -435,13 +466,15 @@ class GameUIController {
     this.costBarCtx.stroke();
   }
 
-  /** 用控制类中的cost更新本类中的整数cost并绘制cost计数器 */
-  private updateCost(): void {
-    this.cost = Math.floor(this.gameCtl.cost);
-
-    const { width, height } = this.costCounter;
-    this.costCounterCtx.clearRect(0, 0, width, height);
-    this.costCounterCtx.fillText(this.cost.toString(), width / 2, height / 1.5);
+  /**
+   * 绘制剩余可放置干员数量
+   * @param num - 剩余干员数量
+   */
+  private drawOprCount(num: number | string): void {
+    const count = typeof num === 'number' ? num.toString() : num;
+    const { height } = this.oprCounter;
+    this.oprCounterCtx.clearRect(0, 0, this.oprCounter.width, this.oprCounter.height);
+    this.oprCounterCtx.fillText(count, 0, height / 1.5);
   }
 
   /**
@@ -451,7 +484,7 @@ class GameUIController {
   private withdrawOperator(opr: Operator): void {
     this.map.removeUnit(opr);
     const remain = this.gameCtl.removeOperator(opr.name);
-    // this.bottomUI.children[1].textContent = remain.toString();
+    this.drawOprCount(remain);
 
     /* 撤退后更新cost */
     this.updateCost();
@@ -497,23 +530,24 @@ class GameUIController {
    * @param pos - 叠加层中心的砖块抽象坐标
    */
   private drawSelectLayer(pos?: Vector2): void {
+    const { width, height } = this.selectLayer;
     if (pos !== undefined) {
-      const height = (this.map.getBlock(pos) as BlockInfo).size.y; // 点击处砖块高度
+      const bHeight = (this.map.getBlock(pos) as BlockInfo).size.y; // 点击处砖块高度
       const realPos = absPosToRealPos(pos.x + 0.5, pos.y + 0.5); // 将点击处的砖块中心抽象坐标转换为世界坐标
-      const normalizedSize = new Vector3(realPos.x, height, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
+      const normalizedSize = new Vector3(realPos.x, bHeight, realPos.y).project(this.frame.camera); // 转换为标准化CSS坐标
       const centerX = (normalizedSize.x * 0.5 + 0.5) * this.frame.canvas.width;
       const centerY = (normalizedSize.y * -0.5 + 0.5) * this.frame.canvas.height;
       this.center.set(centerX, centerY);
     }
 
-    this.selectCtx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+    this.selectCtx.clearRect(0, 0, width, height);
     this.selectCtx.fillStyle = 'rgba(0, 0, 0, 0.5)';
-    this.selectCtx.fillRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+    this.selectCtx.fillRect(0, 0, width, height);
 
     this.selectCtx.strokeStyle = 'white';
     this.selectCtx.lineWidth = 10;
     this.selectCtx.beginPath();
-    this.selectCtx.arc(this.center.x, this.center.y, this.selectLayer.width * 0.1, 0, 2 * Math.PI);
+    this.selectCtx.arc(this.center.x, this.center.y, width * 0.1, 0, 2 * Math.PI);
     this.selectCtx.stroke();
 
     this.selectCtx.globalCompositeOperation = 'destination-out';
@@ -615,8 +649,9 @@ class GameUIController {
 
     /** 窗口resize事件中重新计算叠加层定位 */
     const resizeSelectLayer = (): void => {
-      this.selectLayer.width = this.frame.canvas.width;
-      this.selectLayer.height = this.frame.canvas.height;
+      const selectLayerRect = this.selectLayer.getBoundingClientRect();
+      this.selectLayer.width = selectLayerRect.width * this.devicePixelRatio;
+      this.selectLayer.height = selectLayerRect.height * this.devicePixelRatio;
       this.drawSelectLayer(absPos);
     };
 
@@ -716,7 +751,7 @@ class GameUIController {
           this.hideOprCard(chosenCard); // 隐藏当前干员卡
 
           const remain = this.gameCtl.addOperator(opr);
-          // this.bottomUI.children[1].textContent = remain.toString(); // 向控制器添加干员并修改干员剩余数量
+          this.drawOprCount(remain);
           this.updateCost();
 
           if (remain === 0) {
@@ -731,10 +766,10 @@ class GameUIController {
       this.hideSelectLayer();
     }, true);
 
+    this.selectLayer.style.display = 'block';
     resizeSelectLayer();
     addEvListener(this.selectLayer, 'mousemove', drawSelector);
     addEvListener(window, 'resize', resizeSelectLayer);
-    this.selectLayer.style.display = 'block';
   }
 }
 

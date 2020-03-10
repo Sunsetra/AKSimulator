@@ -294,7 +294,7 @@ main {
 }
 
 .cost-counter {
-  width: 50%;
+  width: 60%;
   height: 2vw;
 }
 
@@ -307,28 +307,21 @@ main {
   box-shadow: inset 0 0 2px black;
 }
 
-/* 内层进度条 */
-.cost-bar > :nth-child(1) {
-  width: 100%;
-  height: 100%;
-  background: white;
-  box-shadow: inset 0 0 1px black;
-  transform: scaleX(0) translateX(-100%);
-  will-change: transform;
-}
-
 /* 剩余可部署单位数量 */
-.ui-bottom > :nth-child(2) {
+.operator-counter {
+  width: 10%;
   margin-left: auto;
   color: white;
-  padding: 0.3vw 1vw;
+  padding: 0.3vw;
   margin-bottom: 1vw;
   font-size: 1vw;
   background-color: rgba(0, 0, 0, 0.5);
+  text-align: center;
 }
 
-.ui-bottom > :nth-child(2)::before {
-  content: "剩余可部署单位：";
+.operator-counter canvas {
+  height: 1vw;
+  width: 6%;
 }
 
 /* 干员卡栏 */

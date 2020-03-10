@@ -66,8 +66,8 @@ function main(mapInfo: MapInfo, data: Data): void {
     stop: (): void => timeAxis.stop(),
     reset: (): void => {
       gameCtl.reset();
-      gameUICtl.reset();
       gameCtl.setStatus(GameStatus.Standby);
+      gameUICtl.reset();
       timeAxisUI.reset();
       map.hideOverlay();
     },
@@ -95,9 +95,9 @@ function main(mapInfo: MapInfo, data: Data): void {
   });
   /* 视窗缩放时重新渲染 */
   addEvListener(window, 'resize', () => render.static.checkResize());
+  window.dispatchEvent(new Event('resize')); // 触发各模块的resize事件以重新计算各元素尺寸
 
   renderCtl.reset();
-  window.dispatchEvent(new Event('resize')); // 触发各模块的resize事件以重新计算各元素尺寸
   render.static.checkResize();
 }
 

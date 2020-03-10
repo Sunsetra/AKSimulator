@@ -127,8 +127,8 @@ class GameController {
         const { x, z } = route[0] as { x: number; z: number }; // 首个路径点不可能是暂停
         this.map.addUnit(x, z, enemy);
 
-        const nodeId = `${name}-${thisFrag.id}`;
-        this.timeAxisUI.createAxisNode('enemy create', nodeId, name);
+        // const nodeId = `${name}-${thisFrag.id}`;
+        this.timeAxisUI.addNode(name, 'enemy', ' create');
 
         route.shift(); // 删除首个路径点
         fragments.shift(); // 从当前波次中删除该敌人
@@ -187,9 +187,9 @@ class GameController {
         this.activeEnemy.delete(frag);
         this.enemyCount -= 1;
 
-        const nodeType = 'enemy drop';
-        const nodeId = `${name}-${frag.id}`;
-        this.timeAxisUI.createAxisNode(nodeType, nodeId, name);
+        // const nodeType = 'enemy drop';
+        // const nodeId = `${name}-${frag.id}`;
+        this.timeAxisUI.addNode(name, 'enemy', 'leave');
       }
     });
   }
@@ -277,7 +277,7 @@ class GameController {
     if (inst !== undefined) {
       this.activeOperator.set(inst.name, inst); // 添加干员到活跃干员组
       this.allOperator.delete(opr.name);
-      this.timeAxisUI.createAxisNode('operator create', opr.name, opr.name);
+      this.timeAxisUI.addNode(opr.name, 'operator', 'create');
     }
     return this.ctlData.oprLimit - this.activeOperator.size;
   }
@@ -308,7 +308,7 @@ class GameController {
       oprInst.trackData.withdrawCnt += 1;
       this.activeOperator.delete(opr);
       this.allOperator.set(opr, oprInst);
-      this.timeAxisUI.createAxisNode('operator leave', opr, opr);
+      this.timeAxisUI.addNode(opr, 'operator', 'leave');
     }
     return this.ctlData.oprLimit - this.activeOperator.size;
   }
