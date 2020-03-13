@@ -30,12 +30,15 @@ import {
 } from '../../node_modules/three/build/three.module.js';
 import GameController from './GameCtl.js';
 
+/* 每个CD中的干员卡对象都应包含：画布节点、画布上下文、干员对象 */
+type CdOprNode = [HTMLCanvasElement, CanvasRenderingContext2D, Operator];
+
 
 /**
  * UI控制类，用于构建游戏窗口中的UI，以及获取用户交互信息并传递给游戏控制类。
  */
 class GameUIController {
-  private center: Vector2; // 干员位置中心坐标
+  private center: Vector2; // 选定干员的位置中心坐标
 
   private cost: number; // UI显示的cost（整数）
 
@@ -53,8 +56,9 @@ class GameUIController {
 
   private readonly oprCards: HTMLDivElement; // 干员头像卡节点
 
-  private readonly devicePixelRatio: number; // 设备像素比
+  private readonly dpr: number; // 设备像素比
 
+  private readonly cdOpr: Map<HTMLDivElement, CdOprNode>; // 正在CD的干员信息对象映射
 
   private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
 
@@ -87,7 +91,8 @@ class GameUIController {
     this.unitData = data.units;
     this.cost = Math.floor(gameCtl.cost);
     this.center = new Vector2(0, 0);
-    this.devicePixelRatio = this.frame.renderer.getPixelRatio();
+    this.cdOpr = new Map<HTMLDivElement, CdOprNode>();
+    this.dpr = this.frame.renderer.getPixelRatio();
 
     this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.oprCards = document.querySelector('.operator-cards') as HTMLDivElement;
@@ -95,28 +100,32 @@ class GameUIController {
     /* 放置/选择干员叠加层相关 */
     this.selectLayer = document.querySelector('.select-overlay') as HTMLCanvasElement;
     this.selectCtx = this.selectLayer.getContext('2d') as CanvasRenderingContext2D;
-    this.selectCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+    this.selectCtx.scale(this.dpr, this.dpr);
 
     /* cost计数器 */
     this.costCounter = document.querySelector('.cost-counter') as HTMLCanvasElement;
     this.costCounterCtx = this.costCounter.getContext('2d') as CanvasRenderingContext2D;
-    this.costCounterCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+    this.costCounterCtx.scale(this.dpr, this.dpr);
 
     /* cost进度条相关 */
     this.costBar = document.querySelector('.cost-bar') as HTMLCanvasElement;
     this.costBarCtx = this.costBar.getContext('2d') as CanvasRenderingContext2D;
-    this.costBarCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+    this.costBarCtx.scale(this.dpr, this.dpr);
 
     /* 干员计数 */
     this.oprCounter = document.querySelector('.operator-counter canvas') as HTMLCanvasElement;
     this.oprCounterCtx = this.oprCounter.getContext('2d') as CanvasRenderingContext2D;
-    this.oprCounterCtx.scale(this.devicePixelRatio, this.devicePixelRatio);
+    this.oprCounterCtx.scale(this.dpr, this.dpr);
 
+    /* 浏览器窗口尺寸调整时：
+     * 重新计算并设置各画布的渲染尺寸及样式；
+     * 重绘各画布区域。
+     */
     addEvListener(window, 'resize', () => {
       /* 重新计算cost计数器的尺寸 */
       const costRect = this.costCounter.getBoundingClientRect();
-      this.costCounter.width = costRect.width * this.devicePixelRatio;
-      this.costCounter.height = costRect.height * this.devicePixelRatio;
+      this.costCounter.width = costRect.width * this.dpr;
+      this.costCounter.height = costRect.height * this.dpr;
       this.costCounterCtx.textAlign = 'center';
       this.costCounterCtx.textBaseline = 'middle';
       this.costCounterCtx.fillStyle = 'white';
@@ -124,8 +133,8 @@ class GameUIController {
 
       /* 重新计算cost进度条的尺寸 */
       const barRect = this.costBar.getBoundingClientRect();
-      this.costBar.width = barRect.width * this.devicePixelRatio;
-      this.costBar.height = barRect.height * this.devicePixelRatio;
+      this.costBar.width = barRect.width * this.dpr;
+      this.costBar.height = barRect.height * this.dpr;
       this.costBarCtx.lineWidth = this.costBar.height;
 
       const gradient = this.costBarCtx.createLinearGradient(0, 0, 0, this.costBar.height);
@@ -137,22 +146,39 @@ class GameUIController {
 
       /* 重新计算干员计数器的尺寸 */
       const oprCounterRect = this.oprCounter.getBoundingClientRect();
-      this.oprCounter.width = oprCounterRect.width * this.devicePixelRatio;
-      this.oprCounter.height = oprCounterRect.height * this.devicePixelRatio;
+      this.oprCounter.width = oprCounterRect.width * this.dpr;
+      this.oprCounter.height = oprCounterRect.height * this.dpr;
       this.oprCounterCtx.fillStyle = 'white';
       this.oprCounterCtx.textBaseline = 'middle';
       this.oprCounterCtx.font = `${this.oprCounter.height}px sans-serif`;
 
+      /* 重新计算各干员卡上的冷却计时器尺寸 */
+      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((card) => {
+        const cdNode = card.querySelector('canvas') as HTMLCanvasElement;
+        const cdRect = cdNode.getBoundingClientRect();
+        cdNode.width = cdRect.width * this.dpr;
+        cdNode.height = cdRect.height * this.dpr;
+
+        const cdCtx = cdNode.getContext('2d') as CanvasRenderingContext2D;
+        cdCtx.fillStyle = 'white';
+        cdCtx.textBaseline = 'middle';
+        cdCtx.textAlign = 'center';
+        cdCtx.font = `${cdNode.height / 3}px sans-serif`;
+      });
+
+      /* 重绘各画布区域 */
       this.updateCost();
       this.drawCostBar(this.gameCtl.cost - this.cost);
-      this.drawOprCount(this.gameCtl.ctlData.oprLimit - this.gameCtl.activeOperator.size);
+      this.drawOprCount(this.gameCtl.ctlData.oprLimit - this.cdOpr.size);
+      this.updateOprCD();
     });
 
-    /* 以下为画布及撤退按钮关联点击事件 */
+
+    /* 画布及撤退按钮关联点击事件 */
     let selectedOpr: Operator | null; // 记录当前选择的干员
     let clickPos: Vector2 | null; // 记录点击坐标
 
-    /* 撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
+    /* TODO: 画布化拖拽小图。撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
     const withdrawNode = document.querySelector('.ui-overlay#withdraw') as HTMLImageElement;
     addEvListener(withdrawNode, 'click', (): void => {
       this.withdrawOperator(selectedOpr as Operator); // 绘制叠加层前选择的Operator一定存在
@@ -160,10 +186,7 @@ class GameUIController {
     });
 
     /* 光标在画布上按下时记录点击坐标 */
-    addEvListener(this.frame.canvas, 'mousedown', () => {
-      const { pickPos } = this.map.tracker;
-      clickPos = pickPos;
-    });
+    addEvListener(this.frame.canvas, 'mousedown', () => { clickPos = this.map.tracker.pickPos; });
 
     /* 光标在画布上松开时：若与按下时位置相同才视为一次点击 */
     addEvListener(this.frame.canvas, 'mouseup', () => {
@@ -180,15 +203,15 @@ class GameUIController {
               const calcIconsPos = (): void => {
                 const rad = this.selectLayer.width * 0.1;
                 const delta = rad / Math.sqrt(2) / 2;
-                withdrawNode.style.left = `${this.center.x / this.devicePixelRatio - delta}px`;
-                withdrawNode.style.top = `${this.center.y / this.devicePixelRatio - delta}px`;
+                withdrawNode.style.left = `${this.center.x / this.dpr - delta}px`;
+                withdrawNode.style.top = `${this.center.y / this.dpr - delta}px`;
               };
 
               /** 窗口resize事件中重新计算叠加层定位 */
               const resizeSelectLayer = (): void => {
                 const selectLayerRect = this.selectLayer.getBoundingClientRect();
-                this.selectLayer.width = selectLayerRect.width * this.devicePixelRatio;
-                this.selectLayer.height = selectLayerRect.height * this.devicePixelRatio;
+                this.selectLayer.width = selectLayerRect.width * this.dpr;
+                this.selectLayer.height = selectLayerRect.height * this.dpr;
                 this.drawSelectLayer(absPos);
                 calcIconsPos(); // 要先重设中心点位坐标再定位图标
               };
@@ -215,13 +238,17 @@ class GameUIController {
     });
   }
 
-  /** 重置游戏UI */
+  /** 以游戏控制类中的信息重置游戏UI（外部调用；需要游戏控制类先重置内部变量） */
   reset(): void {
     this.updateCost();
+
+    /* 重绘画布 */
     this.drawCostBar(0, true);
     this.drawOprCount(this.gameCtl.ctlData.oprLimit);
+    this.updateOprCD(true);
 
-    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
+    /* 重置干员卡状态 */
+    (this.oprCards.childNodes as NodeListOf<HTMLDivElement>).forEach((child) => {
       const cdNode = child.children[1] as HTMLDivElement;
       cdNode.textContent = '';
       cdNode.style.display = '';
@@ -233,7 +260,7 @@ class GameUIController {
     this.updateCardStatus();
   }
 
-  /** 按cost更新UI状态（每帧执行） */
+  /** 按cost更新UI状态（外部调用；每帧执行） */
   updateUIStatus(): void {
     const intCost = Math.floor(this.gameCtl.cost);
     const scale = this.gameCtl.cost - intCost;
@@ -243,30 +270,12 @@ class GameUIController {
       this.updateCardStatus();
       this.drawCostBar(scale, true);
     }
-
-    /* 检查冷却计时 */
-    (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-      if (child.dataset.status === 'cd') {
-        const opr = this.gameCtl.allOperator.get(child.id) as Operator; // 通过遍历干员卡不可能获取到不在全干员集合中的实例
-        const cdNode = child.children[1] as HTMLDivElement;
-        if (opr.rspTime > 0) {
-          cdNode.textContent = opr.rspTime.toFixed(1);
-        } else {
-          /* 冷却结束时隐藏计时并检查该卡片的可用性 */
-          cdNode.style.display = '';
-          if (this.cost >= opr.cost) {
-            this.enableOprCard(child);
-          } else {
-            this.disableOprCard(child);
-          }
-        }
-      }
-    });
+    this.updateOprCD();
   }
 
   /**
-   * 按指定的干员名称列表创建干员头像卡
-   * @param oprList - 干员名称列表
+   * 按指定的干员名称列表创建干员头像卡并关联头像卡相关事件
+   * @param oprList - 需要创建的干员名称列表
    */
   addOprCard(oprList: string[]): void {
     type costDict = { name: string; cost: number };
@@ -345,6 +354,7 @@ class GameUIController {
         atkArea.push(new Vector2(tuple[0], tuple[1]));
       });
 
+
       /* 创建节点元素 */
       const oprNode = document.createElement('div');
       oprNode.setAttribute('id', opr);
@@ -356,7 +366,10 @@ class GameUIController {
         url("${this.matData.icons.prof[oprData.prof.toLowerCase()]}") no-repeat top left 35% / 21%,
         ${drawStars(oprData.rarity)} no-repeat bottom right / auto 17%,
         url("${this.matData.icons.operator[opr]}") no-repeat top left / cover`;
-      const cdNode = document.createElement('div');
+
+      const cdNode = document.createElement('canvas');
+      (cdNode.getContext('2d') as CanvasRenderingContext2D).scale(this.dpr, this.dpr);
+
       const costNode = document.createElement('div');
       const costText = document.createTextNode(oprData.cost.toString());
       costNode.appendChild(costText);
@@ -366,11 +379,13 @@ class GameUIController {
       oprNode.appendChild(costNode);
       this.oprCards.appendChild(oprNode);
 
+
+      /* 关联事件回调 */
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
 
       /**
-       * 当释放光标时的回调函数：重置干员卡选择状态，隐藏叠加层
+       * 释放光标时的通用回调：重置干员卡选择状态，隐藏叠加层
        * @param reset - 是否重置干员头像选择状态
        */
       const mouseupHandler = (reset = true): void => {
@@ -472,9 +487,51 @@ class GameUIController {
    */
   private drawOprCount(num: number | string): void {
     const count = typeof num === 'number' ? num.toString() : num;
-    const { height } = this.oprCounter;
-    this.oprCounterCtx.clearRect(0, 0, this.oprCounter.width, this.oprCounter.height);
+    const { width, height } = this.oprCounter;
+    this.oprCounterCtx.clearRect(0, 0, width, height);
     this.oprCounterCtx.fillText(count, 0, height / 1.5);
+  }
+
+  /**
+   * 仅当未达到干员放置上限时，遍历更新所有干员卡（除冷却中）状态。
+   * 开销：遍历所有卡片节点。
+   */
+  private updateCardStatus(): void {
+    if (this.gameCtl.ctlData.oprLimit - this.gameCtl.activeOperator.size > 0) {
+      (this.oprCards.childNodes as NodeListOf<HTMLDivElement>).forEach((child) => {
+        if (!this.cdOpr.has(child)) {
+          const opr = this.gameCtl.allOperator.get(child.id);
+          if (opr !== undefined && this.cost >= opr.cost) {
+            this.enableOprCard(child);
+          } else {
+            this.disableOprCard(child);
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * 更新正在冷却的干员卡计时
+   * @param clearAll - 清除所有冷却计时的显示（与干员内部冷却计时无关）
+   */
+  private updateOprCD(clearAll = false): void {
+    this.cdOpr.forEach((card, key) => {
+      const [node, ctx, opr] = card;
+      const { width, height } = node;
+      ctx.clearRect(0, 0, width, height);
+
+      if (opr.rspTime > 0 && !clearAll) {
+        ctx.fillText(opr.rspTime.toFixed(1), width / 2, height / 2);
+      } else {
+        if (this.cost >= opr.cost) {
+          this.enableOprCard(key);
+        } else {
+          this.disableOprCard(key);
+        }
+        this.cdOpr.delete(key);
+      }
+    });
   }
 
   /**
@@ -489,30 +546,16 @@ class GameUIController {
     /* 撤退后更新cost */
     this.updateCost();
     const oprNode = document.querySelector(`#${opr.name}`) as HTMLDivElement;
-    const cdNode = oprNode.children[1] as HTMLDivElement;
-    cdNode.style.display = 'inline-block';
-    cdNode.textContent = opr.rspTime.toFixed(1);
+    const canvas = oprNode.querySelector('canvas') as HTMLCanvasElement;
+    const ctx = canvas.getContext('2d') as CanvasRenderingContext2D;
+    this.cdOpr.set(oprNode, [canvas, ctx, opr]);
+
+    /* 更新UI显示 */
     oprNode.children[2].textContent = opr.cost.toString();
     this.hideSelectLayer();
     this.showOprCard(opr.name);
-    oprNode.dataset.status = 'cd'; // 设置cd状态以便进行状态检查
-    this.updateCardStatus();
-  }
-
-  /** 仅当未达到干员放置上限时，遍历更新所有干员卡状态 */
-  private updateCardStatus(): void {
-    if (this.gameCtl.ctlData.oprLimit - this.gameCtl.activeOperator.size > 0) {
-      (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        if (child.dataset.status !== 'cd') {
-          const opr = this.gameCtl.allOperator.get(child.id);
-          if (opr !== undefined && this.cost >= opr.cost) {
-            this.enableOprCard(child);
-          } else {
-            this.disableOprCard(child);
-          }
-        }
-      });
-    }
+    this.updateCardStatus(); // 需要立即更新卡片状态而不能在Cost更新时更新
+    this.updateOprCD();
   }
 
   /** 隐藏选择叠加层 */
@@ -563,13 +606,13 @@ class GameUIController {
   private enableOprCard(card?: HTMLElement): void {
     if (card === undefined) {
       (this.oprCards.childNodes as NodeListOf<HTMLElement>).forEach((child) => {
-        (child.children[0] as HTMLDivElement).style.filter = '';
-        (child.children[2] as HTMLDivElement).style.filter = '';
+        (child.children[0] as HTMLDivElement).style.filter = 'brightness(100%)';
+        (child.children[2] as HTMLDivElement).style.filter = 'brightness(100%)';
         child.dataset.status = 'enable';
       });
     } else {
-      (card.children[0] as HTMLDivElement).style.filter = '';
-      (card.children[2] as HTMLDivElement).style.filter = '';
+      (card.children[0] as HTMLDivElement).style.filter = 'brightness(100%)';
+      (card.children[2] as HTMLDivElement).style.filter = 'brightness(100%)';
       card.dataset.status = 'enable';
     }
   }
@@ -650,8 +693,8 @@ class GameUIController {
     /** 窗口resize事件中重新计算叠加层定位 */
     const resizeSelectLayer = (): void => {
       const selectLayerRect = this.selectLayer.getBoundingClientRect();
-      this.selectLayer.width = selectLayerRect.width * this.devicePixelRatio;
-      this.selectLayer.height = selectLayerRect.height * this.devicePixelRatio;
+      this.selectLayer.width = selectLayerRect.width * this.dpr;
+      this.selectLayer.height = selectLayerRect.height * this.dpr;
       this.drawSelectLayer(absPos);
     };
 
@@ -661,8 +704,8 @@ class GameUIController {
       this.drawSelectLayer();
 
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - this.center.x / this.devicePixelRatio;
-      const distY = e.clientY - this.center.y / this.devicePixelRatio;
+      const distX = e.clientX - this.center.x / this.dpr;
+      const distY = e.clientY - this.center.y / this.dpr;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
       const diam = this.selectLayer.width * 0.1; // 方向选择区直径
       if (dist < diam / 4) {
@@ -738,8 +781,8 @@ class GameUIController {
     /* 关联选择方向时的点击事件（单次有效） */
     addEvListener(this.selectLayer, 'click', (e) => {
       /* 判定光标位置是在中心还是在外部 */
-      const distX = e.clientX - this.center.x / this.devicePixelRatio;
-      const distY = e.clientY - this.center.y / this.devicePixelRatio;
+      const distX = e.clientX - this.center.x / this.dpr;
+      const distY = e.clientY - this.center.y / this.dpr;
       const dist = Math.sqrt(distX ** 2 + distY ** 2);
       const diam = this.selectLayer.width * 0.1; // 方向选择区直径
       const chosenCard = document.querySelector('.chosen') as HTMLDivElement;
