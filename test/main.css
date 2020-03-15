@@ -392,19 +392,6 @@ main {
 }
 
 
-/* 光标叠加层 */
-.mouse-overlay {
-  display: none;
-  position: absolute;
-  width: 5%;
-  pointer-events: none;
-}
-
-.mouse-overlay img {
-  width: 100%;
-}
-
-
 /* 方向/干员选择画布叠加层 */
 .select-overlay {
   position: absolute;

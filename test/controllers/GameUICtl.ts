@@ -60,8 +60,6 @@ class GameUIController {
 
   private readonly cdOpr: Map<HTMLDivElement, CdOprNode>; // 正在CD的干员信息对象映射
 
-  private readonly mouseLayer: HTMLDivElement; // 跟随光标位置的叠加层元素
-
   /* 放置/选择干员时的画布叠加层元素 */
   private readonly selectLayer: HTMLCanvasElement;
 
@@ -94,7 +92,6 @@ class GameUIController {
     this.cdOpr = new Map<HTMLDivElement, CdOprNode>();
     this.dpr = this.frame.renderer.getPixelRatio();
 
-    this.mouseLayer = document.querySelector('.mouse-overlay') as HTMLDivElement;
     this.oprCards = document.querySelector('.operator-cards') as HTMLDivElement;
 
     /* 放置/选择干员叠加层相关 */
@@ -178,7 +175,7 @@ class GameUIController {
     let selectedOpr: Operator | null; // 记录当前选择的干员
     let clickPos: Vector2 | null; // 记录点击坐标
 
-    /* TODO: 画布化拖拽小图。撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
+    /* 撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
     const withdrawNode = document.querySelector('.ui-overlay#withdraw') as HTMLImageElement;
     addEvListener(withdrawNode, 'click', (): void => {
       this.withdrawOperator(selectedOpr as Operator); // 绘制叠加层前选择的Operator一定存在
@@ -383,6 +380,12 @@ class GameUIController {
       /* 关联事件回调 */
       const placeLayer = this.map.getOverlay(OverlayType.PlaceLayer);
       const atkLayer = this.map.getOverlay(OverlayType.AttackLayer);
+      const oprImg = new Image();
+      oprImg.addEventListener('load', () => {
+        const alpha = Math.max(this.selectLayer.width, this.selectLayer.height) * 0.0003;
+        oprImg.width = oprImg.naturalWidth * alpha;
+        oprImg.height = oprImg.naturalHeight * alpha;
+      });
 
       /**
        * 释放光标时的通用回调：重置干员卡选择状态，隐藏叠加层
@@ -393,7 +396,8 @@ class GameUIController {
           const chosenCard = document.querySelector('.chosen');
           if (chosenCard !== null) { chosenCard.classList.remove('chosen'); } // 当干员卡还存在（未放置）时恢复未选定状态
         }
-        this.mouseLayer.style.display = '';
+        this.selectLayer.style.display = '';
+        this.selectLayer.style.pointerEvents = '';
         this.map.hideOverlay();
         if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
       };
@@ -401,10 +405,11 @@ class GameUIController {
       /** 点击头像后，光标在画布上移动时执行光标位置追踪及静态渲染 */
       const onMousemove = (): void => {
         if (this.map.tracker.pointerPos !== null) {
-          this.mouseLayer.style.display = 'block';
-          const imgRect = this.mouseLayer.children[0].getBoundingClientRect();
-          this.mouseLayer.style.left = `${this.map.tracker.pointerPos.x - imgRect.width / 2}px`;
-          this.mouseLayer.style.top = `${this.map.tracker.pointerPos.y - imgRect.height / 2}px`;
+          const { x, y } = this.map.tracker.pointerPos;
+          const posX = x * this.dpr - oprImg.width / 2;
+          const posY = y * this.dpr - oprImg.height / 2;
+          this.selectCtx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+          this.selectCtx.drawImage(oprImg, posX, posY, oprImg.width, oprImg.height);
         }
         this.map.trackOverlay(atkLayer, atkArea);
         if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
@@ -435,11 +440,17 @@ class GameUIController {
         if (this.frame.status.renderType !== RenderType.DynamicRender) { this.renderer.requestRender(); }
 
         if (oprNode.dataset.status === 'enable') {
-          /* 添加干员图片到指针叠加层元素 */
-          const oprRes = this.matData.resources.operator[opr];
-          this.mouseLayer.children[0].setAttribute('src', oprRes.url);
+          this.selectCtx.clearRect(0, 0, this.selectLayer.width, this.selectLayer.height);
+          this.selectLayer.style.display = 'block';
+          this.selectLayer.style.pointerEvents = 'none'; // 此时的叠加层不接受鼠标互动事件
 
-          /* 绑定画布上的光标移动及抬起事件 */
+          /* 重设叠加层元素尺寸 */
+          const selectLayerRect = this.selectLayer.getBoundingClientRect();
+          this.selectLayer.width = selectLayerRect.width * this.dpr;
+          this.selectLayer.height = selectLayerRect.height * this.dpr;
+
+          oprImg.src = this.matData.resources.operator[opr].url;
+
           addEvListener(this.frame.canvas, 'mousemove', onMousemove);
           addEvListener(this.frame.canvas, 'mouseup', onMouseup, true);
         } else {
