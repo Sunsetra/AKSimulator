@@ -38,7 +38,7 @@ class Tracker {
     this.pickPos = null;
     this.lastPos = null;
     addEvListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
-    addEvListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
+    // addEvListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
   }
 
   /**
@@ -61,12 +61,12 @@ class Tracker {
     }
   };
 
-  /** 设置光标拾取为null */
-  private clearPickedPosition = (): void => {
-    this.pointerPos = null;
-    this.pickPos = null;
-    this.lastPos = null;
-  };
+  /** 设置光标拾取为null。注意当叠加层显示时也算光标离开画布 */
+  // private clearPickedPosition = (): void => {
+  //   this.pointerPos = null;
+  //   this.pickPos = null;
+  //   this.lastPos = null;
+  // };
 }
 
 

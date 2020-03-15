@@ -174,12 +174,29 @@ class GameUIController {
     /* 画布及撤退按钮关联点击事件 */
     let selectedOpr: Operator | null; // 记录当前选择的干员
     let clickPos: Vector2 | null; // 记录点击坐标
+    let absPos = new Vector2(); // 点击位置的抽象坐标
 
     /* 撤退按钮关联回调：撤退干员并移除叠加层上的所有点击事件处理函数 */
     const withdrawNode = document.querySelector('.ui-overlay#withdraw') as HTMLImageElement;
+
+    /** 窗口resize事件中重新计算叠加层定位并重绘功能图标位置 */
+    const resizeSelectLayer = (): void => {
+      const selectLayerRect = this.selectLayer.getBoundingClientRect();
+      this.selectLayer.width = selectLayerRect.width * this.dpr;
+      this.selectLayer.height = selectLayerRect.height * this.dpr;
+      this.drawSelectLayer(absPos);
+
+      /* 重新计算各功能图标的位置 */
+      const rad = this.selectLayer.width * 0.1;
+      const delta = rad / Math.sqrt(2) / 2;
+      withdrawNode.style.left = `${this.center.x / this.dpr - delta}px`;
+      withdrawNode.style.top = `${this.center.y / this.dpr - delta}px`;
+    };
+
     addEvListener(withdrawNode, 'click', (): void => {
       this.withdrawOperator(selectedOpr as Operator); // 绘制叠加层前选择的Operator一定存在
       removeEvListener(this.selectLayer, 'click'); // 移除叠加层上的所有点击回调
+      removeEvListener(window, 'resize', resizeSelectLayer); // 移除选择叠加层的尺寸调整回调
     });
 
     /* 光标在画布上按下时记录点击坐标 */
@@ -189,29 +206,12 @@ class GameUIController {
     addEvListener(this.frame.canvas, 'mouseup', () => {
       const { pickPos } = this.map.tracker;
       if (pickPos !== null && clickPos === pickPos) {
-        const absPos = realPosToAbsPos(pickPos, true);
+        absPos = realPosToAbsPos(pickPos, true);
         if (this.map.getBlock(absPos) !== null) {
           /* 遍历检查是否选中干员 */
           this.gameCtl.activeOperator.forEach((opr) => {
             if (absPos.equals(opr.position.floor())) {
               selectedOpr = opr;
-
-              /** 计算并放置各操作按钮的位置 */
-              const calcIconsPos = (): void => {
-                const rad = this.selectLayer.width * 0.1;
-                const delta = rad / Math.sqrt(2) / 2;
-                withdrawNode.style.left = `${this.center.x / this.dpr - delta}px`;
-                withdrawNode.style.top = `${this.center.y / this.dpr - delta}px`;
-              };
-
-              /** 窗口resize事件中重新计算叠加层定位 */
-              const resizeSelectLayer = (): void => {
-                const selectLayerRect = this.selectLayer.getBoundingClientRect();
-                this.selectLayer.width = selectLayerRect.width * this.dpr;
-                this.selectLayer.height = selectLayerRect.height * this.dpr;
-                this.drawSelectLayer(absPos);
-                calcIconsPos(); // 要先重设中心点位坐标再定位图标
-              };
 
               /* 绘制UI */
               this.selectLayer.style.display = 'block';
