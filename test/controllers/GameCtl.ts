@@ -128,7 +128,7 @@ class GameController {
         this.map.addUnit(x, z, enemy);
 
         // const nodeId = `${name}-${thisFrag.id}`;
-        this.timeAxisUI.addNode(name, 'enemy', ' create');
+        this.timeAxisUI.addNode(name, 'enemy', 'create');
 
         route.shift(); // 删除首个路径点
         fragments.shift(); // 从当前波次中删除该敌人

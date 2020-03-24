@@ -38,6 +38,7 @@ export interface IconList {
   prof: { [classType: string]: string }; // 干员职业图标
   rarity: { [rarity: string]: string }; // 干员稀有度图标
   operator: { [oprType: string]: string }; // 干员头像图标
+  [iconType: string]: { [type: string]: string };
 }
 
 

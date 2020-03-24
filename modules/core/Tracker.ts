@@ -38,6 +38,7 @@ class Tracker {
     this.pickPos = null;
     this.lastPos = null;
     addEvListener(this.frame.canvas, 'mousemove', this.getNormalizedPosition);
+    addEvListener(this.frame.canvas, 'mousedown', this.getNormalizedPosition);
     // addEvListener(this.frame.canvas, 'mouseout', this.clearPickedPosition);
   }
 

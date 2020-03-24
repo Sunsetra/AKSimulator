@@ -48,7 +48,7 @@ function main(mapInfo: MapInfo, data: Data): void {
   const map = new GameMap(frame, JSON.parse(JSON.stringify(mapInfo)), materials.resources); // 全局地图对象
 
   /* 设置全局控制器 */
-  const timeAxisUI = new TimeAxisUICtl(timeAxis, materials.resources);
+  const timeAxisUI = new TimeAxisUICtl(timeAxis, materials.icons);
   const gameCtl = new GameController(map, data, timeAxisUI); // 游戏控制器
   const gameUICtl = new GameUIController(frame, map, gameCtl, render.static, data);
   gameUICtl.addOprCard([

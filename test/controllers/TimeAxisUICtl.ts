@@ -3,7 +3,7 @@
  * @author: 落日羽音
  */
 
-import { ResourcesList } from '../../modules/core/MapInfo.js';
+import { IconList } from '../../modules/core/MapInfo.js';
 import TimeAxis from '../../modules/core/TimeAxis.js';
 import { addEvListener } from '../../modules/others/utils.js';
 
@@ -12,8 +12,8 @@ import { addEvListener } from '../../modules/others/utils.js';
 interface UnitNode {
   name: string; // 单位名称
   color: string; // 单位节点配色
-  ctTime: number; // 节点创建时间
-  url: string; // 图标资源地址
+  ctTime: number; // 节点创建时间（）
+  img: HTMLImageElement; // 图标资源
 }
 
 
@@ -22,7 +22,6 @@ interface UnitColor {
   create: string;
   leave: string;
   dead: string;
-
   [type: string]: string;
 }
 
@@ -37,16 +36,16 @@ class TimeAxisUICtl {
 
   private readonly ctx: CanvasRenderingContext2D; // 画布上下文
 
-  private readonly resList: ResourcesList; // 资源列表
+  private readonly icons: IconList; // 资源列表
 
   private readonly timeAxis: TimeAxis; // 时间轴对象
 
   private readonly unitColor: { [type: string]: UnitColor }; // 单位配色常量定义
 
   /** 时间轴UI控制 */
-  constructor(timeAxis: TimeAxis, resList: ResourcesList) {
+  constructor(timeAxis: TimeAxis, resList: IconList) {
     this.timeAxis = timeAxis;
-    this.resList = resList;
+    this.icons = resList;
     this.unitColor = {
       operator: {
         create: 'LimeGreen',
@@ -83,11 +82,20 @@ class TimeAxisUICtl {
    * @param action - 节点行为：create创建，leave撤退/漏怪，dead死亡
    */
   addNode(name: string, type: string, action: string): void {
+    const img = new Image();
+    img.addEventListener('load', () => {
+      const imgHeight = this.cvsNode.height / 1.5 - 3;
+      const alpha = imgHeight / img.naturalHeight;
+      img.width = img.naturalWidth * alpha;
+      img.height = imgHeight;
+    });
+    img.src = this.icons[type][name];
+
     this.nodes.add({
       name,
       color: this.unitColor[type][action],
       ctTime: this.timeAxis.getCurrentTime()[1],
-      url: this.resList[type][name].url,
+      img,
     });
   }
 
@@ -101,11 +109,27 @@ class TimeAxisUICtl {
   /** 更新并重绘时间轴画布 */
   update(): void {
     const { width, height } = this.cvsNode;
+    /* 时间轴底色 */
+    const [axisWidth, axisHeight] = [width * 0.85, height / 3]; // 时间轴的长宽
     this.ctx.clearRect(0, 0, width, height);
-    this.ctx.fillRect(0, height / 3, width * 0.85, height / 3);
+    this.ctx.fillStyle = 'white';
+    this.ctx.fillRect(0, 0, axisWidth, axisHeight);
     this.ctx.fill();
 
-    this.ctx.fillText(this.timeAxis.getCurrentTime()[0], width * 0.87, height / 1.6, width * 0.12);
+    /* 时间轴节点 */
+    const now = this.timeAxis.getCurrentTime()[1];
+    this.nodes.forEach((node) => {
+      const { color, ctTime, img } = node;
+      const left = (ctTime / now) * axisWidth;
+      this.ctx.fillStyle = color;
+      this.ctx.fillRect(left - 2, 0, 4, axisHeight);
+
+      this.ctx.drawImage(img, left - img.width / 2, height / 3 + 3, img.width, img.height);
+    });
+
+    /* 计时器部分 */
+    this.ctx.fillStyle = 'white';
+    this.ctx.fillText(this.timeAxis.getCurrentTime()[0], width * 0.87, height / 2, width * 0.12);
   }
 
 
